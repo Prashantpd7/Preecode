@@ -5,7 +5,10 @@ const User = require('../models/User');
 // FIX: callbackURL must be an ABSOLUTE URL pointing to the backend (port 5001).
 // A relative path like '/api/auth/google/callback' causes passport to resolve it
 // relative to whatever host made the request — which can point to the wrong server.
-const BACKEND_URL = `http://localhost:${process.env.PORT || 5001}`;
+const BACKEND_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://preecode.onrender.com"
+    : "http://localhost:5001";
 
 passport.use(
   new GoogleStrategy(
