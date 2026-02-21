@@ -1,18 +1,19 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+require('dotenv').config();
 
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const passport = require('./config/passport');
 const connectDB = require('./config/db');
+
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const practiceRoutes = require('./routes/practiceRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const earlyAccessRoutes = require('./routes/earlyAccessRoutes');
+
 const errorHandler = require('./middleware/errorMiddleware');
 
 process.on('uncaughtException', (err) => {
@@ -23,13 +24,10 @@ process.on('uncaughtException', (err) => {
 
 const app = express();
 
-// Helmet with relaxed CSP for development
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginResourcePolicy: false,
-}));
+/* ================= SECURITY ================= */
 
-// Rate limiting
+app.use(helmet());
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -37,58 +35,50 @@ const limiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many requests, please try again later.' },
 });
+
 app.use(limiter);
 
-// CORS — same origin now, but keep it for any external API calls
+/* ================= CORS ================= */
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL, // Set this in Render
   credentials: true,
 }));
 
-// Passport
+/* ================= MIDDLEWARE ================= */
+
+app.use(express.json({ limit: '50kb' }));
 app.use(passport.initialize());
 
-// Body parser
-app.use(express.json({ limit: '50kb' }));
+/* ================= ROUTES ================= */
 
-// ─────────────────────────────────────────────────────────
-// SERVE FRONTEND STATIC FILES FROM BACKEND
-// Frontend and backend are in the SAME folder, so __dirname is correct.
-// This eliminates the cross-origin port problem entirely.
-// Frontend (preecode-Ui) is a sibling folder next to preecode-backend
-// Absolute path derived from __dirname so it always resolves correctly
-// regardless of where you run `node` from.
-const staticPath = path.join(__dirname, '..', 'preecode-Ui');
-console.log('✅  Serving frontend from:', staticPath);
-app.use(express.static(staticPath));
-
-// Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'OK', frontendURL: process.env.FRONTEND_URL });
+  res.json({
+    status: 'OK',
+    environment: process.env.NODE_ENV,
+  });
 });
 
-// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/early-access', earlyAccessRoutes);
-// SPA fallback (VERY IMPORTANT)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(staticPath, 'index.html'));
-});
 
-// Error Middleware
+/* ================= ERROR HANDLER ================= */
+
 app.use(errorHandler);
+
+/* ================= SERVER START ================= */
 
 const startServer = async () => {
   await connectDB();
 
   const PORT = process.env.PORT || 5001;
+
   const server = app.listen(PORT, () => {
-    console.log(`✅  Server + Frontend running on http://localhost:${PORT}`);
-    console.log(`✅  Open: http://localhost:${PORT}/login.html`);
+    console.log(`Server running on port ${PORT}`);
   });
 
   process.on('unhandledRejection', (err) => {
