@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>preecode – Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/tailwind-config.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="bg-[#0f0f0f] text-zinc-100 font-sans min-h-screen text-sm antialiased">
+
+  <div class="app-shell flex flex-col md:flex-row min-h-screen relative z-10">
+    <div class="app-main flex-1 md:ml-[230px] flex flex-col">
+      <div class="page-content flex-1 p-4 md:p-7 max-w-[1100px] w-full opacity-0 animate-fade-in">
+
+        <!-- Profile Header -->
+        <div class="flex items-center gap-5 mb-6 opacity-0 animate-fade-in-1">
+          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#ffa116] to-[#e8920e] flex items-center justify-center text-xl font-bold text-[#0a0a0b] ring-2 ring-[#ffa116]/30 hover:ring-[#ffa116]/50 shadow-[0_0_20px_rgba(255,161,22,0.12)] hover:shadow-[0_0_28px_rgba(255,161,22,0.2)] transition-all duration-200 shrink-0 cursor-default" id="profileAvatar">?</div>
+          <div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <h2 class="text-xl font-bold text-zinc-100 tracking-tight" id="profileName">User</h2>
+              <span class="founding-badge basic" id="foundingBadge" style="display:none;">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span id="foundingBadgeText">Founding Member</span>
+              </span>
+            </div>
+            <p class="text-sm text-zinc-500 mt-0.5" id="profileEmail">Loading...</p>
+          </div>
+        </div>
+
+        <!-- Early Access Status -->
+        <div class="app-card p-5 mb-5 opacity-0 animate-fade-in-1" id="eaStatusCard" style="display:none;">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-[rgba(255,107,0,0.1)] flex items-center justify-center">
+                <svg class="w-4.5 h-4.5 text-[#ff6b00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-zinc-200">Pro Access <span class="text-[#ff6b00]" id="eaPlanLabel">Active</span></p>
+                <p class="text-xs text-zinc-500" id="eaDaysLeft">-- days remaining</p>
+              </div>
+            </div>
+            <a href="/pages/certificate.html" class="text-xs font-semibold text-[#ff6b00] hover:text-[#e86000] transition-colors no-underline" id="viewCertLink" style="display:none;">View Certificate &rarr;</a>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 opacity-0 animate-fade-in-2">
+          <div class="metric-card">
+            <div class="accent-line"></div>
+            <p class="metric-label">Total Solved</p>
+            <span class="metric-value" id="profileTotal">0</span>
+          </div>
+          <div class="metric-card">
+            <div class="accent-line"></div>
+            <p class="metric-label">Points</p>
+            <span class="metric-value" style="color:#ffa116" id="profilePoints">0</span>
+          </div>
+          <div class="metric-card">
+            <div class="accent-line"></div>
+            <p class="metric-label">Streak</p>
+            <div class="flex items-baseline gap-1.5">
+              <span class="metric-value" style="color:#ffa116" id="profileStreak">0</span>
+              <span class="metric-unit">days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="app-card p-6 mb-4 opacity-0 animate-fade-in-3">
+          <span class="section-header">Badges</span>
+          <div class="flex flex-wrap gap-3 mt-4" id="badgesGrid">
+
+            <!-- First Solve -->
+            <div class="badge-card tooltip-wrap locked" data-badge="firstSolve" data-goal="1" data-type="total">
+              <span class="tooltip">Solve your first problem</span>
+              <span class="badge-icon">&#127941;</span>
+              <span class="badge-name">First Solve</span>
+              <div class="badge-progress"><div class="badge-progress-fill" id="badgeFirstBar" style="width:0%"></div></div>
+              <span class="badge-meta" id="badgeFirstText">0/1 solved</span>
+            </div>
+
+            <!-- 7-Day Streak -->
+            <div class="badge-card tooltip-wrap locked" data-badge="7day" data-goal="7" data-type="streak">
+              <span class="tooltip">Maintain a 7-day streak</span>
+              <span class="badge-icon">&#128293;</span>
+              <span class="badge-name">7-Day Streak</span>
+              <div class="badge-progress"><div class="badge-progress-fill" id="badge7day" style="width:0%"></div></div>
+              <span class="badge-meta" id="badge7dayText">0/7 days</span>
+            </div>
+
+            <!-- 50 Problems -->
+            <div class="badge-card tooltip-wrap locked" data-badge="50problems" data-goal="50" data-type="total">
+              <span class="tooltip">Solve 50 problems</span>
+              <span class="badge-icon">&#11088;</span>
+              <span class="badge-name">50 Problems</span>
+              <div class="badge-progress"><div class="badge-progress-fill" id="badge50" style="width:0%"></div></div>
+              <span class="badge-meta" id="badge50Text">0/50 solved</span>
+            </div>
+
+            <!-- Hard Master -->
+            <div class="badge-card tooltip-wrap locked" data-badge="hardMaster" data-goal="10" data-type="hard">
+              <span class="tooltip">Solve 10 hard problems</span>
+              <span class="badge-icon">&#128142;</span>
+              <span class="badge-name">Hard Master</span>
+              <div class="badge-progress"><div class="badge-progress-fill" id="badgeHard" style="width:0%"></div></div>
+              <span class="badge-meta" id="badgeHardText">0/10 hard</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Difficulty Breakdown -->
+        <div class="app-card p-6 opacity-0 animate-fade-in-4">
+          <span class="section-header">Difficulty Breakdown</span>
+          <div class="flex flex-col gap-4 mt-5">
+            <div class="flex items-center gap-4">
+              <span class="text-xs font-semibold w-16 text-emerald-400">Easy</span>
+              <div class="flex-1 diff-bar-track"><div class="diff-bar-fill easy" id="pEasyBar"></div></div>
+              <span class="text-xs font-semibold text-zinc-400 min-w-[36px] text-right" id="pEasyCount">0</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-xs font-semibold w-16 text-amber-400">Medium</span>
+              <div class="flex-1 diff-bar-track"><div class="diff-bar-fill medium" id="pMedBar"></div></div>
+              <span class="text-xs font-semibold text-zinc-400 min-w-[36px] text-right" id="pMedCount">0</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-xs font-semibold w-16 text-rose-400">Hard</span>
+              <div class="flex-1 diff-bar-track"><div class="diff-bar-fill hard" id="pHardBar"></div></div>
+              <span class="text-xs font-semibold text-zinc-400 min-w-[36px] text-right" id="pHardCount">0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/api.js"></script>
+  <script src="/layout/layout.js"></script>
+  <script src="/layout/chatbot.js"></script>
+  <script src="/layout/early-access.js"></script>
+  <script src="/pages/profile.js"></script>
+</body>
+</html>

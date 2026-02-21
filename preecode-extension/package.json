@@ -1,0 +1,122 @@
+{
+  "name": "preecode",
+  "publisher": "prashant",
+  "displayName": "preecode",
+  "description": "AI-powered coding practice and skill-building platform inside VS Code.",
+  "version": "0.0.1",
+  "main": "./out/extension.js",
+
+  "activationEvents": [
+  "onStartupFinished",
+  "onUri"
+],
+
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "contributes": {
+    "commands": [
+      {
+  "command": "preecode.checkToken",
+  "title": "preecode: Check Stored Token"
+},
+      {
+        "command": "preecode.startPractice",
+        "title": "Start Practice",
+        "icon": {
+          "dark": "resources/play-dark.svg",
+          "light": "resources/play-light.svg"
+        }
+      },
+      {
+        "command": "preecode.run",
+        "title": "Run Code",
+        "icon": {
+          "light": "resources/run-light.svg",
+          "dark": "resources/run-dark.svg"
+        }
+      },
+      {
+        "command": "preecode.showHint",
+        "title": "Show Hint"
+      },
+      {
+        "command": "preecode.removeHint",
+        "title": "Remove Hint"
+      },
+      {
+        "command": "preecode.showSolution",
+        "title": "Show Solution"
+      },
+      {
+        "command": "preecode.evaluateSolution",
+        "title": "Evaluate Code"
+      },
+      {
+        "command": "preecode.removeEvaluation",
+        "title": "Remove Evaluation"
+      },
+      {
+        "command": "preecode.explainCode",
+        "title": "Explain Code"
+      },
+      {
+        "command": "preecode.removeExplanation",
+        "title": "Remove Explanation"
+      },
+      {
+        "command": "preecode.timerControls",
+        "title": "Timer Controls"
+      },
+      {
+        "command": "preecode.explainSelection",
+        "title": "Explain Selection"
+      },
+      {
+        "command": "preecode.removeSelectionExplanation",
+        "title": "Remove Selection Explanation"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "preecode.run",
+          "when": "editorTextFocus",
+          "group": "navigation"
+        },
+        {
+          "command": "preecode.startPractice",
+          "when": "editorTextFocus",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.109.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.3.1",
+    "node-fetch": "^3.3.2",
+    "openai": "^6.22.0"
+  }
+}

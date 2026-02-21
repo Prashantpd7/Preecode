@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>preecode — Developer Activity Analytics for VS Code</title>
+  <meta name="description" content="Automatically track coding sessions, difficulty distribution, and streak consistency — without manual logging. Built natively into VS Code.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tailwind-config.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-[#0B0F14] text-white font-sans antialiased">
+
+  <!-- ════════════════════════════════════
+       NAVBAR
+  ════════════════════════════════════ -->
+  <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-[#0B0F14]/80 border-b border-white/[0.06]">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5 no-underline">
+        <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
+          <svg class="w-4 h-4 text-[#0B0F14]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3"/>
+          </svg>
+        </div>
+        <span class="text-lg font-semibold tracking-tight text-white">preecode</span>
+      </a>
+
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#features" class="text-sm text-gray-400 hover:text-white transition-colors no-underline">Features</a>
+        <a href="#how-it-works" class="text-sm text-gray-400 hover:text-white transition-colors no-underline">How It Works</a>
+        <a href="#extension" class="text-sm text-gray-400 hover:text-white transition-colors no-underline">Extension</a>
+        <a href="#faq" class="text-sm text-gray-400 hover:text-white transition-colors no-underline">FAQ</a>
+        <a href="login.html" class="text-sm text-gray-400 hover:text-white transition-colors no-underline">Login</a>
+        <a href="register.html"
+          class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-[#0B0F14] text-sm font-semibold rounded-lg transition-colors no-underline">
+          Start Free
+        </a>
+      </div>
+
+      <button id="mobile-menu-btn" class="md:hidden text-gray-400 hover:text-white bg-transparent border-none cursor-pointer">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden border-t border-white/[0.06] px-6 py-4 space-y-3 bg-[#0B0F14]/95 backdrop-blur-xl">
+      <a href="#features" class="block text-sm text-gray-400 hover:text-white no-underline">Features</a>
+      <a href="#how-it-works" class="block text-sm text-gray-400 hover:text-white no-underline">How It Works</a>
+      <a href="#extension" class="block text-sm text-gray-400 hover:text-white no-underline">Extension</a>
+      <a href="#faq" class="block text-sm text-gray-400 hover:text-white no-underline">FAQ</a>
+      <a href="login.html" class="block text-sm text-gray-400 hover:text-white no-underline">Login</a>
+      <a href="register.html" class="block w-full text-center px-4 py-2 bg-orange-500 text-[#0B0F14] text-sm font-semibold rounded-lg no-underline">Start Free</a>
+    </div>
+  </nav>
+
+
+  <!-- ════════════════════════════════════
+       1. HERO SECTION
+  ════════════════════════════════════ -->
+  <section class="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-2 gap-16 items-center">
+        <!-- Left: Copy -->
+        <div class="opacity-0 animate-fade-in">
+          <h1 class="text-4xl sm:text-5xl md:text-[3.25rem] font-extrabold tracking-tight leading-[1.1] text-white mb-4 max-w-[640px]">
+            Measure Your Coding Discipline.
+          </h1>
+          <p class="text-lg text-gray-400 leading-relaxed max-w-xl mb-8">
+            Automatic session tracking and consistency analytics — inside VS Code.
+          </p>
+
+          <div class="flex flex-wrap gap-4">
+            <a href="register.html"
+              class="px-7 py-3.5 bg-orange-500 hover:bg-orange-600 text-[#0B0F14] font-semibold rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 no-underline shadow-[0_4px_16px_rgba(255,161,22,0.25)]">
+              Start Free
+            </a>
+            <a href="#extension"
+              class="px-7 py-3.5 border border-white/10 text-gray-300 hover:text-white hover:border-white/20 font-medium rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 no-underline">
+              Install VS Code Extension
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: Dashboard Mockup -->
+        <div class="opacity-0 animate-fade-in-2">
+          <div class="bg-white/[0.03] backdrop-blur-xl border border-white/[0.07] rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.4)]">
+            <!-- Mockup Header -->
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-orange-500/15 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-white">Analytics Overview</p>
+                  <p class="text-xs text-gray-500">Last 30 days</p>
+                </div>
+              </div>
+              <span class="text-[10px] text-gray-600 font-mono">preecode.dev</span>
+            </div>
+
+            <!-- KPI Grid -->
+            <div class="grid grid-cols-2 gap-3 mb-5">
+              <div class="bg-white/[0.04] rounded-xl p-4">
+                <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider mb-1.5">Total Sessions</p>
+                <p class="text-xl font-bold text-white">142</p>
+              </div>
+              <div class="bg-white/[0.04] rounded-xl p-4">
+                <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider mb-1.5">Active Days</p>
+                <p class="text-xl font-bold text-white">27<span class="text-xs text-gray-500 font-normal ml-1">/ 30</span></p>
+              </div>
+              <div class="bg-white/[0.04] rounded-xl p-4">
+                <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider mb-1.5">Difficulty Split</p>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <div class="flex-1 h-1.5 rounded-full bg-emerald-500/80" style="flex:3"></div>
+                  <div class="flex-1 h-1.5 rounded-full bg-amber-500/80" style="flex:2"></div>
+                  <div class="flex-1 h-1.5 rounded-full bg-rose-500/80" style="flex:1"></div>
+                </div>
+              </div>
+              <div class="bg-white/[0.04] rounded-xl p-4">
+                <p class="text-[10px] text-gray-500 font-medium uppercase tracking-wider mb-1.5">Consistency Score</p>
+                <p class="text-xl font-bold text-orange-400">92%</p>
+              </div>
+            </div>
+
+            <!-- Weekly Chart -->
+            <div class="mb-5">
+              <p class="text-[10px] text-gray-500 mb-2 font-semibold uppercase tracking-widest">Weekly Performance</p>
+              <div class="flex items-end gap-1.5 h-16">
+                <div class="flex-1 chart-bar" style="height:45%"></div>
+                <div class="flex-1 chart-bar" style="height:65%"></div>
+                <div class="flex-1 chart-bar" style="height:40%"></div>
+                <div class="flex-1 chart-bar" style="height:80%"></div>
+                <div class="flex-1 chart-bar" style="height:55%"></div>
+                <div class="flex-1 chart-bar" style="height:90%"></div>
+                <div class="flex-1 chart-bar" style="height:70%"></div>
+              </div>
+              <div class="flex justify-between mt-1.5">
+                <span class="text-[10px] text-gray-600">Mon</span>
+                <span class="text-[10px] text-gray-600">Tue</span>
+                <span class="text-[10px] text-gray-600">Wed</span>
+                <span class="text-[10px] text-gray-600">Thu</span>
+                <span class="text-[10px] text-gray-600">Fri</span>
+                <span class="text-[10px] text-gray-600">Sat</span>
+                <span class="text-[10px] text-gray-600">Sun</span>
+              </div>
+            </div>
+
+            <!-- Heatmap -->
+            <div>
+              <p class="text-[10px] text-gray-500 mb-2 font-semibold uppercase tracking-widest">Activity</p>
+              <div class="heatmap-grid" id="heatmap"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       2. SOCIAL PROOF
+  ════════════════════════════════════ -->
+  <section class="py-10 border-y border-white/[0.04] bg-white/[0.01]">
+    <div class="max-w-6xl mx-auto px-6">
+      <!-- Credibility Strip -->
+      <div class="flex flex-wrap items-center justify-center gap-8 md:gap-16 mb-10">
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">2,500+</p>
+          <p class="text-xs text-gray-500 mt-0.5">Developers</p>
+        </div>
+        <div class="hidden sm:block w-px h-8 bg-white/[0.06]"></div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">VS Code</p>
+          <p class="text-xs text-gray-500 mt-0.5">Native Integration</p>
+        </div>
+        <div class="hidden sm:block w-px h-8 bg-white/[0.06]"></div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">5 Languages</p>
+          <p class="text-xs text-gray-500 mt-0.5">JS, Python, Java, C++, C</p>
+        </div>
+        <div class="hidden sm:block w-px h-8 bg-white/[0.06]"></div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-orange-400">100%</p>
+          <p class="text-xs text-gray-500 mt-0.5">Free for Individuals</p>
+        </div>
+      </div>
+
+      <!-- Testimonials -->
+      <div class="grid sm:grid-cols-3 gap-5 max-w-4xl mx-auto">
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
+          <p class="text-sm text-gray-400 leading-relaxed mb-4">"Finally, a tool that tracks what I actually do instead of making me fill out spreadsheets. The difficulty analytics changed how I plan my practice."</p>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-orange-500/15 flex items-center justify-center text-xs font-bold text-orange-400">R</div>
+            <div>
+              <p class="text-sm font-medium text-white">Rahul M.</p>
+              <p class="text-xs text-gray-500">DSA Student, IIT Delhi</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
+          <p class="text-sm text-gray-400 leading-relaxed mb-4">"I use preecode to audit my own consistency. The streak recovery insights alone made me 3x more disciplined with daily practice."</p>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-orange-500/15 flex items-center justify-center text-xs font-bold text-orange-400">S</div>
+            <div>
+              <p class="text-sm font-medium text-white">Sneha K.</p>
+              <p class="text-xs text-gray-500">Backend Developer</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
+          <p class="text-sm text-gray-400 leading-relaxed mb-4">"Zero context switching. I open VS Code, solve problems, and the data just appears on my dashboard. That's how dev tools should work."</p>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-orange-500/15 flex items-center justify-center text-xs font-bold text-orange-400">A</div>
+            <div>
+              <p class="text-sm font-medium text-white">Arjun D.</p>
+              <p class="text-xs text-gray-500">Competitive Programmer</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       3. PROBLEM SECTION
+  ════════════════════════════════════ -->
+  <section class="py-24 md:py-32">
+    <div class="max-w-4xl mx-auto px-6 reveal">
+      <div class="text-center mb-14">
+        <p class="text-sm text-orange-400 font-medium tracking-wide uppercase mb-3">The Problem</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-white mb-5">Most Developers Train Blind.</h2>
+        <p class="text-gray-400 max-w-2xl mx-auto text-lg leading-relaxed">
+          Hundreds of problems solved, but no structured data to show for it. No visibility into what's working and what isn't.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-5 mb-14">
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 text-center">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-5 h-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-2">No Consistency Visibility</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">You don't know if you practiced 3 days last week or 5. Streaks break without you noticing.</p>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 text-center">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-5 h-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-2">No Difficulty Tracking</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">Solving 50 Easy problems feels productive, but without data, you won't see the imbalance.</p>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 text-center">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-5 h-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-2">No Growth Metrics</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">Without structured data, improvement is just a feeling — not a measurable trajectory.</p>
+        </div>
+      </div>
+
+      <div class="text-center">
+        <div class="inline-block bg-white/[0.03] border border-orange-500/15 rounded-xl px-8 py-5">
+          <p class="text-base text-white font-medium">preecode turns your daily coding into <span class="text-orange-400">measurable performance data</span>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       4. HOW IT WORKS
+  ════════════════════════════════════ -->
+  <section id="how-it-works" class="py-24 md:py-32 border-t border-white/[0.04]">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16 reveal">
+        <p class="text-sm text-orange-400 font-medium tracking-wide uppercase mb-3">How It Works</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-white mb-4">Four steps. Zero manual input.</h2>
+        <p class="text-gray-400 max-w-lg mx-auto">Install once, then forget about it. preecode captures everything in the background.</p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 reveal">
+        <!-- Step 1 -->
+        <div class="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 hover:border-white/[0.1] transition-all duration-300">
+          <div class="text-[11px] text-orange-400/60 font-semibold uppercase tracking-widest mb-4">Step 01</div>
+          <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-white mb-2">Install Extension</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">Add preecode to VS Code in seconds.</p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 hover:border-white/[0.1] transition-all duration-300">
+          <div class="text-[11px] text-orange-400/60 font-semibold uppercase tracking-widest mb-4">Step 02</div>
+          <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-white mb-2">Code Normally</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">No manual input. No toggles. Just write code.</p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 hover:border-white/[0.1] transition-all duration-300">
+          <div class="text-[11px] text-orange-400/60 font-semibold uppercase tracking-widest mb-4">Step 03</div>
+          <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-white mb-2">Auto Capture</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">Sessions, time, difficulty — tracked automatically.</p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-7 hover:border-white/[0.1] transition-all duration-300">
+          <div class="text-[11px] text-orange-400/60 font-semibold uppercase tracking-widest mb-4">Step 04</div>
+          <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-semibold text-white mb-2">Review Insights</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">Identify streaks, weak zones, and growth patterns.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       5. FEATURES
+  ════════════════════════════════════ -->
+  <section id="features" class="py-24 md:py-32 border-t border-white/[0.04]">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16 reveal">
+        <p class="text-sm text-orange-400 font-medium tracking-wide uppercase mb-3">Capabilities</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-white mb-4">Built for Structured Growth</h2>
+        <p class="text-gray-400 max-w-lg mx-auto">Every feature is designed to surface patterns, not just display numbers.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-16 items-start reveal">
+        <!-- Left: Feature list -->
+        <div class="space-y-8">
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-white mb-1">Session-Level Tracking</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Each coding session is captured with start time, duration, language, and problem metadata. No manual entry required.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-white mb-1">Difficulty Distribution Analytics</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Visualize your Easy/Medium/Hard solve ratios over time. Surface imbalances before they become blind spots.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-white mb-1">Weekly Performance Reports</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Automated summaries of problems solved, session frequency, and progress trends delivered to your dashboard.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="text-base font-semibold text-white">AI Pattern Review</h3>
+                <span class="text-[10px] font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-full">Beta</span>
+              </div>
+              <p class="text-sm text-gray-500 leading-relaxed">AI analyzes your code for correctness, edge cases, and time complexity. Get actionable feedback inside VS Code.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-semibold text-white mb-1">Streak Recovery Logic</h3>
+              <p class="text-sm text-gray-500 leading-relaxed">Intelligent gap detection that identifies when streaks break and what patterns lead to recovery or dropout.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Data Visualization Card -->
+        <div class="bg-white/[0.03] backdrop-blur-xl border border-white/[0.07] rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.3)]">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-sm font-medium text-white">Performance Summary</p>
+            <span class="text-[10px] text-gray-500 font-mono">This week</span>
+          </div>
+
+          <!-- Metric Row -->
+          <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="bg-white/[0.04] rounded-xl p-3.5 text-center">
+              <p class="text-xl font-bold text-white">247</p>
+              <p class="text-[10px] text-gray-500 mt-1">Total Solved</p>
+            </div>
+            <div class="bg-white/[0.04] rounded-xl p-3.5 text-center">
+              <p class="text-xl font-bold text-orange-400">17</p>
+              <p class="text-[10px] text-gray-500 mt-1">Day Streak</p>
+            </div>
+            <div class="bg-white/[0.04] rounded-xl p-3.5 text-center">
+              <p class="text-xl font-bold text-white">89%</p>
+              <p class="text-[10px] text-gray-500 mt-1">Accuracy</p>
+            </div>
+          </div>
+
+          <!-- Difficulty Breakdown -->
+          <div class="mb-6">
+            <p class="text-[10px] text-gray-500 mb-3 font-semibold uppercase tracking-widest">Difficulty Breakdown</p>
+            <div class="space-y-2.5">
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-400 w-14">Easy</span>
+                <div class="flex-1 h-2 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width:72%"></div></div>
+                <span class="text-xs text-gray-500 w-12 text-right">124</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-400 w-14">Medium</span>
+                <div class="flex-1 h-2 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-amber-500" style="width:48%"></div></div>
+                <span class="text-xs text-gray-500 w-12 text-right">89</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-400 w-14">Hard</span>
+                <div class="flex-1 h-2 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full bg-rose-500" style="width:21%"></div></div>
+                <span class="text-xs text-gray-500 w-12 text-right">34</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weekly Trend -->
+          <p class="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-3">Weekly Trend</p>
+          <div class="relative h-16">
+            <svg class="w-full h-full" viewBox="0 0 280 60" fill="none">
+              <polyline points="0,45 40,38 80,42 120,30 160,25 200,18 240,12 280,8" stroke="rgba(255,161,22,0.5)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="0,45 40,38 80,42 120,30 160,25 200,18 240,12 280,8" stroke="none" fill="url(#chartGrad)"/>
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(255,161,22,0.12)"/>
+                  <stop offset="100%" stop-color="rgba(255,161,22,0)"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       6. VS CODE EXTENSION
+  ════════════════════════════════════ -->
+  <section id="extension" class="py-24 md:py-32 border-t border-white/[0.04]">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-2 gap-12 items-center reveal">
+
+        <!-- Left: Copy -->
+        <div>
+          <p class="text-[11px] text-orange-400 font-semibold tracking-[0.12em] uppercase mb-3">VS Code</p>
+          <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-white mb-3">Native VS Code Integration</h2>
+          <p class="text-sm text-gray-400 leading-relaxed max-w-sm mb-6">
+            Solve problems, track sessions, and review insights without leaving your editor.
+          </p>
+
+          <ul class="space-y-2.5 mb-6 list-none p-0 m-0">
+            <li class="flex items-center gap-2">
+              <svg class="w-[16px] h-[16px] text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span class="text-[13px] text-gray-300">Real-time session tracking</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-[16px] h-[16px] text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span class="text-[13px] text-gray-300">Zero browser switching</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-[16px] h-[16px] text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span class="text-[13px] text-gray-300">Lightweight background capture</span>
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-[16px] h-[16px] text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span class="text-[13px] text-gray-300">Built for DSA & daily training</span>
+            </li>
+          </ul>
+
+          <a href="#"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-[#0B0F14] font-semibold rounded-lg text-sm transition-all duration-200 hover:-translate-y-0.5 no-underline">
+            Install Extension
+          </a>
+        </div>
+
+        <!-- Right: Code Editor Mockup -->
+        <div class="bg-[#111318] border border-white/[0.06] rounded-xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+          <!-- Title bar -->
+          <div class="flex items-center gap-2 px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+            <div class="flex gap-1.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-white/[0.08]"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-white/[0.08]"></div>
+              <div class="w-2.5 h-2.5 rounded-full bg-white/[0.08]"></div>
+            </div>
+            <span class="text-[11px] text-gray-500 ml-1 font-mono">solution.js</span>
+          </div>
+
+          <!-- Code area -->
+          <div class="p-4 font-mono text-xs leading-[1.7]">
+            <div class="text-gray-500">// Two Sum — Easy</div>
+            <div class="text-gray-500 mb-2">// Find two numbers that add up to target</div>
+            <div><span class="text-purple-400">function</span> <span class="text-blue-400">twoSum</span><span class="text-gray-300">(nums, target) {</span></div>
+            <div class="ml-4"><span class="text-purple-400">const</span> <span class="text-gray-300">map = </span><span class="text-purple-400">new</span> <span class="text-blue-400">Map</span><span class="text-gray-300">();</span></div>
+            <div class="ml-4"><span class="text-purple-400">for</span> <span class="text-gray-300">(</span><span class="text-purple-400">let</span> <span class="text-gray-300">i = 0; i < nums.length; i++) {</span></div>
+            <div class="ml-8"><span class="text-purple-400">const</span> <span class="text-gray-300">diff = target - nums[i];</span></div>
+            <div class="ml-8"><span class="text-purple-400">if</span> <span class="text-gray-300">(map.has(diff))</span></div>
+            <div class="ml-12"><span class="text-purple-400">return</span> <span class="text-gray-300">[map.get(diff), i];</span></div>
+            <div class="ml-8"><span class="text-gray-300">map.set(nums[i], i);</span></div>
+            <div class="ml-4"><span class="text-gray-300">}</span></div>
+            <div><span class="text-gray-300">}</span></div>
+            <div class="mt-2 flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+              <span class="text-emerald-400 text-[11px]">All test cases passed</span>
+            </div>
+          </div>
+
+          <!-- Status bar -->
+          <div class="flex items-center justify-between px-4 py-2 bg-white/[0.02] border-t border-white/[0.06]">
+            <div class="flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>
+              <span class="text-[10px] text-gray-500">Session: 04:32</span>
+            </div>
+            <span class="text-[10px] text-gray-500">Auto-synced</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       7. SECURITY & DATA OWNERSHIP
+  ════════════════════════════════════ -->
+  <section class="py-20 md:py-24 border-t border-white/[0.04]">
+    <div class="max-w-4xl mx-auto px-6">
+      <div class="text-center mb-12 reveal">
+        <p class="text-sm text-orange-400 font-medium tracking-wide uppercase mb-3">Security</p>
+        <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-white mb-3">Security & Data Ownership</h2>
+        <p class="text-gray-400 max-w-md mx-auto text-sm">Your code stays on your machine. We only store session metadata.</p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 reveal">
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center">
+          <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-1">No Source Code Access</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">We never read, store, or transmit your actual code.</p>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center">
+          <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-1">Metadata Only</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">Only session timestamps, difficulty, and language are stored.</p>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center">
+          <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-1">JWT Authentication</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">Token-based auth on every API request. No session cookies.</p>
+        </div>
+
+        <div class="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center">
+          <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center mx-auto mb-3">
+            <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+          </div>
+          <h3 class="text-sm font-semibold text-white mb-1">Encrypted Storage</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">AES-256 encryption at rest. Full data export and deletion.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       8. FAQ
+  ════════════════════════════════════ -->
+  <section id="faq" class="py-24 md:py-32 border-t border-white/[0.04]">
+    <div class="max-w-3xl mx-auto px-6">
+      <div class="text-center mb-16 reveal">
+        <p class="text-sm text-orange-400 font-medium tracking-wide uppercase mb-3">FAQ</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-white">Frequently Asked Questions</h2>
+      </div>
+
+      <div class="space-y-3 reveal" id="faqList">
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Is preecode free?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-content">
+            <p>Yes. preecode is free for individual developers. All core features — session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review — are included at no cost. Team plans will be available in the future.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Does preecode access my source code?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-content">
+            <p>No. preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Can teams use preecode?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-content">
+            <p>preecode is currently designed for individual developers. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap. If you're interested in team access, reach out and we'll notify you when it's available.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>What languages are supported?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-content">
+            <p>The VS Code extension supports JavaScript, Python, Java, C++, and C. You can practice problems and track sessions in any of these languages. Additional language support is planned.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>How does automatic tracking work?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-content">
+            <p>When you solve a problem using the preecode VS Code extension, the submission metadata — question name, language, time taken, and difficulty — is automatically captured and synced to your dashboard. No manual entry is required at any point.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-trigger" aria-expanded="false">
+            <span>Can I use preecode without the extension?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="faq-content">
+            <p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking and the built-in problem environment require the VS Code extension to be installed.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       9. FINAL CTA
+  ════════════════════════════════════ -->
+  <section class="py-32 border-t border-white/[0.04]">
+    <div class="max-w-6xl mx-auto px-6 text-center reveal">
+      <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-white mb-5">Start tracking your development data.</h2>
+      <p class="text-base text-gray-400 max-w-md mx-auto mb-10">Free for individuals. No credit card. Set up in under a minute.</p>
+      <div class="flex flex-wrap items-center justify-center gap-4">
+        <a href="register.html"
+          class="px-8 py-3.5 bg-orange-500 hover:bg-orange-600 text-[#0B0F14] font-semibold rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 no-underline shadow-[0_4px_16px_rgba(255,161,22,0.25)]">
+          Start Free
+        </a>
+        <a href="#extension"
+          class="px-8 py-3.5 border border-white/10 text-gray-300 hover:text-white hover:border-white/20 font-medium rounded-xl text-sm transition-all duration-200 hover:-translate-y-0.5 no-underline">
+          Install VS Code Extension
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       FOOTER
+  ════════════════════════════════════ -->
+  <footer class="bg-[#0a0d11] border-t border-white/[0.06]">
+    <div class="max-w-6xl mx-auto px-6 pt-14 pb-10">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-10 mb-12">
+        <div class="col-span-2">
+          <div class="flex items-center gap-2.5 mb-3">
+            <div class="w-7 h-7 rounded-md bg-orange-500 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-[#0B0F14]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3"/>
+              </svg>
+            </div>
+            <span class="text-base font-semibold text-white tracking-tight">preecode</span>
+          </div>
+          <p class="text-[13px] leading-relaxed text-gray-500 max-w-[260px]">Developer activity analytics. Session tracking, difficulty distribution, and growth metrics — built into VS Code.</p>
+        </div>
+
+        <div>
+          <p class="text-[11px] text-gray-500 font-medium uppercase tracking-widest mb-4">Product</p>
+          <ul class="space-y-2.5">
+            <li><a href="#features" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">Features</a></li>
+            <li><a href="#extension" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">Extension</a></li>
+            <li><a href="#faq" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">FAQ</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="text-[11px] text-gray-500 font-medium uppercase tracking-widest mb-4">Company</p>
+          <ul class="space-y-2.5">
+            <li><a href="#" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">About</a></li>
+            <li><a href="#" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">Contact</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="text-[11px] text-gray-500 font-medium uppercase tracking-widest mb-4">Legal</p>
+          <ul class="space-y-2.5">
+            <li><a href="#" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">Privacy</a></li>
+            <li><a href="#" class="text-[13px] text-gray-400 hover:text-white transition-colors no-underline">Terms</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-7 border-t border-white/[0.06]">
+        <p class="text-[11px] text-gray-600">&copy; 2025 preecode. All rights reserved.</p>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-white transition-colors" aria-label="GitHub">
+          <svg class="w-[18px] h-[18px]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ════════════════════════════════════
+       SCRIPTS
+  ════════════════════════════════════ -->
+  <script>
+    // Auth guard: logged-in users go straight to dashboard
+    if (localStorage.getItem('token')) {
+      window.location.href = '/pages/dashboard.html';
+    }
+
+    // Mobile menu toggle
+    var menuBtn = document.getElementById('mobile-menu-btn');
+    var mobileMenu = document.getElementById('mobile-menu');
+    if (menuBtn && mobileMenu) {
+      menuBtn.addEventListener('click', function () {
+        mobileMenu.classList.toggle('hidden');
+      });
+    }
+
+    // Scroll reveal
+    var revealElements = document.querySelectorAll('.reveal');
+    var revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+    revealElements.forEach(function (el) { revealObserver.observe(el); });
+
+    // Generate heatmap
+    var heatmap = document.getElementById('heatmap');
+    if (heatmap) {
+      var levels = ['', 'l1', 'l2', 'l3', 'l4'];
+      for (var i = 0; i < 35; i++) {
+        var cell = document.createElement('div');
+        cell.className = 'heatmap-cell ' + levels[Math.floor(Math.random() * 5)];
+        heatmap.appendChild(cell);
+      }
+    }
+
+    // FAQ accordion
+    var faqItems = document.querySelectorAll('.faq-trigger');
+    faqItems.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var item = btn.parentElement;
+        var isOpen = item.classList.contains('open');
+
+        // Close all
+        document.querySelectorAll('.faq-item').forEach(function (el) {
+          el.classList.remove('open');
+          el.querySelector('.faq-trigger').setAttribute('aria-expanded', 'false');
+        });
+
+        // Open clicked (if it was closed)
+        if (!isOpen) {
+          item.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
