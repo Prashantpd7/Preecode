@@ -25,11 +25,13 @@ router.get(
     failureRedirect: `${FRONTEND_URL}/auth/callback.html?error=oauth_failed`,
   }),
   (req, res) => {
+    console.log('[auth] Google callback hit for user:', req.user && req.user._id);
     const token = jwt.sign(
       { id: req.user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+    console.log('[auth] Generated JWT for user:', req.user && req.user._id);
 
     // Redirect to a small callback page that will persist token then navigate
     res.redirect(`${FRONTEND_URL}/auth/callback.html?token=${token}`);

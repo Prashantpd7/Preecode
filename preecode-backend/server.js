@@ -26,6 +26,12 @@ process.on('uncaughtException', (err) => {
 
 const app = express();
 
+// Request logger for debugging in production
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip} origin=${req.headers.origin || 'none'}`);
+  next();
+});
+
 /* ================= SECURITY ================= */
 
 app.use(helmet());
@@ -45,17 +51,27 @@ app.use(limiter);
 // CORS: allow only configured frontend origins (echo back origin when matched)
 const allowedOrigins = [process.env.FRONTEND_URL, process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`, 'http://localhost:3000', 'http://localhost:5001'].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, server-to-server)
+    // allow requests with no origin (like server-to-server, curl)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     }
-    return callback(new Error('CORS policy: This origin is not allowed'), false);
+    console.warn('Blocked CORS request from origin:', origin);
+    return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
-}));
+};
+
+// Enable CORS for all routes with the options and handle preflight
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// Root route to avoid confusing "Not Found" when someone lands on the service root
+app.get('/', (req, res) => {
+  res.send('Preecode backend running');
+});
 
 /* ================= MIDDLEWARE ================= */
 
