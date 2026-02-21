@@ -1,3 +1,4 @@
+console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 require('dotenv').config();
 
 const express = require('express');
