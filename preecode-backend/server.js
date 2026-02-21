@@ -74,6 +74,10 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/early-access', earlyAccessRoutes);
+// SPA fallback (VERY IMPORTANT)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(staticPath, 'index.html'));
+});
 
 // Error Middleware
 app.use(errorHandler);
