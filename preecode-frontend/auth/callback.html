@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auth callback</title>
+  <style>body{background:#0B0F14;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:Inter,system-ui,Arial}</style>
+</head>
+<body>
+  <div id="container" style="text-align:center;max-width:520px;padding:24px">
+    <h2 id="title" style="margin-bottom:8px">Signing you in…</h2>
+    <p id="msg" style="color:#9ca3af">Please wait — finishing authentication.</p>
+    <div id="actions" style="margin-top:18px;display:none">
+      <a id="goLogin" href="/login.html" style="color:#ffa116;margin-right:12px;text-decoration:none">Go to Sign In</a>
+      <a id="goHome" href="/" style="color:#9ca3af;text-decoration:none">Return Home</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var token = params.get('token');
+        var error = params.get('error');
+        var msg = document.getElementById('msg');
+
+        if (error && !token) {
+          // Show a friendly error with actions; do not auto-redirect immediately.
+          var title = document.getElementById('title');
+          title.textContent = 'Authentication failed';
+          msg.textContent = 'There was a problem signing you in: ' + (error || 'unknown error') + '. Please try again.';
+          console.warn('OAuth error:', error);
+          var actions = document.getElementById('actions');
+          actions.style.display = 'block';
+          return;
+        }
+
+        if (token) {
+          // Persist token
+          try { localStorage.setItem('token', token); } catch (e) { /* ignore */ }
+
+          // If opened as a popup, notify opener and close
+          if (window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage({ type: 'preecode_oauth', token: token }, '*');
+            } catch (e) {
+              // ignore
+            }
+            window.close();
+            return;
+          }
+
+          // Otherwise navigate to dashboard
+          msg.textContent = 'Signed in — redirecting to dashboard...';
+          // remove token from URL for cleanliness
+          params.delete('token');
+          var newSearch = params.toString();
+          var newUrl = '/pages/dashboard.html' + (newSearch ? '?' + newSearch : '');
+          setTimeout(function () { window.location.href = newUrl; }, 700);
+          return;
+        }
+
+        // No token & no error — show actions to let user continue to login
+        title.textContent = 'Authentication incomplete';
+        msg.textContent = 'No authentication token was returned. Please sign in manually.';
+        document.getElementById('actions').style.display = 'block';
+      } catch (e) {
+        try { localStorage.removeItem('token'); } catch (e) {}
+        window.location.href = '/login.html';
+      }
+    })();
+  </script>
+</body>
+</html>

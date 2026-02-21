@@ -1,5 +1,6 @@
-console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
+// Load environment variables first
 require('dotenv').config();
+console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 
 const express = require('express');
 const cors = require('cors');
@@ -41,8 +42,18 @@ app.use(limiter);
 
 /* ================= CORS ================= */
 
+// CORS: allow only configured frontend origins (echo back origin when matched)
+const allowedOrigins = [process.env.FRONTEND_URL, process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`, 'http://localhost:3000', 'http://localhost:5001'].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL, // Set this in Render
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS policy: This origin is not allowed'), false);
+  },
   credentials: true,
 }));
 

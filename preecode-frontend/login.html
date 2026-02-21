@@ -237,8 +237,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (googleBtn) {
     googleBtn.addEventListener("click", function () {
-      // Local backend OAuth route
-      window.location.href = "https://preecode.onrender.com/api/auth/google";
+      // Use API_BASE from api.js (includes /api)
+      window.location.href = API_BASE + '/auth/google';
     });
   }
 });

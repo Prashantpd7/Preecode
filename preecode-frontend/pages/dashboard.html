@@ -166,6 +166,25 @@
   </div>
 
   <script src="/api.js"></script>
+  <script>
+    // If OAuth redirected back with a token in querystring, persist it before layout runs
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var t = params.get('token');
+        if (t) {
+          localStorage.setItem('token', t);
+          // remove token from URL
+          params.delete('token');
+          var newSearch = params.toString();
+          var newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
+          history.replaceState({}, document.title, newUrl);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+  </script>
   <script src="/layout/layout.js"></script>
   <script src="/layout/chatbot.js"></script>
   <script src="/layout/early-access.js"></script>

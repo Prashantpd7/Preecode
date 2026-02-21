@@ -14,13 +14,15 @@ router.get(
   })
 );
 
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://preecode.vercel.app';
+
 /* ================= GOOGLE OAUTH CALLBACK ================= */
 
 router.get(
   '/google/callback',
   passport.authenticate('google', {
     session: false,
-    failureRedirect: `${process.env.FRONTEND_URL}/login.html?error=oauth_failed`,
+    failureRedirect: `${FRONTEND_URL}/auth/callback.html?error=oauth_failed`,
   }),
   (req, res) => {
     const token = jwt.sign(
@@ -29,10 +31,8 @@ router.get(
       { expiresIn: '7d' }
     );
 
-    // Redirect to Vercel frontend with token
-   res.redirect(
-  `${process.env.FRONTEND_URL}/pages/dashboard.html?token=${token}`
-);
+    // Redirect to a small callback page that will persist token then navigate
+    res.redirect(`${FRONTEND_URL}/auth/callback.html?token=${token}`);
   }
 );
 

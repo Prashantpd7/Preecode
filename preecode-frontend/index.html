@@ -162,6 +162,25 @@
     </div>
   </section>
 
+  <script>
+    // Navbar auth state: swap Login/Register to Dashboard/Logout when token exists
+    document.addEventListener('DOMContentLoaded', function () {
+      var token = localStorage.getItem('token');
+      if (!token) return;
+      // Desktop
+      var desktopLogin = document.querySelector('nav a[href="login.html"]');
+      var desktopRegister = document.querySelector('nav a[href="register.html"]');
+      if (desktopLogin) { desktopLogin.href = '/pages/dashboard.html'; desktopLogin.textContent = 'Dashboard'; }
+      if (desktopRegister) { desktopRegister.textContent = 'Logout'; desktopRegister.href = '#'; desktopRegister.addEventListener('click', function (e) { e.preventDefault(); localStorage.clear(); window.location.href = '/'; }); }
+
+      // Mobile
+      var mobileLogin = document.querySelector('#mobile-menu a[href="login.html"]');
+      var mobileRegister = document.querySelector('#mobile-menu a[href="register.html"]');
+      if (mobileLogin) { mobileLogin.href = '/pages/dashboard.html'; mobileLogin.textContent = 'Dashboard'; }
+      if (mobileRegister) { mobileRegister.textContent = 'Logout'; mobileRegister.href = '#'; mobileRegister.addEventListener('click', function (e) { e.preventDefault(); localStorage.clear(); window.location.href = '/'; }); }
+    });
+  </script>
+
 
   <!-- ════════════════════════════════════
        2. SOCIAL PROOF
