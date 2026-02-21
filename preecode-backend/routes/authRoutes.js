@@ -30,9 +30,9 @@ router.get(
     );
 
     // Redirect to Vercel frontend with token
-    res.redirect(
-      `${process.env.FRONTEND_URL}/dashboard.html?token=${token}`
-    );
+   res.redirect(
+  `${process.env.FRONTEND_URL}/pages/dashboard.html?token=${token}`
+);
   }
 );
 
