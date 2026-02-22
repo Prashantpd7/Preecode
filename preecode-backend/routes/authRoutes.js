@@ -12,8 +12,10 @@ router.get('/google', (req, res, next) => {
   let state;
   if (req.query && req.query.redirect) {
     try {
+      console.log('[auth] /google received redirect:', req.query.redirect);
       state = Buffer.from(String(req.query.redirect)).toString('base64');
     } catch (e) {
+      console.warn('[auth] /google failed to encode redirect:', e && e.message);
       state = undefined;
     }
   }
