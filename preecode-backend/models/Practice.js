@@ -4,6 +4,7 @@ const practiceSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   question: { type: String, required: true },
   timeTaken: { type: String, required: true },
+  topic: { type: String, default: 'General' },
   hintsUsed: { type: Number, default: 0 },
   solutionViewed: { type: Boolean, default: false },
   language: { type: String, required: true },

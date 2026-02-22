@@ -166,6 +166,19 @@ var Api = {
     });
   },
 
+  // Update user profile
+  updateProfile: function (data) {
+    return fetch(API_BASE + '/users/profile/update', {
+      method: 'PUT',
+      headers: Api._authHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
+      body: JSON.stringify(data),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to update profile'); });
+      return res.json();
+    });
+  },
+
   // Build headers with Authorization token
   _authHeaders: function (extra) {
     var headers = {};

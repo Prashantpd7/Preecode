@@ -3,7 +3,7 @@ const Practice = require('../models/Practice');
 // Save a practice session
 exports.addPractice = async (req, res, next) => {
   try {
-    const { question, timeTaken, hintsUsed, solutionViewed, language, date } = req.body;
+    const { question, timeTaken, hintsUsed, solutionViewed, language, date, topic } = req.body;
     if (!question || !timeTaken || !language || !date) {
       return res.status(400).json({ message: 'question, timeTaken, language, and date are required.' });
     }
@@ -11,6 +11,7 @@ exports.addPractice = async (req, res, next) => {
       userId: req.user._id,
       question,
       timeTaken,
+      topic: topic || 'General',
       hintsUsed: hintsUsed || 0,
       solutionViewed: solutionViewed || false,
       language,

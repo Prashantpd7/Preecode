@@ -161,4 +161,74 @@
   }
 
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  // Edit Profile Modal handling
+  var editModal = document.getElementById('editProfileModal');
+  var editBtn = document.getElementById('editProfileBtn');
+  var closeBtn = document.getElementById('closeEditModal');
+  var cancelBtn = document.getElementById('cancelEditModal');
+  var editForm = document.getElementById('editProfileForm');
+  var usernameInput = document.getElementById('editUsername');
+  var avatarInput = document.getElementById('editAvatar');
+
+  function openEditModal() {
+    // Populate current values
+    usernameInput.value = userName;
+    avatarInput.value = localStorage.getItem('preecode_avatar') || '';
+    editModal.classList.remove('hidden');
+  }
+
+  function closeEditModal() {
+    editModal.classList.add('hidden');
+  }
+
+  editBtn.addEventListener('click', openEditModal);
+  closeBtn.addEventListener('click', closeEditModal);
+  cancelBtn.addEventListener('click', closeEditModal);
+
+  editForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    
+    var newUsername = usernameInput.value.trim();
+    var newAvatar = avatarInput.value.trim();
+
+    if (!newUsername) {
+      alert('Username cannot be empty');
+      return;
+    }
+
+    try {
+      var result = await Api.updateProfile({
+        username: newUsername,
+        avatar: newAvatar || undefined
+      });
+
+      if (result && result.user) {
+        // Update local storage
+        localStorage.setItem('preecode_name', result.user.username);
+        if (result.user.avatar) {
+          localStorage.setItem('preecode_avatar', result.user.avatar);
+        }
+
+        // Update UI
+        setText('profileName', cap(result.user.username));
+        var av = document.getElementById('profileAvatar');
+        if (av) av.textContent = result.user.username.charAt(0).toUpperCase();
+
+        alert('Profile updated successfully');
+        closeEditModal();
+        location.reload(); // Reload to update all pages
+      }
+    } catch (err) {
+      alert('Failed to update profile: ' + (err.message || 'Unknown error'));
+      console.error('Profile update error:', err);
+    }
+  });
+
+  // Close modal on outside click
+  editModal.addEventListener('click', function (e) {
+    if (e.target === editModal) {
+      closeEditModal();
+    }
+  });
 })();

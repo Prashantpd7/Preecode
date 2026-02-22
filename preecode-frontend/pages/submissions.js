@@ -92,13 +92,17 @@
       var sc = sub.status === 'accepted' ? 'accepted' : 'wrong';
       var sl = sub.status === 'accepted' ? 'Accepted' : 'Wrong';
       var ds = sub.submittedAt ? sub.submittedAt.slice(0, 10) : '';
+      var topic = sub.topic || 'General';
+      var timeTaken = sub.timeTaken || '00:00';
 
       var tr = document.createElement('tr');
       tr.innerHTML =
         '<td>' + (start + i + 1) + '</td>' +
         '<td>' + escHtml(sub.problemName) + '</td>' +
+        '<td><span class="text-xs bg-zinc-700 text-zinc-200 px-2 py-1 rounded">' + escHtml(topic) + '</span></td>' +
         '<td><span class="diff-badge ' + dc + '">' + cap(dc) + '</span></td>' +
         '<td><span class="diff-badge ' + sc + '">' + sl + '</span></td>' +
+        '<td><span class="text-xs text-zinc-400">' + timeTaken + '</span></td>' +
         '<td>' + ds + '</td>';
       tbody.appendChild(tr);
     });

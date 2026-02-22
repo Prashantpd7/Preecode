@@ -9,6 +9,8 @@ exports.addSubmission = async (req, res, next) => {
     const problemName = (req.body.problemName || '').trim();
     const difficultyRaw = String(req.body.difficulty || '').toLowerCase();
     const statusRaw = String(req.body.status || '').toLowerCase();
+    const topic = (req.body.topic || 'General').trim();
+    const timeTaken = (req.body.timeTaken || '00:00').trim();
 
     let difficulty = 'easy';
     if (difficultyRaw === 'medium' || difficultyRaw === 'hard' || difficultyRaw === 'easy') {
@@ -28,7 +30,14 @@ exports.addSubmission = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
-    const submission = await Submission.create({ userId, problemName, difficulty, status });
+    const submission = await Submission.create({ 
+      userId, 
+      problemName, 
+      difficulty, 
+      status,
+      topic,
+      timeTaken
+    });
     // Update stats if accepted
     if (status === 'accepted') {
       user.totalSolved += 1;

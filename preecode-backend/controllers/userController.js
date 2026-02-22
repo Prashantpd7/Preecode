@@ -115,3 +115,45 @@ exports.getStats = async (req, res, next) => {
     next(error);
   }
 };
+
+// Update user profile
+exports.updateProfile = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated.' });
+    }
+    const { username, avatar } = req.body;
+    const userId = req.user._id;
+
+    // Validate input
+    if (username && username.trim() === '') {
+      return res.status(400).json({ message: 'Username cannot be empty.' });
+    }
+
+    // Check if new username is unique (if changed)
+    if (username && username !== req.user.username) {
+      const existingUser = await User.findOne({ username });
+      if (existingUser && existingUser._id.toString() !== userId.toString()) {
+        return res.status(409).json({ message: 'Username already taken.' });
+      }
+    }
+
+    // Update user
+    const updateFields = {};
+    if (username) updateFields.username = username;
+    if (avatar) updateFields.avatar = avatar;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateFields,
+      { new: true }
+    ).select('-password -__v');
+
+    res.json({
+      message: 'Profile updated successfully.',
+      user: updatedUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

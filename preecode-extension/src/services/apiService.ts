@@ -17,6 +17,7 @@ export async function doFetch(url: string, opts?: any): Promise<any> {
 export interface PracticeData {
     question: string;
     timeTaken: string;      // formatted "MM:SS"
+    topic?: string;         // e.g., 'Arrays', 'Strings', etc.
     hintsUsed: number;
     solutionViewed: boolean;
     language: string;
@@ -28,6 +29,8 @@ export interface SubmissionData {
     problemName: string;
     difficulty?: string;
     status: string; // e.g., 'Accepted', 'Wrong Answer'
+    topic?: string; // e.g., 'Arrays', 'Strings', etc.
+    timeTaken?: string; // formatted "MM:SS"
     date?: string;  // ISO string
 }
 
@@ -77,6 +80,8 @@ export async function sendSubmission(
                 problemName: (data.problemName || 'Practice Session').trim(),
                 difficulty: normalizeDifficulty(data.difficulty),
                 status: normalizeStatus(data.status),
+                topic: data.topic || 'General',
+                timeTaken: data.timeTaken || '00:00',
             })
         });
 
