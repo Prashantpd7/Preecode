@@ -285,6 +285,7 @@ const uriHandler = vscode.window.registerUriHandler({
 		accountStatusBar.text = 'preecode: Not signed in';
 		accountStatusBar.tooltip = 'Click to view account';
 		accountStatusBar.show();
+		context.subscriptions.push(accountStatusBar);
 
 		accountIcon = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 102);
 		accountIcon.command = 'preecode.showAccount';
@@ -342,18 +343,37 @@ const uriHandler = vscode.window.registerUriHandler({
 			console.log('[extension] updateAccountStatus: accountStatusBar is null');
 			return;
 		}
-		const user: any = await fetchCurrentUser();
-		console.log('[extension] updateAccountStatus: user =', user ? user.email : null);
-		if (!user) {
+		
+		const token = await getToken(context);
+		console.log('[extension] updateAccountStatus: token exists =', !!token);
+		
+		// If no token, show "Sign in"
+		if (!token) {
 			accountStatusBar.text = 'preecode: Sign in';
 			accountStatusBar.tooltip = 'Not signed in — click to login';
 			if (accountIcon) accountIcon.color = '#9CA3AF';
+			console.log('[extension] updateAccountStatus: no token, showing sign in');
 			return;
 		}
-		accountStatusBar.text = `preecode: ${user.username || user.email}`;
-		accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
-		if (accountIcon) accountIcon.color = '#10B981';
-		console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
+		
+		// Token exists — try to fetch user details
+		const user: any = await fetchCurrentUser();
+		console.log('[extension] updateAccountStatus: user =', user ? (user.email || user.username) : null);
+		
+		// If fetch succeeded, show user details
+		if (user) {
+			accountStatusBar.text = `preecode: ${user.username || user.email}`;
+			accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
+			if (accountIcon) accountIcon.color = '#10B981';
+			console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
+			return;
+		}
+		
+		// Token exists but fetch failed — still show user is logged in (fallback)
+		accountStatusBar.text = 'preecode: Logged in (loading...)';
+		accountStatusBar.tooltip = 'Token saved, user details loading...';
+		if (accountIcon) accountIcon.color = '#10B981'; // green (logged in)
+		console.log('[extension] updateAccountStatus: token exists but user fetch failed, showing fallback');
 	}
 
 	// Refresh account status on activation
