@@ -99,3 +99,21 @@ router.get('/dev-login', async (req, res) => {
 });
 
 module.exports = router;
+
+// Debug helper: visit /auth/debug?redirect=vscode://...&token=XYZ to render
+// a page with a clickable link that opens the deep link. Useful to test
+// whether the browser/OS will allow opening VS Code from the site.
+router.get('/debug', (req, res) => {
+  const redirect = req.query.redirect || '';
+  const token = req.query.token || 'TEST_TOKEN';
+  let decoded = redirect;
+  try {
+    decoded = decodeURIComponent(String(redirect));
+  } catch (e) {
+    decoded = String(redirect);
+  }
+  const sep = decoded.indexOf('?') === -1 ? '?' : '&';
+  const deepLink = decoded ? `${decoded}${sep}token=${encodeURIComponent(String(token))}` : '';
+
+  res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Debug</title></head><body style="background:#0B0F14;color:#fff;font-family:Inter,Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center;max-width:720px;padding:24px"><h2>Auth Debug</h2><p>Click the button below to attempt opening VS Code via the deep link.</p>${deepLink ? `<p><a id="open" href="${deepLink}" style="display:inline-block;padding:12px 18px;background:#ffa116;color:#081018;border-radius:8px;text-decoration:none">Open VS Code</a></p><p style="color:#9ca3af">If nothing happens, your browser may be blocking custom-scheme navigation. Try another browser or copy the link and run <code>open '${deepLink}'</code> in a terminal.</p>` : '<p style="color:#f88">No redirect provided. Use ?redirect=vscode://prashant.preecode/auth</p>'}</div></body></html>`);
+});
