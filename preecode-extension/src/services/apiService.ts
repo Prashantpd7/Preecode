@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-export const API_BASE = 'https://preecode-backend.onrender.com/api';
+export const API_BASE = 'https://preecode.onrender.com/api';
 
 // Helper to obtain a fetch implementation in Node + ESM environments.
 export async function doFetch(url: string, opts?: any): Promise<any> {
