@@ -319,20 +319,47 @@ const uriHandler = vscode.window.registerUriHandler({
 		}
 
 		try {
-			console.log('[extension] fetchCurrentUser: calling', API_BASE + '/users/me');
-			const res = await doFetch(`${API_BASE}/users/me`, {
+			const url = `${API_BASE}/users/me`;
+			console.log('[extension] fetchCurrentUser: calling', url, 'with token:', token.substring(0, 20) + '...');
+			const res: any = await doFetch(url, {
 				headers: { 'Authorization': `Bearer ${token}` }
 			});
+			
+			console.log('[extension] fetchCurrentUser: response received, type:', typeof res);
 			console.log('[extension] fetchCurrentUser: response ok =', res && res.ok, 'status =', res && res.status);
-			if (!res || !res.ok) {
-				console.error('[extension] fetchCurrentUser: response not ok', res && res.statusText);
+			console.log('[extension] fetchCurrentUser: response statusText =', res && res.statusText);
+			
+			if (!res) {
+				console.error('[extension] fetchCurrentUser: response is null/undefined');
 				return null;
 			}
-			const user: any = await res.json();
-			console.log('[extension] fetchCurrentUser: got user =', user);
+			
+			if (!res.ok) {
+				const errText = res.statusText || 'unknown error';
+				console.error('[extension] fetchCurrentUser: response not ok -', res.status, errText);
+				return null;
+			}
+			
+			let user: any;
+			try {
+				user = await res.json();
+				console.log('[extension] fetchCurrentUser: parsed JSON successfully, user =', user);
+			} catch (parseErr) {
+				console.error('[extension] fetchCurrentUser: failed to parse JSON response', parseErr);
+				// Try text fallback
+				const text = await res.text();
+				console.log('[extension] fetchCurrentUser: response text =', text);
+				return null;
+			}
+			
+			console.log('[extension] fetchCurrentUser: returning user =', user ? (user.email || user.username) : null);
 			return user;
 		} catch (e) {
-			console.error('[extension] fetchCurrentUser error', e);
+			console.error('[extension] fetchCurrentUser error:', e);
+			if (e instanceof Error) {
+				console.error('[extension] fetchCurrentUser error message:', e.message);
+				console.error('[extension] fetchCurrentUser error stack:', e.stack);
+			}
 			return null;
 		}
 	}
