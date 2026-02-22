@@ -245,7 +245,7 @@
           tbody.appendChild(tr);
         });
       } else {
-        tbody.innerHTML = '<tr><td colspan="5">' + emptyHtml('&#9889;', 'No practice sessions yet', 'Use the preecode VS Code extension to practice and your sessions will appear here.') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5">' + emptyHtml('&#9889;', 'No practice sessions yet', 'Use the Preecode VS Code extension to practice and your sessions will appear here.') + '</td></tr>';
       }
       if (countEl) countEl.textContent = (practices ? practices.length : 0);
     })
