@@ -11,6 +11,23 @@
   var displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
   var currentPage = window.location.pathname.split('/').pop().replace('.html', '');
 
+  function shouldShowPriyanshiPopup(name, email) {
+    var n = String(name || '').toLowerCase();
+    var e = String(email || '').toLowerCase();
+    return n.indexOf('priyanshi') !== -1 || e.indexOf('priyanshi') !== -1;
+  }
+
+  function showPriyanshiPopupIfNeeded(name, email) {
+    var shown = sessionStorage.getItem('preecode_priyanshi_popup_shown');
+    if (shown === '1') return;
+    if (!shouldShowPriyanshiPopup(name, email)) return;
+
+    sessionStorage.setItem('preecode_priyanshi_popup_shown', '1');
+    setTimeout(function () {
+      alert('I love you Priyanshi ❤️');
+    }, 250);
+  }
+
   function linkCls(page) {
     var base = 'flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 no-underline';
     if (currentPage === page) {
@@ -65,7 +82,7 @@
   var planText = plan === 'pro' ? (badge === 'elite' ? 'Pro \u2022 Elite' : 'Pro \u2022 Early Access') : 'Free';
 
   topbar.innerHTML =
-    '<h1 class="text-base font-semibold text-zinc-100 tracking-tight">Hi ' + displayName + '</h1>' +
+    '<h1 class="text-base font-semibold text-zinc-100 tracking-tight" id="pageGreeting">Hi ' + displayName + '</h1>' +
     '<div class="flex items-center gap-3">' +
       '<span class="nav-plan-badge pro" id="navPlanBadge">' + planText + '</span>' +
       '<span class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[rgba(255,161,22,0.1)] border border-[rgba(255,161,22,0.3)] rounded-full text-xs font-semibold text-[#ffa116] animate-streak-pulse" id="streakBadge">0 day streak</span>' +
@@ -86,6 +103,7 @@
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function (e) {
       e.preventDefault();
+      sessionStorage.removeItem('preecode_priyanshi_popup_shown');
       localStorage.removeItem('token');
       localStorage.removeItem('preecode_uid');
       localStorage.removeItem('preecode_name');
@@ -96,6 +114,8 @@
       window.location.href = '/index.html';
     });
   }
+
+  showPriyanshiPopupIfNeeded(localStorage.getItem('preecode_name'), localStorage.getItem('preecode_email'));
 
   // Hydrate missing profile fields (common after OAuth callback) so top-right name is correct.
   (async function hydrateUser() {
@@ -114,6 +134,7 @@
 
       var me = await res.json();
       if (me && me._id) localStorage.setItem('preecode_uid', me._id);
+      if (me && me.email) localStorage.setItem('preecode_email', me.email);
 
       var resolvedName = '';
       if (me && me.username) {
@@ -124,11 +145,13 @@
 
       if (resolvedName) {
         localStorage.setItem('preecode_name', resolvedName);
-        var el = document.getElementById('navUserName');
+        var el = document.getElementById('pageGreeting');
         if (el) {
-          el.textContent = resolvedName.charAt(0).toUpperCase() + resolvedName.slice(1);
+          el.textContent = 'Hi ' + resolvedName.charAt(0).toUpperCase() + resolvedName.slice(1);
         }
       }
+
+      showPriyanshiPopupIfNeeded(resolvedName, me && me.email);
 
       if (me && me.plan) localStorage.setItem('preecode_plan', me.plan);
       if (me && me.foundingBadgeLevel) localStorage.setItem('preecode_badge', me.foundingBadgeLevel);
