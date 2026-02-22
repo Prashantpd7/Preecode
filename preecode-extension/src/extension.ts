@@ -203,9 +203,15 @@ const uriHandler = vscode.window.registerUriHandler({
 			const choice = await vscode.window.showQuickPick([
 				`Username: ${user.username || '(none)'}`,
 				`Email: ${user.email || '(none)'}`,
+				'Submit current question',
 				'Open dashboard',
 				'Logout'
 			], { placeHolder: 'Account' });
+			
+			if (choice === 'Submit current question') {
+				await vscode.commands.executeCommand('preecode.submitCurrentQuestion');
+				return;
+			}
 			if (choice === 'Open dashboard') {
 				const token = await getToken(context);
 				if (token) {
@@ -218,7 +224,7 @@ const uriHandler = vscode.window.registerUriHandler({
 			}
 			if (choice === 'Logout') {
 				await deleteToken(context);
-				vscode.window.showInformationMessage('preecode: Logged out');
+				vscode.window.showInformationMessage('Logged out');
 				updateAccountStatus().catch(() => {});
 			}
 		}
@@ -368,36 +374,21 @@ const uriHandler = vscode.window.registerUriHandler({
 	timerStatusBar.show();
 
 		// Account status bar and small icon (icon opens same account QuickPick)
-		accountStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
-		accountStatusBar.command = 'preecode.showAccount';
-		accountStatusBar.text = 'preecode: Not signed in';
-		accountStatusBar.tooltip = 'Click to view account';
-		accountStatusBar.show();
-		context.subscriptions.push(accountStatusBar);
-
 		accountIcon = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 102);
 		accountIcon.command = 'preecode.showAccount';
 		accountIcon.text = '$(account)';
-		accountIcon.tooltip = 'preecode account';
-		// default icon color: gray (not signed in)
-		accountIcon.color = '#9CA3AF';
+		accountIcon.tooltip = 'Click to view account menu';
+		// Always green when signed in (only shown when logged in)
+		accountIcon.color = '#10B981';
 		accountIcon.show();
 		context.subscriptions.push(accountIcon);
 
-		// Dashboard button (opens website dashboard; auto-login if token exists)
-		dashboardStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
-		dashboardStatusBar.command = 'preecode.openDashboard';
-		dashboardStatusBar.text = '$(home)';
-		dashboardStatusBar.tooltip = 'Open preecode dashboard';
-		dashboardStatusBar.show();
-		context.subscriptions.push(dashboardStatusBar);
-
-		submitStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 104);
-		submitStatusBar.command = 'preecode.submitCurrentQuestion';
-		submitStatusBar.text = '$(cloud-upload)';
-		submitStatusBar.tooltip = 'Submit current question to preecode website';
-		submitStatusBar.show();
-		context.subscriptions.push(submitStatusBar);
+		accountStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
+		accountStatusBar.command = 'preecode.showAccount';
+		accountStatusBar.text = 'Not signed in';
+		accountStatusBar.tooltip = 'Click to sign in or view account';
+		accountStatusBar.show();
+		context.subscriptions.push(accountStatusBar);
 
 	// Initialize timer
 	practiceTimer = new PracticeTimer((time) => {
@@ -471,7 +462,7 @@ const uriHandler = vscode.window.registerUriHandler({
 		
 		// If no token, show "Sign in"
 		if (!token) {
-			accountStatusBar.text = 'preecode: Sign in';
+			accountStatusBar.text = 'Sign in';
 			accountStatusBar.tooltip = 'Not signed in — click to login';
 			if (accountIcon) accountIcon.color = '#9CA3AF';
 			console.log('[extension] updateAccountStatus: no token, showing sign in');
@@ -484,7 +475,7 @@ const uriHandler = vscode.window.registerUriHandler({
 		
 		// If fetch succeeded, show user details
 		if (user) {
-			accountStatusBar.text = `preecode: ${user.username || user.email}`;
+			accountStatusBar.text = `${user.username || user.email}`;
 			accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
 			if (accountIcon) accountIcon.color = '#10B981';
 			console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
@@ -492,7 +483,7 @@ const uriHandler = vscode.window.registerUriHandler({
 		}
 		
 		// Token exists but fetch failed — still show user is logged in (fallback)
-		accountStatusBar.text = 'preecode: Logged in (loading...)';
+		accountStatusBar.text = 'Logged in...';
 		accountStatusBar.tooltip = 'Token saved, user details loading...';
 		if (accountIcon) accountIcon.color = '#10B981'; // green (logged in)
 		console.log('[extension] updateAccountStatus: token exists but user fetch failed, showing fallback');

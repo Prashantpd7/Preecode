@@ -1,21 +1,31 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 async function generateResponse(prompt, options = {}) {
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
+  try {
+    const message = await openai.chat.completions.create({
+      model: 'gpt-4-turbo',
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
       temperature: options.temperature || 0.7,
-      maxOutputTokens: options.maxTokens || 2048,
-    },
-  });
-  return result.response.text();
+      max_tokens: options.maxTokens || 2048,
+    });
+    return message.choices[0].message.content;
+  } catch (error) {
+    console.error('OpenAI API Error:', error);
+    throw new Error(`AI service error: ${error.message}`);
+  }
 }
 
 async function chat(message, context) {
-  const prompt = `You are preecode AI, a helpful coding assistant.
+  const prompt = `You are Preecode AI, a helpful coding assistant.
 You help users with programming questions, debugging, and learning concepts.
 Be concise and practical. Use code examples when helpful.
 ${context ? 'Context: ' + context : ''}
