@@ -15,8 +15,7 @@
   panel.innerHTML =
     '<div class="ai-chat-header">' +
       '<div style="display:flex;align-items:center;gap:8px">' +
-        '<span style="font-size:16px;color:#ff6b00">AI</span>' +
-        '<span style="font-weight:600;font-size:14px;color:#e4e4e7">Preecode AI</span>' +
+        '<span style="font-weight:600;font-size:14px;color:#e4e4e7">Preecode <span style="color:#ff6b00">AI</span></span>' +
       '</div>' +
       '<button id="aiChatClose" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:18px">&times;</button>' +
     '</div>' +
