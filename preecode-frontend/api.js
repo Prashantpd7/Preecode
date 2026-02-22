@@ -1,4 +1,4 @@
-/* api.js – preecode API helper */
+/* api.js – Preecode API helper */
 
 var API_BASE = 'https://preecode.onrender.com/api';
 

@@ -257,7 +257,10 @@ const uriHandler = vscode.window.registerUriHandler({
 
 			// Lazy import to avoid circular issues
 			const api = await import('./services/apiService.js');
-			await api.sendSubmission(context, { problemName, difficulty: difficulty || undefined, status });
+			const timeTaken = timerStatusBar?.text
+				? String(timerStatusBar.text).replace('⏱', '').trim() || '00:00'
+				: '00:00';
+			await api.sendSubmission(context, { problemName, difficulty: difficulty || undefined, status, timeTaken });
 		}
 	);
 	context.subscriptions.push(submitSolutionCommand);
@@ -333,7 +336,8 @@ const uriHandler = vscode.window.registerUriHandler({
 			const submissionSaved = await api.sendSubmission(context, {
 				problemName: question,
 				difficulty,
-				status
+				status,
+				timeTaken: finalTime
 			});
 
 			if (practiceSaved && submissionSaved) {
@@ -1365,22 +1369,8 @@ IMPORTANT:
 				// Set evaluation flag
 				await updateContextFlag('preecode.evaluationVisible', true);
 
-				// Auto-submit Accepted if evaluation final verdict is Correct
-				try {
-					const verdictMatch = evaluationResult.match(/Final Verdict:\s*(.*)/i);
-					const verdict = verdictMatch ? verdictMatch[1].trim().toLowerCase() : '';
-					if (verdict.includes('correct')) {
-						const problemName = storedHint || 'Practice session';
-						try {
-							const api = await import('./services/apiService.js');
-							await api.sendSubmission(context, { problemName, difficulty: undefined, status: 'Accepted' });
-						} catch (e) {
-							console.error('Auto-submit failed', e);
-						}
-					}
-				} catch (e) {
-					console.error('Verdict parse error', e);
-				}
+				// Do not auto-submit based on AI evaluation verdict.
+				// User should explicitly submit with status from account menu.
 
 				if (suggestionsText.length > 0) {
 					const lineMatches = suggestionsText.matchAll(/LINE\s*(\d+):([\s\S]*?)(?=LINE\s*\d+:|$)/gi);
@@ -1673,19 +1663,8 @@ ${storedSolution}
 						date: new Date().toISOString()
 					}); // intentionally not awaited — fire and forget, don't block UI
 
-					if (editor) {
-						try {
-							const difficulty = extractDifficultyForSubmission(editor);
-							const api = await import('./services/apiService.js');
-							await api.sendSubmission(context, {
-								problemName: question,
-								difficulty,
-								status: 'Accepted'
-							});
-						} catch (e) {
-							console.error('Auto submission on run failed', e);
-						}
-					}
+					// No auto-submission on run.
+					// Running code only saves practice time; submission status is user-selected.
 				}
 			} else {
 				vscode.window.showErrorMessage(
