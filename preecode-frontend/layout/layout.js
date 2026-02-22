@@ -28,7 +28,7 @@
   sidebar.innerHTML =
     '<a class="flex items-center gap-2.5 px-5 py-4 md:pt-5 md:pb-7 no-underline text-zinc-100 shrink-0" href="/pages/dashboard.html">' +
       '<span class="text-lg font-extrabold text-[#ffa116] font-mono tracking-tight">&lt;/&gt;</span>' +
-      '<span class="text-base font-bold tracking-tight">preecode</span>' +
+      '<span class="text-base font-bold tracking-tight">Preecode</span>' +
     '</a>' +
     '<nav class="flex flex-row md:flex-col gap-0.5 px-2 md:px-2.5 flex-1">' +
       '<a href="/pages/dashboard.html" class="' + linkCls('dashboard') + '">' +
@@ -64,14 +64,12 @@
   var badge = localStorage.getItem('preecode_badge') || 'basic';
   var planText = plan === 'pro' ? (badge === 'elite' ? 'Pro \u2022 Elite' : 'Pro \u2022 Early Access') : 'Free';
 
-  var pageTitle = document.title.replace('preecode – ', '');
   topbar.innerHTML =
-    '<h1 class="text-base font-semibold text-zinc-100 tracking-tight">' + pageTitle + '</h1>' +
+    '<h1 class="text-base font-semibold text-zinc-100 tracking-tight">Hi ' + displayName + '</h1>' +
     '<div class="flex items-center gap-3">' +
       '<span class="nav-plan-badge pro" id="navPlanBadge">' + planText + '</span>' +
       '<span class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[rgba(255,161,22,0.1)] border border-[rgba(255,161,22,0.3)] rounded-full text-xs font-semibold text-[#ffa116] animate-streak-pulse" id="streakBadge">0 day streak</span>' +
-      '<span class="text-sm font-semibold text-zinc-400" id="navUserName">' + displayName + '</span>' +
-    '</div>';
+    '</div>'
 
   // Inject
   var shell = document.querySelector('.app-shell');

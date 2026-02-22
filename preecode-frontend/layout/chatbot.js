@@ -16,12 +16,12 @@
     '<div class="ai-chat-header">' +
       '<div style="display:flex;align-items:center;gap:8px">' +
         '<span style="font-size:16px;color:#ff6b00">AI</span>' +
-        '<span style="font-weight:600;font-size:14px;color:#e4e4e7">preecode AI</span>' +
+        '<span style="font-weight:600;font-size:14px;color:#e4e4e7">Preecode AI</span>' +
       '</div>' +
       '<button id="aiChatClose" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:18px">&times;</button>' +
     '</div>' +
     '<div class="ai-chat-messages" id="aiChatMessages">' +
-      '<div class="ai-msg bot">Hi! I\'m preecode AI. Ask me anything about coding, algorithms, or debugging.</div>' +
+      '<div class="ai-msg bot">Hi! I\'m Preecode AI. Ask me anything about coding, algorithms, or debugging.</div>' +
     '</div>' +
     '<div class="ai-chat-input-row">' +
       '<input type="text" id="aiChatInput" placeholder="Ask something..." />' +

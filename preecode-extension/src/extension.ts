@@ -45,9 +45,6 @@ let practiceTimer: PracticeTimer;
 let timerStatusBar: vscode.StatusBarItem;
 let timerStarted = false;
 let accountStatusBar: vscode.StatusBarItem | null = null;
-let accountIcon: vscode.StatusBarItem | null = null;
-let dashboardStatusBar: vscode.StatusBarItem | null = null;
-let submitStatusBar: vscode.StatusBarItem | null = null;
 
 // Guard flag: set TRUE before any programmatic editor.edit() or
 // runActiveFile() call so the onDidChangeTextDocument listener
@@ -373,20 +370,12 @@ const uriHandler = vscode.window.registerUriHandler({
 	timerStatusBar.command = "preecode.timerControls";
 	timerStatusBar.show();
 
-		// Account status bar and small icon (icon opens same account QuickPick)
-		accountIcon = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 102);
-		accountIcon.command = 'preecode.showAccount';
-		accountIcon.text = '$(account)';
-		accountIcon.tooltip = 'Click to view account menu';
-		// Always green when signed in (only shown when logged in)
-		accountIcon.color = '#10B981';
-		accountIcon.show();
-		context.subscriptions.push(accountIcon);
-
+		// Account status bar (combined icon + username)
 		accountStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
 		accountStatusBar.command = 'preecode.showAccount';
-		accountStatusBar.text = 'Not signed in';
+		accountStatusBar.text = '$(account) Not signed in';
 		accountStatusBar.tooltip = 'Click to sign in or view account';
+		accountStatusBar.color = '#9CA3AF';
 		accountStatusBar.show();
 		context.subscriptions.push(accountStatusBar);
 
@@ -462,9 +451,9 @@ const uriHandler = vscode.window.registerUriHandler({
 		
 		// If no token, show "Sign in"
 		if (!token) {
-			accountStatusBar.text = 'Sign in';
+			accountStatusBar.text = '$(account) Sign in';
 			accountStatusBar.tooltip = 'Not signed in — click to login';
-			if (accountIcon) accountIcon.color = '#9CA3AF';
+			accountStatusBar.color = '#9CA3AF';
 			console.log('[extension] updateAccountStatus: no token, showing sign in');
 			return;
 		}
@@ -475,17 +464,17 @@ const uriHandler = vscode.window.registerUriHandler({
 		
 		// If fetch succeeded, show user details
 		if (user) {
-			accountStatusBar.text = `${user.username || user.email}`;
+			accountStatusBar.text = `$(account) ${user.username || user.email}`;
 			accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
-			if (accountIcon) accountIcon.color = '#10B981';
+			accountStatusBar.color = '#10B981';
 			console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
 			return;
 		}
 		
 		// Token exists but fetch failed — still show user is logged in (fallback)
-		accountStatusBar.text = 'Logged in...';
+		accountStatusBar.text = '$(account) Logged in...';
 		accountStatusBar.tooltip = 'Token saved, user details loading...';
-		if (accountIcon) accountIcon.color = '#10B981'; // green (logged in)
+		accountStatusBar.color = '#10B981'; // green (logged in)
 		console.log('[extension] updateAccountStatus: token exists but user fetch failed, showing fallback');
 	}
 
