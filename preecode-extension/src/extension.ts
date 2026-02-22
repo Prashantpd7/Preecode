@@ -131,10 +131,18 @@ const uriHandler = vscode.window.registerUriHandler({
 		const token = params.get('token');
 
 		if (token) {
+			console.log('[extension] URI handler: received token, saving...');
 			await saveToken(context, token);
+			console.log('[extension] URI handler: token saved, updating account status');
 			vscode.window.showInformationMessage('preecode: Login successful!');
 			// Refresh account status so the status bar shows the signed-in user
-			try { await updateAccountStatus(); } catch (e) { /* ignore */ }
+			await new Promise(r => setTimeout(r, 500)); // brief delay to ensure token is persisted
+			try { 
+				await updateAccountStatus(); 
+				console.log('[extension] URI handler: account status updated');
+			} catch (e) { 
+				console.error('[extension] URI handler: failed to update account status', e);
+			}
 		} else {
 			vscode.window.showErrorMessage('No token received.');
 		}
@@ -303,24 +311,39 @@ const uriHandler = vscode.window.registerUriHandler({
 
 	async function fetchCurrentUser(): Promise<any | null> {
 		const token = await getToken(context);
-		if (!token) return null;
+		console.log('[extension] fetchCurrentUser: token exists =', !!token);
+		if (!token) {
+			console.log('[extension] fetchCurrentUser: no token found');
+			return null;
+		}
 
 		try {
+			console.log('[extension] fetchCurrentUser: calling', API_BASE + '/users/me');
 			const res = await doFetch(`${API_BASE}/users/me`, {
 				headers: { 'Authorization': `Bearer ${token}` }
 			});
-			if (!res || !res.ok) return null;
+			console.log('[extension] fetchCurrentUser: response ok =', res && res.ok, 'status =', res && res.status);
+			if (!res || !res.ok) {
+				console.error('[extension] fetchCurrentUser: response not ok', res && res.statusText);
+				return null;
+			}
 			const user: any = await res.json();
+			console.log('[extension] fetchCurrentUser: got user =', user);
 			return user;
 		} catch (e) {
-			console.error('fetchCurrentUser error', e);
+			console.error('[extension] fetchCurrentUser error', e);
 			return null;
 		}
 	}
 
 	async function updateAccountStatus() {
-		if (!accountStatusBar) return;
+		console.log('[extension] updateAccountStatus: starting');
+		if (!accountStatusBar) {
+			console.log('[extension] updateAccountStatus: accountStatusBar is null');
+			return;
+		}
 		const user: any = await fetchCurrentUser();
+		console.log('[extension] updateAccountStatus: user =', user ? user.email : null);
 		if (!user) {
 			accountStatusBar.text = 'preecode: Sign in';
 			accountStatusBar.tooltip = 'Not signed in — click to login';
@@ -330,6 +353,7 @@ const uriHandler = vscode.window.registerUriHandler({
 		accountStatusBar.text = `preecode: ${user.username || user.email}`;
 		accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
 		if (accountIcon) accountIcon.color = '#10B981';
+		console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
 	}
 
 	// Refresh account status on activation
