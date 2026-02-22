@@ -70,7 +70,7 @@
     '<div class="flex items-center gap-3">' +
       '<span class="nav-plan-badge pro" id="navPlanBadge">' + planText + '</span>' +
       '<span class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[rgba(255,161,22,0.1)] border border-[rgba(255,161,22,0.3)] rounded-full text-xs font-semibold text-[#ffa116] animate-streak-pulse" id="streakBadge">0 day streak</span>' +
-      '<span class="text-sm font-semibold text-zinc-400">' + displayName + '</span>' +
+      '<span class="text-sm font-semibold text-zinc-400" id="navUserName">' + displayName + '</span>' +
     '</div>';
 
   // Inject
@@ -98,4 +98,45 @@
       window.location.href = '/index.html';
     });
   }
+
+  // Hydrate missing profile fields (common after OAuth callback) so top-right name is correct.
+  (async function hydrateUser() {
+    try {
+      var token = localStorage.getItem('token');
+      if (!token) return;
+
+      var cachedName = localStorage.getItem('preecode_name') || '';
+      if (cachedName && cachedName.toLowerCase() !== 'user') return;
+
+      var res = await fetch('https://preecode.onrender.com/api/users/me', {
+        headers: { Authorization: 'Bearer ' + token },
+        credentials: 'include'
+      });
+      if (!res.ok) return;
+
+      var me = await res.json();
+      if (me && me._id) localStorage.setItem('preecode_uid', me._id);
+
+      var resolvedName = '';
+      if (me && me.username) {
+        resolvedName = me.username;
+      } else if (me && me.email && me.email.indexOf('@') !== -1) {
+        resolvedName = me.email.split('@')[0];
+      }
+
+      if (resolvedName) {
+        localStorage.setItem('preecode_name', resolvedName);
+        var el = document.getElementById('navUserName');
+        if (el) {
+          el.textContent = resolvedName.charAt(0).toUpperCase() + resolvedName.slice(1);
+        }
+      }
+
+      if (me && me.plan) localStorage.setItem('preecode_plan', me.plan);
+      if (me && me.foundingBadgeLevel) localStorage.setItem('preecode_badge', me.foundingBadgeLevel);
+      if (me && me.hasShared !== undefined) localStorage.setItem('preecode_shared', me.hasShared);
+    } catch (e) {
+      // Ignore hydrate errors and keep existing UI fallback
+    }
+  })();
 })();

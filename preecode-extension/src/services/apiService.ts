@@ -31,6 +31,18 @@ export interface SubmissionData {
     date?: string;  // ISO string
 }
 
+function normalizeDifficulty(input?: string): 'easy' | 'medium' | 'hard' {
+    const value = String(input || '').trim().toLowerCase();
+    if (value === 'easy' || value === 'medium' || value === 'hard') return value;
+    return 'easy';
+}
+
+function normalizeStatus(input: string): 'accepted' | 'wrong' {
+    const value = String(input || '').trim().toLowerCase();
+    if (value.includes('accept') || value.includes('correct')) return 'accepted';
+    return 'wrong';
+}
+
 export async function sendSubmission(
     context: vscode.ExtensionContext,
     data: SubmissionData
@@ -62,9 +74,9 @@ export async function sendSubmission(
             },
             body: JSON.stringify({
                 userId: userId,
-                problemName: data.problemName,
-                difficulty: data.difficulty || 'Unknown',
-                status: data.status,
+                problemName: (data.problemName || 'Practice Session').trim(),
+                difficulty: normalizeDifficulty(data.difficulty),
+                status: normalizeStatus(data.status),
             })
         });
 
@@ -79,7 +91,7 @@ export async function sendSubmission(
             return false;
         }
 
-        vscode.window.showInformationMessage(`preecode: Submission saved (${data.problemName})`);
+        vscode.window.showInformationMessage(`preecode: Submission saved (${(data.problemName || 'Practice Session').trim()})`);
         return true;
     } catch (err) {
         vscode.window.showErrorMessage('preecode: Could not reach server. Submission not saved.');

@@ -17,7 +17,7 @@
   </div>
 
   <script>
-    (function () {
+    (async function () {
       try {
         var params = new URLSearchParams(window.location.search);
         var token = params.get('token');
@@ -38,6 +38,32 @@
         if (token) {
           // Persist token
           try { localStorage.setItem('token', token); } catch (e) { /* ignore */ }
+
+          // Hydrate user profile for navbar/dashboard/submissions after OAuth login
+          try {
+            var meRes = await fetch('https://preecode.onrender.com/api/users/me', {
+              headers: { Authorization: 'Bearer ' + token },
+              credentials: 'include'
+            });
+            if (meRes.ok) {
+              var me = await meRes.json();
+              if (me && me._id) localStorage.setItem('preecode_uid', me._id);
+
+              var resolvedName = '';
+              if (me && me.username) {
+                resolvedName = me.username;
+              } else if (me && me.email && me.email.indexOf('@') !== -1) {
+                resolvedName = me.email.split('@')[0];
+              }
+              if (resolvedName) localStorage.setItem('preecode_name', resolvedName);
+
+              if (me && me.plan) localStorage.setItem('preecode_plan', me.plan);
+              if (me && me.foundingBadgeLevel) localStorage.setItem('preecode_badge', me.foundingBadgeLevel);
+              if (me && me.hasShared !== undefined) localStorage.setItem('preecode_shared', me.hasShared);
+            }
+          } catch (e) {
+            // Ignore hydrate failure; token is still valid for app navigation
+          }
 
           // If opened as a popup, notify opener and close
           if (window.opener && !window.opener.closed) {
