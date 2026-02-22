@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-const API_BASE = 'https://preecode.onrender.com/api';
+const API_BASE = 'https://preecode-backend.onrender.com/api';
 
 // Shape of practice data sent after each successful run
 export interface PracticeData {
