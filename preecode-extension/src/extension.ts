@@ -184,7 +184,9 @@ const uriHandler = vscode.window.registerUriHandler({
 	const showAccountCommand = vscode.commands.registerCommand(
 		'preecode.showAccount',
 		async () => {
+			console.log('[extension] showAccount command triggered!');
 			const user: any = await fetchCurrentUser();
+			console.log('[extension] showAccount: user fetched =', user ? user.email : null);
 			if (!user) {
 				const pick = await vscode.window.showInformationMessage(
 					'Not signed in. Sign in now?',
@@ -405,6 +407,16 @@ const uriHandler = vscode.window.registerUriHandler({
 
 	// Refresh account status on activation
 	updateAccountStatus().catch(() => {});
+
+	// Periodically retry fetching user details (every 3 seconds) if token exists
+	// This helps if /users/me was temporarily unavailable
+	setInterval(async () => {
+		const token = await getToken(context);
+		if (token && accountStatusBar && accountStatusBar.text.includes('loading')) {
+			console.log('[extension] periodic retry: attempting to fetch user details...');
+			updateAccountStatus().catch(() => {});
+		}
+	}, 3000);
 
 	// =====================================
 	// START TIMER ON FIRST USER TYPING
