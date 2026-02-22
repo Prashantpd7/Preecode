@@ -79,6 +79,19 @@ exports.getUser = async (req, res, next) => {
   }
 };
 
+// Get current authenticated user
+exports.getMe = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated.' });
+    }
+    // req.user is already populated by auth middleware (without password)
+    res.json(req.user);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get dashboard stats
 exports.getStats = async (req, res, next) => {
   try {

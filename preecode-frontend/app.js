@@ -57,12 +57,33 @@ if (loginForm) {
 
     Api.login(email, password)
       .then(function (data) {
-        localStorage.setItem('token', data.token);
+          localStorage.setItem('token', data.token);
         localStorage.setItem('preecode_uid', data._id || data.user._id);
         localStorage.setItem('preecode_name', data.username || data.user.username);
         if (data.plan) localStorage.setItem('preecode_plan', data.plan);
         if (data.foundingBadgeLevel) localStorage.setItem('preecode_badge', data.foundingBadgeLevel);
         if (data.hasShared !== undefined) localStorage.setItem('preecode_shared', data.hasShared);
+        // If login page was opened with a redirect (e.g. extension deep link),
+        // forward the token to that redirect so the extension receives the JWT.
+        try {
+          var urlParams = new URLSearchParams(window.location.search);
+          var redirectTarget = urlParams.get('redirect');
+          if (redirectTarget) {
+            try {
+              redirectTarget = decodeURIComponent(redirectTarget);
+            } catch (e) {
+              // ignore if not encoded
+            }
+            // Append token as query param and navigate — this will trigger
+            // the vscode URI handler inside VS Code when opened by the user.
+            var sep = redirectTarget.indexOf('?') === -1 ? '?' : '&';
+            window.location.href = redirectTarget + sep + 'token=' + encodeURIComponent(data.token);
+            return;
+          }
+        } catch (e) {
+          /* ignore and fall through to dashboard */
+        }
+
         window.location.href = '/pages/dashboard.html';
       })
       .catch(function (err) {

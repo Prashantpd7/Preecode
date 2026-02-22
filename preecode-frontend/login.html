@@ -238,6 +238,17 @@ document.addEventListener("DOMContentLoaded", function () {
   if (googleBtn) {
     googleBtn.addEventListener("click", function () {
       // Use API_BASE from api.js (includes /api)
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var redirectParam = params.get('redirect');
+        if (redirectParam) {
+          // Preserve redirect (e.g. vscode://... encoded) when starting OAuth
+          window.location.href = API_BASE + '/auth/google?redirect=' + encodeURIComponent(redirectParam);
+          return;
+        }
+      } catch (e) {
+        // ignore
+      }
       window.location.href = API_BASE + '/auth/google';
     });
   }

@@ -20,6 +20,26 @@
   "contributes": {
     "commands": [
       {
+      "command": "preecode.login",
+      "title": "Preecode: Login"
+    },
+    {
+      "command": "preecode.loginGoogle",
+      "title": "Preecode: Login with Google"
+    },
+    {
+      "command": "preecode.showAccount",
+      "title": "Preecode: Account"
+    },
+    {
+      "command": "preecode.submitSolution",
+      "title": "Preecode: Submit Solution"
+    },
+    {
+      "command": "preecode.openDashboard",
+      "title": "Preecode: Open Dashboard"
+    },
+      {
   "command": "preecode.checkToken",
   "title": "preecode: Check Stored Token"
 },

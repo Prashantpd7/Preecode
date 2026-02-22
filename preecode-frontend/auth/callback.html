@@ -50,6 +50,47 @@
             return;
           }
 
+          // If a redirect param is present, forward the token to it.
+          // Attempt an automatic navigation to the deep link. If the
+          // browser blocks it, show a clickable fallback the user can
+          // tap to open VS Code manually.
+          var redirectParam = params.get('redirect');
+          if (redirectParam) {
+            try {
+              var decoded = decodeURIComponent(redirectParam);
+            } catch (e) {
+              var decoded = redirectParam;
+            }
+
+            var sep = decoded.indexOf('?') === -1 ? '?' : '&';
+            var deepLink = decoded + sep + 'token=' + encodeURIComponent(token);
+
+            // Try automatic navigation first
+            try {
+              window.location.href = deepLink;
+              // In many browsers this will open VS Code immediately.
+              return;
+            } catch (e) {
+              // Fall through to clickable fallback below
+            }
+
+            // If automatic navigation didn't happen, show fallback UI
+            var container = document.getElementById('container');
+            msg.textContent = 'Signed in — click the button below to open VS Code.';
+            var btn = document.createElement('a');
+            btn.href = deepLink;
+            btn.textContent = 'Open in VS Code';
+            btn.style.display = 'inline-block';
+            btn.style.marginTop = '18px';
+            btn.style.padding = '10px 14px';
+            btn.style.background = '#ffa116';
+            btn.style.color = '#081018';
+            btn.style.borderRadius = '8px';
+            btn.style.textDecoration = 'none';
+            container.appendChild(btn);
+            return;
+          }
+
           // Otherwise navigate to dashboard
           msg.textContent = 'Signed in — redirecting to dashboard...';
           // remove token from URL for cleanliness

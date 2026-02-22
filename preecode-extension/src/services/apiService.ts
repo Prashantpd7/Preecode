@@ -1,7 +1,17 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-const API_BASE = 'https://preecode-backend.onrender.com/api';
+export const API_BASE = 'https://preecode-backend.onrender.com/api';
+
+// Helper to obtain a fetch implementation in Node + ESM environments.
+export async function doFetch(url: string, opts?: any): Promise<any> {
+    if ((globalThis as any).fetch) {
+        return (globalThis as any).fetch(url, opts);
+    }
+    const mod = await import('node-fetch');
+    const fn = (mod && (mod.default || mod)) as any;
+    return fn(url, opts);
+}
 
 // Shape of practice data sent after each successful run
 export interface PracticeData {
@@ -11,6 +21,70 @@ export interface PracticeData {
     solutionViewed: boolean;
     language: string;
     date: string;           // ISO 8601 date string
+}
+
+// Shape of submission data sent when user submits a solution from the extension
+export interface SubmissionData {
+    problemName: string;
+    difficulty?: string;
+    status: string; // e.g., 'Accepted', 'Wrong Answer'
+    date?: string;  // ISO string
+}
+
+export async function sendSubmission(
+    context: vscode.ExtensionContext,
+    data: SubmissionData
+): Promise<boolean> {
+    const token = await getToken(context);
+    if (!token) {
+        vscode.window.showErrorMessage('preecode: Please login first to submit.');
+        return false;
+    }
+
+    try {
+        // Resolve userId from /users/me so backend receives an explicit userId
+        let userId: string | undefined;
+        try {
+            const meRes = await doFetch(`${API_BASE}/users/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (meRes && meRes.ok) {
+                const meJson: any = await meRes.json();
+                userId = meJson._id || meJson.id;
+            }
+        } catch (e) { /* ignore */ }
+
+        const response = await doFetch(`${API_BASE}/submissions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                problemName: data.problemName,
+                difficulty: data.difficulty || 'Unknown',
+                status: data.status,
+            })
+        });
+
+        if (response.status === 401) {
+            await deleteToken(context);
+            vscode.window.showErrorMessage('preecode: Session expired. Please login again.');
+            return false;
+        }
+
+        if (!response.ok) {
+            vscode.window.showErrorMessage(`preecode: Failed to submit (${response.status}).`);
+            return false;
+        }
+
+        vscode.window.showInformationMessage(`preecode: Submission saved (${data.problemName})`);
+        return true;
+    } catch (err) {
+        vscode.window.showErrorMessage('preecode: Could not reach server. Submission not saved.');
+        return false;
+    }
 }
 
 /**
@@ -40,7 +114,7 @@ console.log("Data being sent:", data);
     }
 
     try {
-        const response = await fetch(`${API_BASE}/practice`, {
+        const response = await doFetch(`${API_BASE}/practice`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -63,6 +137,13 @@ console.log("Data being sent:", data);
                 `preecode: Failed to save practice data (${response.status}). Will try again next time.`
             );
             return false;
+        }
+
+        // Notify user of saved practice (non-blocking)
+        try {
+            vscode.window.showInformationMessage(`preecode: Practice saved — ${data.timeTaken}`);
+        } catch (e) {
+            console.log('Could not show notification:', e);
         }
 
         return true;

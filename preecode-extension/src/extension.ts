@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import { PracticeTimer } from './services/timerService';
 import { runActiveFile } from './services/runService';
 import { saveToken, getToken, deleteToken, isLoggedIn } from './services/authService';
-import { sendPracticeData } from './services/apiService';
+import { sendPracticeData, API_BASE, doFetch } from './services/apiService';
 
 
 
@@ -44,6 +44,9 @@ let evaluationVisibleFlag = false;
 let practiceTimer: PracticeTimer;
 let timerStatusBar: vscode.StatusBarItem;
 let timerStarted = false;
+let accountStatusBar: vscode.StatusBarItem | null = null;
+let accountIcon: vscode.StatusBarItem | null = null;
+let dashboardStatusBar: vscode.StatusBarItem | null = null;
 
 // Guard flag: set TRUE before any programmatic editor.edit() or
 // runActiveFile() call so the onDidChangeTextDocument listener
@@ -130,6 +133,8 @@ const uriHandler = vscode.window.registerUriHandler({
 		if (token) {
 			await saveToken(context, token);
 			vscode.window.showInformationMessage('preecode: Login successful!');
+			// Refresh account status so the status bar shows the signed-in user
+			try { await updateAccountStatus(); } catch (e) { /* ignore */ }
 		} else {
 			vscode.window.showErrorMessage('No token received.');
 		}
@@ -143,7 +148,10 @@ const uriHandler = vscode.window.registerUriHandler({
 	const loginCommand = vscode.commands.registerCommand(
 		'preecode.login',
 		async () => {
-			const loginUrl = vscode.Uri.parse('https://codexly.netlify.app/login');
+				// Include a redirect param so the website can return the JWT
+				// back to the extension using the vscode URI handler.
+				const vscodeRedirect = encodeURIComponent('vscode://prashant.preecode/auth');
+				const loginUrl = vscode.Uri.parse(`https://preecode.vercel.app/login.html?redirect=${vscodeRedirect}`);
 			await vscode.env.openExternal(loginUrl);
 			vscode.window.showInformationMessage(
 				'preecode: Opening login page. After login, you will be redirected back automatically.'
@@ -151,6 +159,94 @@ const uriHandler = vscode.window.registerUriHandler({
 		}
 	);
 	context.subscriptions.push(loginCommand);
+
+		// Command: Login with Google (opens backend OAuth flow with vscode redirect)
+		const googleLoginCommand = vscode.commands.registerCommand(
+			'preecode.loginGoogle',
+			async () => {
+				const redirect = encodeURIComponent('vscode://prashant.preecode/auth');
+				const url = `${API_BASE}/auth/google?redirect=${redirect}`;
+				await vscode.env.openExternal(vscode.Uri.parse(url));
+				vscode.window.showInformationMessage('preecode: Opening Google login in browser...');
+			}
+		);
+		context.subscriptions.push(googleLoginCommand);
+
+	// Command: show account details + logout
+	const showAccountCommand = vscode.commands.registerCommand(
+		'preecode.showAccount',
+		async () => {
+			const user: any = await fetchCurrentUser();
+			if (!user) {
+				const pick = await vscode.window.showInformationMessage(
+					'Not signed in. Sign in now?',
+					'Sign in',
+					'Cancel'
+				);
+				if (pick === 'Sign in') {
+					await vscode.commands.executeCommand('preecode.login');
+				}
+				return;
+			}
+
+			const choice = await vscode.window.showQuickPick([
+				`Username: ${user.username || '(none)'}`,
+				`Email: ${user.email || '(none)'}`,
+				'Open dashboard',
+				'Logout'
+			], { placeHolder: 'Account' });
+			if (choice === 'Open dashboard') {
+				const token = await getToken(context);
+				if (token) {
+					const url = `https://preecode.vercel.app/auth/callback.html?token=${encodeURIComponent(token)}`;
+					await vscode.env.openExternal(vscode.Uri.parse(url));
+				} else {
+					await vscode.env.openExternal(vscode.Uri.parse('https://preecode.vercel.app/pages/dashboard.html'));
+				}
+				return;
+			}
+			if (choice === 'Logout') {
+				await deleteToken(context);
+				vscode.window.showInformationMessage('preecode: Logged out');
+				updateAccountStatus().catch(() => {});
+			}
+		}
+	);
+	context.subscriptions.push(showAccountCommand);
+
+	// Command: open dashboard directly
+	const openDashboardCommand = vscode.commands.registerCommand(
+		'preecode.openDashboard',
+		async () => {
+			const token = await getToken(context);
+			if (token) {
+				const url = `https://preecode.vercel.app/auth/callback.html?token=${encodeURIComponent(token)}`;
+				await vscode.env.openExternal(vscode.Uri.parse(url));
+			} else {
+				await vscode.env.openExternal(vscode.Uri.parse('https://preecode.vercel.app/pages/dashboard.html'));
+			}
+		}
+	);
+	context.subscriptions.push(openDashboardCommand);
+
+	// Command: submit solution (manual)
+	const submitSolutionCommand = vscode.commands.registerCommand(
+		'preecode.submitSolution',
+		async () => {
+			const editor = vscode.window.activeTextEditor;
+			const defaultName = editor ? (editor.document.fileName.split('/').pop() || 'submission') : 'submission';
+			const problemName = await vscode.window.showInputBox({ prompt: 'Problem name', value: defaultName });
+			if (!problemName) return;
+			const difficulty = await vscode.window.showQuickPick(['Easy','Medium','Hard'], { placeHolder: 'Difficulty (optional)' });
+			const status = await vscode.window.showQuickPick(['Accepted','Wrong Answer','Runtime Error','Time Limit Exceeded'], { placeHolder: 'Submission status' });
+			if (!status) return;
+
+			// Lazy import to avoid circular issues
+			const api = await import('./services/apiService.js');
+			await api.sendSubmission(context, { problemName, difficulty: difficulty || undefined, status });
+		}
+	);
+	context.subscriptions.push(submitSolutionCommand);
 
 	// PHASE 3: Logout command — deletes stored token.
 	const logoutCommand = vscode.commands.registerCommand(
@@ -175,10 +271,69 @@ const uriHandler = vscode.window.registerUriHandler({
 	timerStatusBar.command = "preecode.timerControls";
 	timerStatusBar.show();
 
+		// Account status bar and small icon (icon opens same account QuickPick)
+		accountStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
+		accountStatusBar.command = 'preecode.showAccount';
+		accountStatusBar.text = 'preecode: Not signed in';
+		accountStatusBar.tooltip = 'Click to view account';
+		accountStatusBar.show();
+
+		accountIcon = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 102);
+		accountIcon.command = 'preecode.showAccount';
+		accountIcon.text = '$(account)';
+		accountIcon.tooltip = 'preecode account';
+		// default icon color: gray (not signed in)
+		accountIcon.color = '#9CA3AF';
+		accountIcon.show();
+		context.subscriptions.push(accountIcon);
+
+		// Dashboard button (opens website dashboard; auto-login if token exists)
+		dashboardStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 103);
+		dashboardStatusBar.command = 'preecode.openDashboard';
+		dashboardStatusBar.text = '$(home)';
+		dashboardStatusBar.tooltip = 'Open preecode dashboard';
+		dashboardStatusBar.show();
+		context.subscriptions.push(dashboardStatusBar);
+
 	// Initialize timer
 	practiceTimer = new PracticeTimer((time) => {
 		timerStatusBar.text = `⏱ ${time}`;
 	});
+
+
+	async function fetchCurrentUser(): Promise<any | null> {
+		const token = await getToken(context);
+		if (!token) return null;
+
+		try {
+			const res = await doFetch(`${API_BASE}/users/me`, {
+				headers: { 'Authorization': `Bearer ${token}` }
+			});
+			if (!res || !res.ok) return null;
+			const user: any = await res.json();
+			return user;
+		} catch (e) {
+			console.error('fetchCurrentUser error', e);
+			return null;
+		}
+	}
+
+	async function updateAccountStatus() {
+		if (!accountStatusBar) return;
+		const user: any = await fetchCurrentUser();
+		if (!user) {
+			accountStatusBar.text = 'preecode: Sign in';
+			accountStatusBar.tooltip = 'Not signed in — click to login';
+			if (accountIcon) accountIcon.color = '#9CA3AF';
+			return;
+		}
+		accountStatusBar.text = `preecode: ${user.username || user.email}`;
+		accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
+		if (accountIcon) accountIcon.color = '#10B981';
+	}
+
+	// Refresh account status on activation
+	updateAccountStatus().catch(() => {});
 
 	// =====================================
 	// START TIMER ON FIRST USER TYPING
@@ -1053,6 +1208,23 @@ IMPORTANT:
 
 				// Set evaluation flag
 				await updateContextFlag('preecode.evaluationVisible', true);
+
+				// Auto-submit Accepted if evaluation final verdict is Correct
+				try {
+					const verdictMatch = evaluationResult.match(/Final Verdict:\s*(.*)/i);
+					const verdict = verdictMatch ? verdictMatch[1].trim().toLowerCase() : '';
+					if (verdict.includes('correct')) {
+						const problemName = storedHint || 'Practice session';
+						try {
+							const api = await import('./services/apiService.js');
+							await api.sendSubmission(context, { problemName, difficulty: undefined, status: 'Accepted' });
+						} catch (e) {
+							console.error('Auto-submit failed', e);
+						}
+					}
+				} catch (e) {
+					console.error('Verdict parse error', e);
+				}
 
 				if (suggestionsText.length > 0) {
 					const lineMatches = suggestionsText.matchAll(/LINE\s*(\d+):([\s\S]*?)(?=LINE\s*\d+:|$)/gi);
