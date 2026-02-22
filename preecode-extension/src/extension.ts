@@ -47,6 +47,7 @@ let timerStarted = false;
 let accountStatusBar: vscode.StatusBarItem | null = null;
 let accountIcon: vscode.StatusBarItem | null = null;
 let dashboardStatusBar: vscode.StatusBarItem | null = null;
+let submitStatusBar: vscode.StatusBarItem | null = null;
 
 // Guard flag: set TRUE before any programmatic editor.edit() or
 // runActiveFile() call so the onDidChangeTextDocument listener
@@ -258,6 +259,91 @@ const uriHandler = vscode.window.registerUriHandler({
 	);
 	context.subscriptions.push(submitSolutionCommand);
 
+	function extractQuestionForSubmission(editor: vscode.TextEditor): string {
+		const lines = editor.document.getText().split('\n').slice(0, 40);
+		const commentPrefix = editor.document.languageId === 'python' ? '#' : '//';
+		for (const rawLine of lines) {
+			const line = rawLine.trim();
+			if (!line) continue;
+			if (!line.startsWith(commentPrefix)) continue;
+			const cleaned = line.replace(new RegExp(`^\\${commentPrefix}\\s*`), '').trim();
+			if (!cleaned) continue;
+			if (/^question\s*\(/i.test(cleaned)) continue;
+			if (/^hint\s*:/i.test(cleaned)) continue;
+			if (/^solution\s*:/i.test(cleaned)) continue;
+			if (/^evaluation\s*:/i.test(cleaned)) continue;
+			return cleaned;
+		}
+
+		const fileName = editor.document.fileName.split('/').pop() || 'Practice Question';
+		return fileName.replace(/\.[^.]+$/, '');
+	}
+
+	function extractDifficultyForSubmission(editor: vscode.TextEditor): string | undefined {
+		const content = editor.document.getText();
+		const match = content.match(/Question\s*\((Easy|Medium|Hard)\)/i);
+		if (!match) return undefined;
+		const value = match[1].toLowerCase();
+		if (value === 'easy' || value === 'medium' || value === 'hard') {
+			return value;
+		}
+		return undefined;
+	}
+
+	const submitCurrentQuestionCommand = vscode.commands.registerCommand(
+		'preecode.submitCurrentQuestion',
+		async () => {
+			const editor = vscode.window.activeTextEditor;
+			if (!editor) {
+				vscode.window.showErrorMessage('preecode: Open a question file first.');
+				return;
+			}
+
+			let finalTime = '00:00';
+			if (timerStarted) {
+				finalTime = practiceTimer.stop();
+				timerStarted = false;
+			} else if (timerStatusBar?.text) {
+				finalTime = String(timerStatusBar.text).replace('⏱', '').trim() || '00:00';
+			}
+
+			const question = extractQuestionForSubmission(editor);
+			const difficulty = extractDifficultyForSubmission(editor);
+			const language = editor.document.languageId || 'unknown';
+
+			const status = await vscode.window.showQuickPick(
+				['Accepted', 'Wrong Answer'],
+				{ placeHolder: 'Select submission status for this question' }
+			);
+			if (!status) return;
+
+			const practiceSaved = await sendPracticeData(context, {
+				question,
+				timeTaken: finalTime,
+				hintsUsed,
+				solutionViewed,
+				language,
+				date: new Date().toISOString()
+			});
+
+			const api = await import('./services/apiService.js');
+			const submissionSaved = await api.sendSubmission(context, {
+				problemName: question,
+				difficulty,
+				status
+			});
+
+			if (practiceSaved && submissionSaved) {
+				vscode.window.showInformationMessage('preecode: Question submitted to website with timing data.');
+			} else if (practiceSaved || submissionSaved) {
+				vscode.window.showWarningMessage('preecode: Partially submitted. Please check your website dashboard.');
+			} else {
+				vscode.window.showErrorMessage('preecode: Submission failed. Please login and try again.');
+			}
+		}
+	);
+	context.subscriptions.push(submitCurrentQuestionCommand);
+
 	// PHASE 3: Logout command — deletes stored token.
 	const logoutCommand = vscode.commands.registerCommand(
 		'preecode.logout',
@@ -305,6 +391,13 @@ const uriHandler = vscode.window.registerUriHandler({
 		dashboardStatusBar.tooltip = 'Open preecode dashboard';
 		dashboardStatusBar.show();
 		context.subscriptions.push(dashboardStatusBar);
+
+		submitStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 104);
+		submitStatusBar.command = 'preecode.submitCurrentQuestion';
+		submitStatusBar.text = '$(cloud-upload)';
+		submitStatusBar.tooltip = 'Submit current question to preecode website';
+		submitStatusBar.show();
+		context.subscriptions.push(submitStatusBar);
 
 	// Initialize timer
 	practiceTimer = new PracticeTimer((time) => {
@@ -1599,6 +1692,20 @@ ${storedSolution}
 						language: language,
 						date: new Date().toISOString()
 					}); // intentionally not awaited — fire and forget, don't block UI
+
+					if (editor) {
+						try {
+							const difficulty = extractDifficultyForSubmission(editor);
+							const api = await import('./services/apiService.js');
+							await api.sendSubmission(context, {
+								problemName: question,
+								difficulty,
+								status: 'Accepted'
+							});
+						} catch (e) {
+							console.error('Auto submission on run failed', e);
+						}
+					}
 				}
 			} else {
 				vscode.window.showErrorMessage(

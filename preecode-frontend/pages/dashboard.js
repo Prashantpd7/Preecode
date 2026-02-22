@@ -46,21 +46,25 @@
       var hard   = data.hardSolved   || 0;
       var subs   = data.recentSubmissions || [];
 
+      var accepted = subs.filter(function (s) { return s.status === 'accepted'; }).length;
+      var accuracy = subs.length ? Math.round((accepted / subs.length) * 100) : 0;
+
       // KPI 1: Total Solved
       animateNumber(document.getElementById('statTotal'), total);
 
       // KPI 2: Accuracy Rate
-      animateNumber(document.getElementById('accuracyRate'), 84);
-      setTrend('accuracyTrend', '+5% this week');
+      animateNumber(document.getElementById('accuracyRate'), accuracy);
+      setTrend('accuracyTrend', accepted + ' accepted / ' + subs.length + ' attempts');
 
       // KPI 3: Avg Solve Time
-      animateNumber(document.getElementById('solveTimeAvg'), 18);
-      setTrend('timeTrend', '-2 min this week');
+      animateNumber(document.getElementById('solveTimeAvg'), 0);
+      setTrend('timeTrend', 'Based on saved practice sessions');
 
       // KPI 4: Placement Readiness
-      animateNumber(document.getElementById('readinessScore'), 72);
+      var readiness = Math.max(0, Math.min(100, Math.round((accuracy * 0.6) + Math.min(total, 20) * 2)));
+      animateNumber(document.getElementById('readinessScore'), readiness);
       var readinessBar = document.getElementById('readinessBar');
-      if (readinessBar) setTimeout(function () { readinessBar.style.width = '72%'; }, 150);
+      if (readinessBar) setTimeout(function () { readinessBar.style.width = readiness + '%'; }, 150);
 
       // Total trend
       var weekSubs = countThisWeek(subs);
@@ -204,6 +208,28 @@
       var tbody = document.getElementById('practiceBody');
       var countEl = document.getElementById('practiceCount');
       if (!tbody) return;
+
+      var avgTimeEl = document.getElementById('solveTimeAvg');
+      var avgTimeTrendEl = document.getElementById('timeTrend');
+      if (avgTimeEl) {
+        var totalMinutes = 0;
+        var validCount = 0;
+        (practices || []).forEach(function (p) {
+          if (!p || !p.timeTaken) return;
+          var parts = String(p.timeTaken).split(':');
+          if (parts.length !== 2) return;
+          var mm = parseInt(parts[0], 10);
+          var ss = parseInt(parts[1], 10);
+          if (isNaN(mm) || isNaN(ss)) return;
+          totalMinutes += (mm + (ss / 60));
+          validCount++;
+        });
+        var avgMinutes = validCount ? Math.max(0, Math.round(totalMinutes / validCount)) : 0;
+        animateNumber(avgTimeEl, avgMinutes);
+        if (avgTimeTrendEl) {
+          avgTimeTrendEl.textContent = validCount ? ('From ' + validCount + ' sessions') : 'No sessions yet';
+        }
+      }
 
       if (practices && practices.length) {
         tbody.innerHTML = '';
