@@ -1,10 +1,21 @@
 const OpenAI = require('openai');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openaiApiKey = String(process.env.OPENAI_API_KEY || '').trim();
+const openai = openaiApiKey
+  ? new OpenAI({ apiKey: openaiApiKey })
+  : null;
+
+if (!openai) {
+  console.warn('[ai] OPENAI_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
+}
 
 async function generateResponse(prompt, options = {}) {
+  if (!openai) {
+    const err = new Error('AI is not configured. Set OPENAI_API_KEY in backend environment variables.');
+    err.statusCode = 503;
+    throw err;
+  }
+
   try {
     const message = await openai.chat.completions.create({
       model: 'gpt-4-turbo',

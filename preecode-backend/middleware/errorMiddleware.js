@@ -23,7 +23,7 @@ module.exports = (err, req, res, next) => {
     return res.status(400).json({ message: 'Invalid ID format.' });
   }
 
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   res.status(statusCode);
   res.json({
     message: err.message || 'Server Error',
