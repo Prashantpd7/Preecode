@@ -1,6 +1,6 @@
 /* api.js – preecode API helper */
 
-var API_BASE = 'https://preecode-backend.onrender.com/api';
+var API_BASE = 'https://preecode.onrender.com/api';
 
 var Api = {
   // Login user
