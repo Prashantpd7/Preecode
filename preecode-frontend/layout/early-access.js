@@ -3,7 +3,7 @@
 (function () {
   if (!localStorage.getItem('token')) return;
 
-  var SHARE_TEXT = 'I just unlocked preecode Pro — a premium developer performance system — free as an early access member.\n\nTracking real coding growth directly inside VS Code.\n\nJoin before public launch:\nhttps://preecode.netlify.app';
+  var SHARE_TEXT = 'I just unlocked Preecode Pro — a premium developer performance system — free as an early access member.\n\nTracking real coding growth directly inside VS Code.\n\nJoin before public launch:\nhttps://preecode.netlify.app';
   var SHARE_URL = 'https://preecode.netlify.app';
 
   // ── Welcome Modal (first-time only) ──
@@ -17,8 +17,8 @@
     overlay.innerHTML =
       '<div class="ea-modal">' +
         '<div class="ea-modal-icon">&#127881;</div>' +
-        '<h2>Welcome to preecode</h2>' +
-        '<p>You\'ve been granted Early Access to preecode Pro.</p>' +
+        '<h2>Welcome to Preecode</h2>' +
+        '<p>You\'ve been granted Early Access to Preecode Pro.</p>' +
         '<div class="ea-tag">Pro Access Active</div>' +
         '<p class="ea-tag-sub">Free for 3 Months</p>' +
         '<button class="ea-btn" id="welcomeEnter">Enter Dashboard</button>' +
@@ -69,7 +69,7 @@
       '<div class="ea-modal">' +
         '<div class="ea-modal-icon">&#127941;</div>' +
         '<h2>Become an Elite Founding Member</h2>' +
-        '<p>Extend your Pro access + unlock exclusive status by sharing preecode.</p>' +
+        '<p>Extend your Pro access + unlock exclusive status by sharing Preecode.</p>' +
         '<ul class="ea-rewards">' +
           '<li><span class="ea-check">&#10003;</span> +1 Month Pro Access</li>' +
           '<li><span class="ea-check">&#10003;</span> Elite Founding Member Badge</li>' +
