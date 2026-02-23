@@ -7,6 +7,7 @@
   <meta name="description" content="Automatically track coding sessions, difficulty distribution, and streak consistency — without manual logging. Built natively into VS Code.">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="tailwind-config.js"></script>
+  <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -655,71 +656,83 @@
   <!-- ════════════════════════════════════
        8. FAQ
   ════════════════════════════════════ -->
-  <section id="faq" class="py-24 md:py-32 border-t border-white/[0.04]">
+  <section id="faq" class="py-20 md:py-28 border-t border-white/[0.04]">
     <div class="max-w-3xl mx-auto px-6">
-      <div class="text-center mb-16 reveal">
+      <div class="text-center mb-12 reveal">
         <p class="text-sm text-orange-400 font-medium tracking-wide uppercase mb-3">FAQ</p>
         <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-white">Frequently Asked Questions</h2>
       </div>
 
-      <div class="space-y-3 reveal" id="faqList">
+      <div class="faq-container reveal" id="faqList">
         <div class="faq-item">
           <button class="faq-trigger" aria-expanded="false">
-            <span>Is Preecode free?</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="faq-question">Is Preecode free?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <div class="faq-content">
-            <p>Yes. Preecode is free for individual developers. All core features — session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review — are included at no cost. Team plans will be available in the future.</p>
+          <div class="faq-panel">
+            <div class="faq-content">
+              <p>Yes. Preecode is free for individual developers. All core features — session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review — are included at no cost. Team plans will be available in the future.</p>
+            </div>
           </div>
         </div>
 
         <div class="faq-item">
           <button class="faq-trigger" aria-expanded="false">
-            <span>Does Preecode access my source code?</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="faq-question">Does Preecode access my source code?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <div class="faq-content">
-            <p>No. Preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p>
+          <div class="faq-panel">
+            <div class="faq-content">
+              <p>No. Preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p>
+            </div>
           </div>
         </div>
 
         <div class="faq-item">
           <button class="faq-trigger" aria-expanded="false">
-            <span>Can teams use Preecode?</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="faq-question">Can teams use Preecode?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <div class="faq-content">
-            <p>Preecode is currently designed for individual developers. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap. If you're interested in team access, reach out and we'll notify you when it's available.</p>
+          <div class="faq-panel">
+            <div class="faq-content">
+              <p>Preecode is currently designed for individual developers. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap. If you're interested in team access, reach out and we'll notify you when it's available.</p>
+            </div>
           </div>
         </div>
 
         <div class="faq-item">
           <button class="faq-trigger" aria-expanded="false">
-            <span>What languages are supported?</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="faq-question">What languages are supported?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <div class="faq-content">
-            <p>The VS Code extension supports JavaScript, Python, Java, C++, and C. You can practice problems and track sessions in any of these languages. Additional language support is planned.</p>
+          <div class="faq-panel">
+            <div class="faq-content">
+              <p>The VS Code extension supports JavaScript, Python, Java, C++, and C. You can practice problems and track sessions in any of these languages. Additional language support is planned.</p>
+            </div>
           </div>
         </div>
 
         <div class="faq-item">
           <button class="faq-trigger" aria-expanded="false">
-            <span>How does automatic tracking work?</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="faq-question">How does automatic tracking work?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <div class="faq-content">
-            <p>When you solve a problem using the Preecode VS Code extension, the submission metadata — question name, language, time taken, and difficulty — is automatically captured and synced to your dashboard. No manual entry is required at any point.</p>
+          <div class="faq-panel">
+            <div class="faq-content">
+              <p>When you solve a problem using the Preecode VS Code extension, the submission metadata — question name, language, time taken, and difficulty — is automatically captured and synced to your dashboard. No manual entry is required at any point.</p>
+            </div>
           </div>
         </div>
 
         <div class="faq-item">
           <button class="faq-trigger" aria-expanded="false">
-            <span>Can I use Preecode without the extension?</span>
-            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            <span class="faq-question">Can I use Preecode without the extension?</span>
+            <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
-          <div class="faq-content">
-            <p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking and the built-in problem environment require the VS Code extension to be installed.</p>
+          <div class="faq-panel">
+            <div class="faq-content">
+              <p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking and the built-in problem environment require the VS Code extension to be installed.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -862,6 +875,32 @@
         }
       });
     });
+  </script>  <script>
+    // FAQ accordion - only one open at a time
+    document.addEventListener('DOMContentLoaded', function () {
+      var faqItems = document.querySelectorAll('.faq-trigger');
+      faqItems.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var currentItem = btn.parentElement;
+          var isOpen = currentItem.classList.contains('open');
+
+          // Close all other items
+          document.querySelectorAll('.faq-item').forEach(function (el) {
+            el.classList.remove('open');
+            el.querySelector('.faq-trigger').setAttribute('aria-expanded', 'false');
+          });
+
+          // Toggle current item
+          if (!isOpen) {
+            currentItem.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+          } else {
+            btn.setAttribute('aria-expanded', 'false');
+          }
+        });
+      });
+    });
   </script>
+
 </body>
 </html>
