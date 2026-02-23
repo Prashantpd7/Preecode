@@ -49,7 +49,14 @@ app.use(limiter);
 /* ================= CORS ================= */
 
 // CORS: allow only configured frontend origins (echo back origin when matched)
-const allowedOrigins = [process.env.FRONTEND_URL, process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`, 'http://localhost:3000', 'http://localhost:5001'].filter(Boolean);
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+  'http://localhost:3000',
+  'http://localhost:5001',
+  'http://127.0.0.1:5500',
+  'http://localhost:5500'
+].filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -62,6 +69,9 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-JSON-Response'],
 };
 
 // Enable CORS for all routes with the options and handle preflight
