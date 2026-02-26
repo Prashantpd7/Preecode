@@ -18,6 +18,24 @@
     "Other"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "preecodeAssistant",
+          "title": "Preecode",
+          "icon": "resources/hubot-view.svg"
+        }
+      ]
+    },
+    "views": {
+      "preecodeAssistant": [
+        {
+          "id": "preecode.assistantView",
+          "name": "Preecode AI",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
       "command": "preecode.login",
@@ -38,6 +56,10 @@
     {
       "command": "preecode.openDashboard",
       "title": "Preecode: Open Dashboard"
+    },
+    {
+      "command": "preecode.openAssistantPanel",
+      "title": "Preecode: Open AI Panel"
     },
       {
   "command": "preecode.checkToken",
