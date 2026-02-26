@@ -1,0 +1,333 @@
+:root {
+  color-scheme: light dark;
+  --bg: var(--vscode-editor-background);
+  --surface: var(--vscode-editorWidget-background);
+  --surface-alt: var(--vscode-input-background);
+  --ink: var(--vscode-editor-foreground);
+  --muted: var(--vscode-descriptionForeground);
+  --accent: var(--vscode-button-background);
+  --accent-foreground: var(--vscode-button-foreground);
+  --warning: var(--vscode-editorWarning-foreground, #f4b740);
+  --shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --border: 1px solid var(--vscode-editorWidget-border);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--vscode-font-family);
+  background: var(--bg);
+  color: var(--ink);
+  height: 100vh;
+}
+
+.app {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rise-in 0.6s ease-out;
+  height: 100vh;
+  overflow: auto;
+  width: 100%;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface), transparent 0%), color-mix(in srgb, var(--surface), var(--bg) 18%));
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent), #ffffff 25%));
+  color: var(--accent-foreground);
+  font-weight: 700;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.brand-text .ai-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.brand-text .ai-tagline {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  border: var(--border);
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3fb950;
+  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.2);
+}
+
+.timer {
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.typing {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.typing.active {
+  opacity: 1;
+}
+
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.monitor-card {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  border: var(--border);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.16);
+}
+
+.monitor-card.wide {
+  grid-column: 1 / -1;
+}
+
+.monitor-card.issue {
+  border-color: color-mix(in srgb, var(--warning), transparent 45%);
+}
+
+.monitor-card.issue.has-issue {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warning), transparent 35%), 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+
+.card-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.card-value {
+  display: block;
+  font-weight: 600;
+  margin-top: 4px;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: var(--border);
+  background: color-mix(in srgb, var(--surface), var(--bg) 12%);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border 0.2s ease;
+  box-shadow: 0 8px 16px rgba(20, 30, 40, 0.08);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(20, 30, 40, 0.14);
+  border-color: rgba(31, 111, 120, 0.4);
+}
+
+.action-btn.chatbot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: none;
+  grid-column: 1 / -1;
+}
+
+.chatbot-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.popup {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(244, 183, 64, 0.35);
+  box-shadow: var(--shadow);
+  animation: pop-in 0.35s ease;
+}
+
+.popup.show {
+  display: flex;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.popup-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.popup-btn.secondary {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.output {
+  display: grid;
+  gap: 8px;
+}
+
+.output-card {
+  background: color-mix(in srgb, var(--surface), var(--bg) 8%);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  border: var(--border);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.16);
+}
+
+.output-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.output-body {
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.output-body.highlight-issue {
+	border-left: 3px solid var(--vscode-editorError-foreground);
+	padding-left: 8px;
+	background: color-mix(in srgb, var(--vscode-inputValidation-errorBackground), transparent 15%);
+}
+
+.output-body.highlight-fix {
+	border-left: 3px solid var(--vscode-editorInfo-foreground);
+	padding-left: 8px;
+	background: color-mix(in srgb, var(--vscode-inputValidation-infoBackground), transparent 15%);
+}
+
+.output-code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  background: var(--vscode-textBlockQuote-background);
+  color: var(--ink);
+  padding: 10px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .monitor-grid,
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}

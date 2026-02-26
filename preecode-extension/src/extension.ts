@@ -1,11 +1,31 @@
 import * as vscode from 'vscode';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 import OpenAI from "openai";
 import { PracticeTimer } from './services/timerService';
 import { runActiveFile } from './services/runService';
 import { saveToken, getToken, deleteToken, isLoggedIn } from './services/authService';
 import { sendPracticeData, API_BASE, doFetch } from './services/apiService';
+import { requestAssistantAnalysis, AssistantAction } from './services/openaiService';
+import {
+	summarizeDiagnostics,
+	diagnosticsToPrompt,
+	hasIssueState,
+	DiagnosticsSummary
+} from './services/diagnosticsService';
+
+interface LocalAssistantResponse {
+	problem: string;
+	reason: string;
+	step_by_step: string[];
+	line_execution: string[];
+	fixed_code: string;
+	suggestions: string[];
+	highlight_issue: string;
+	highlight_fix: string;
+	changed: boolean;
+}
 
 
 
@@ -386,6 +406,7 @@ const uriHandler = vscode.window.registerUriHandler({
 	// Initialize timer
 	practiceTimer = new PracticeTimer((time) => {
 		timerStatusBar.text = `⏱ ${time}`;
+		postAssistantMessage({ type: 'timer', timer: time });
 	});
 
 
@@ -1814,6 +1835,452 @@ ${selectedText}`
 			vscode.window.showInformationMessage('All selection explanations removed.');
 		}
 	);
+
+	// ─────────────────────────────────────────────────────────────
+	// PREECODE AI ASSISTANT PANEL (RIGHT SIDE)
+	// ─────────────────────────────────────────────────────────────
+	let assistantView: vscode.WebviewView | null = null;
+	let assistantDiagnosticsTimer: NodeJS.Timeout | null = null;
+	let assistantTypingTimer: NodeJS.Timeout | null = null;
+	let lastDiagnosticsSummary: DiagnosticsSummary | null = null;
+	let assistantStatusBar: vscode.StatusBarItem | null = null;
+	const assistantIssueDecoration = vscode.window.createTextEditorDecorationType({
+		backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
+		borderColor: new vscode.ThemeColor('editorWarning.foreground'),
+		borderStyle: 'solid',
+		borderWidth: '1px'
+	});
+
+	function getUserName(): string {
+		return process.env.USER || process.env.USERNAME || 'User';
+	}
+
+	function getWebviewHtml(webview: vscode.Webview): string {
+		const htmlPath = vscode.Uri.joinPath(context.extensionUri, 'webview', 'index.html');
+		const htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf8');
+		const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'webview', 'style.css'));
+		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'webview', 'script.js'));
+		const nonce = String(Date.now());
+
+		return htmlContent
+			.replace(/\{\{styleUri\}\}/g, styleUri.toString())
+			.replace(/\{\{scriptUri\}\}/g, scriptUri.toString())
+			.replace(/\{\{nonce\}\}/g, nonce)
+			.replace(/\{\{cspSource\}\}/g, webview.cspSource);
+	}
+
+	function postAssistantMessage(message: any) {
+		assistantView?.webview.postMessage(message);
+	}
+
+	function getTopIssueRange(editor: vscode.TextEditor, summary: DiagnosticsSummary): vscode.Range | null {
+		const topIssue = summary.issues.find(issue => issue.severity === 'error') || summary.issues[0];
+		if (!topIssue) return null;
+		const start = new vscode.Position(Math.max(topIssue.line - 1, 0), Math.max(topIssue.character - 1, 0));
+		let end = new vscode.Position(Math.max(topIssue.endLine - 1, 0), Math.max(topIssue.endCharacter - 1, 0));
+		if (start.isEqual(end)) {
+			const lineText = editor.document.lineAt(start.line).text;
+			const toChar = Math.min(start.character + Math.max(lineText.length, 1), lineText.length);
+			end = new vscode.Position(start.line, Math.max(toChar, start.character + 1));
+		}
+		return new vscode.Range(start, end);
+	}
+
+	function highlightTopIssue(editor: vscode.TextEditor, summary: DiagnosticsSummary) {
+		const range = getTopIssueRange(editor, summary);
+		editor.setDecorations(assistantIssueDecoration, range ? [range] : []);
+	}
+
+	function extractTopIssueText(editor: vscode.TextEditor, summary: DiagnosticsSummary): string {
+		const range = getTopIssueRange(editor, summary);
+		if (!range) return '';
+		return editor.document.getText(range).trim();
+	}
+
+	function updateAssistantFileInfo(editor: vscode.TextEditor | undefined) {
+		if (!editor) return;
+		postAssistantMessage({
+			type: 'fileInfo',
+			fileName: path.basename(editor.document.fileName),
+			language: editor.document.languageId
+		});
+	}
+
+	function buildMonitorPayload(
+		editor: vscode.TextEditor | undefined,
+		summary?: DiagnosticsSummary,
+		state?: string
+	) {
+		if (!editor) {
+			return {
+				state: state || 'No active file',
+				errors: 0,
+				warnings: 0,
+				selection: 'No selection',
+				visibleRange: '-',
+				topIssue: 'No issue detected'
+			};
+		}
+
+		const workingSummary = summary || summarizeDiagnostics(editor.document);
+		const errors = workingSummary.issues.filter(issue => issue.severity === 'error').length;
+		const warnings = workingSummary.issues.filter(issue => issue.severity === 'warning').length;
+
+		const selection = editor.selection;
+		const hasSelection = selection && !selection.isEmpty;
+		const selectedText = hasSelection
+			? editor.document.getText(selection).replace(/\s+/g, ' ').trim().slice(0, 120)
+			: '';
+
+		const selectionLabel = hasSelection
+			? `L${selection.start.line + 1}-L${selection.end.line + 1}: ${selectedText || '(blank)'}`
+			: `Cursor at L${selection.active.line + 1}`;
+
+		const firstVisible = editor.visibleRanges?.[0];
+		const visibleRange = firstVisible
+			? `L${firstVisible.start.line + 1} - L${firstVisible.end.line + 1}`
+			: '-';
+
+		const topIssue = workingSummary.issues[0]
+			? `${workingSummary.issues[0].severity.toUpperCase()}: ${workingSummary.issues[0].message}`
+			: 'No issue detected';
+
+		let monitorState = state || 'Monitoring';
+		if (errors > 0) {
+			monitorState = 'Issue detected';
+		} else if (warnings > 0) {
+			monitorState = 'Warning detected';
+		}
+
+		return {
+			state: monitorState,
+			errors,
+			warnings,
+			selection: selectionLabel,
+			visibleRange,
+			topIssue
+		};
+	}
+
+	function sendMonitorUpdate(editor: vscode.TextEditor | undefined, summary?: DiagnosticsSummary, state?: string) {
+		postAssistantMessage({
+			type: 'monitor',
+			payload: buildMonitorPayload(editor, summary, state)
+		});
+	}
+
+	function updateAssistantStatusBar(summary: DiagnosticsSummary) {
+		if (!assistantStatusBar) return;
+		const hasIssues = hasIssueState(summary);
+		assistantStatusBar.text = hasIssues ? '$(hubot) $(circle-filled)' : '$(hubot)';
+		assistantStatusBar.color = hasIssues
+			? new vscode.ThemeColor('statusBarItem.warningForeground')
+			: undefined;
+	}
+
+	function updateAssistantDiagnostics(editor: vscode.TextEditor | undefined) {
+		if (!editor) return;
+		const summary = summarizeDiagnostics(editor.document);
+		lastDiagnosticsSummary = summary;
+		const monitor = buildMonitorPayload(editor, summary);
+		postAssistantMessage({
+			type: 'diagnostics',
+			hasIssues: hasIssueState(summary),
+			monitor
+		});
+		updateAssistantStatusBar(summary);
+		highlightTopIssue(editor, summary);
+	}
+
+	function scheduleAssistantDiagnostics(editor: vscode.TextEditor | undefined) {
+		if (!editor) return;
+		if (assistantDiagnosticsTimer) {
+			clearTimeout(assistantDiagnosticsTimer);
+		}
+		assistantDiagnosticsTimer = setTimeout(() => {
+			updateAssistantDiagnostics(editor);
+		}, 1200);
+	}
+
+	function notifyTyping() {
+		if (assistantTypingTimer) return;
+		postAssistantMessage({ type: 'typing' });
+		sendMonitorUpdate(vscode.window.activeTextEditor, lastDiagnosticsSummary || undefined, 'User is typing');
+		assistantTypingTimer = setTimeout(() => {
+			sendMonitorUpdate(vscode.window.activeTextEditor, lastDiagnosticsSummary || undefined, 'Monitoring');
+			assistantTypingTimer = null;
+		}, 400);
+	}
+
+	function buildLocalLineExecution(editor: vscode.TextEditor): string[] {
+		const lines = editor.document.getText().split('\n').slice(0, 10);
+		const execution: string[] = [];
+		let step = 1;
+		for (let index = 0; index < lines.length; index++) {
+			const raw = lines[index];
+			const line = raw.trim();
+			if (!line || line.startsWith('#') || line.startsWith('//')) continue;
+			execution.push(`${step}. Line ${index + 1}: runs \"${line.slice(0, 60)}\".`);
+			if (/=/.test(line) && !/==|!=|<=|>=/.test(line)) {
+				execution.push(`${step}. Variable update: assignment changes program state.`);
+			}
+			if (/if |for |while /.test(line)) {
+				execution.push(`${step}. Control flow: this condition/loop decides next path.`);
+			}
+			step++;
+			if (step > 7) break;
+		}
+		return execution.length ? execution : ['1. Program starts from top and executes line by line.'];
+	}
+
+	function createLocalAssistantResponse(
+		action: AssistantAction,
+		editor: vscode.TextEditor,
+		summary: DiagnosticsSummary
+	): LocalAssistantResponse {
+		const originalCode = editor.document.getText();
+		let fixedCode = originalCode;
+		const steps: string[] = [];
+		let highlightIssue = extractTopIssueText(editor, summary);
+		let highlightFix = '';
+
+		const replacements: Array<{ find: RegExp; replace: string; issue: string; fix: string }> = [
+			{ find: /\bretrn\b/g, replace: 'return', issue: 'retrn', fix: 'return' },
+			{ find: /\bpritn\b/g, replace: 'print', issue: 'pritn', fix: 'print' },
+			{ find: /\bdeff\b/g, replace: 'def', issue: 'deff', fix: 'def' },
+			{ find: /\bflase\b/g, replace: 'False', issue: 'flase', fix: 'False' },
+			{ find: /\bture\b/g, replace: 'True', issue: 'ture', fix: 'True' }
+		];
+
+		replacements.forEach((rule) => {
+			if (rule.find.test(fixedCode)) {
+				fixedCode = fixedCode.replace(rule.find, rule.replace);
+				steps.push(`Replace "${rule.issue}" with "${rule.fix}".`);
+				if (!highlightFix) {
+					highlightIssue = highlightIssue || rule.issue;
+					highlightFix = rule.fix;
+				}
+			}
+		});
+
+		if (editor.document.languageId === 'python') {
+			const lines = fixedCode.split('\n');
+			for (let index = 0; index < lines.length; index++) {
+				const line = lines[index];
+				if (/^\s*(if|elif|else|for|while|def|class|try|except|finally)\b/.test(line)) {
+					const trimmed = line.trim();
+					if (!trimmed.endsWith(':')) {
+						lines[index] = `${line}:`;
+						steps.push(`Added missing ':' at line ${index + 1}.`);
+						if (!highlightFix) {
+							highlightIssue = highlightIssue || trimmed;
+							highlightFix = `${trimmed}:`;
+						}
+					}
+				}
+			}
+			fixedCode = lines.join('\n');
+		}
+
+		const changed = fixedCode !== originalCode;
+		const issue = summary.issues[0];
+		const baseReason = issue
+			? `${issue.severity.toUpperCase()} on line ${issue.line}: ${issue.message}`
+			: 'No diagnostics details were available.';
+
+		let problem = 'No immediate fix generated locally.';
+		if (changed) {
+			problem = 'Issue detected and corrected with local safe fixes.';
+		} else if (summary.issues.length) {
+			problem = 'Detected issue needs deeper AI analysis or manual change.';
+		}
+
+		let localSteps = steps;
+		if (!localSteps.length) {
+			localSteps = [
+				'Review the top diagnostic message and line number in the monitor.',
+				'Use Debug Code for explanation and apply a manual correction.',
+				'Configure OPENAI_API_KEY for advanced automatic fixes.'
+			];
+		}
+
+		if (!highlightIssue && summary.issues[0]) {
+			highlightIssue = `Line ${summary.issues[0].line}: ${summary.issues[0].message}`;
+		}
+		if (!highlightFix) {
+			highlightFix = changed ? 'Review fixed code version below.' : 'No automatic replacement found.';
+		}
+
+		const suggestions = [
+			'Save and run the file after applying fixes.',
+			'Keep function names and keywords spell-checked.',
+			'Use the monitor panel to follow new diagnostics instantly.'
+		];
+
+		return {
+			problem,
+			reason: baseReason,
+			step_by_step: localSteps,
+			line_execution: action === 'line_execution' ? buildLocalLineExecution(editor) : [],
+			fixed_code: fixedCode,
+			suggestions,
+			highlight_issue: highlightIssue,
+			highlight_fix: highlightFix,
+			changed
+		};
+	}
+
+	async function applyFixedCode(editor: vscode.TextEditor, fixedCode: string): Promise<void> {
+		isExtensionEditing = true;
+		try {
+			await editor.edit((editBuilder) => {
+				const fullRange = new vscode.Range(
+					editor.document.positionAt(0),
+					editor.document.positionAt(editor.document.getText().length)
+				);
+				editBuilder.replace(fullRange, fixedCode);
+			});
+		} finally {
+			isExtensionEditing = false;
+		}
+	}
+
+	async function handleAssistantAction(action: AssistantAction) {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			postAssistantMessage({
+				type: 'assistantError',
+				error: 'Open a file to use Preecode AI.'
+			});
+			return;
+		}
+
+		const summary = summarizeDiagnostics(editor.document);
+		lastDiagnosticsSummary = summary;
+		highlightTopIssue(editor, summary);
+		const diagnostics = diagnosticsToPrompt(summary);
+		const selection = editor.selection;
+		const selectedText = selection && !selection.isEmpty
+			? editor.document.getText(selection)
+			: undefined;
+		const selectedLine = selection ? selection.active.line + 1 : undefined;
+
+		try {
+			const response = await requestAssistantAnalysis({
+				action,
+				code: editor.document.getText(),
+				language: editor.document.languageId,
+				diagnostics,
+				selectedLine,
+				selectedText,
+				fileName: path.basename(editor.document.fileName)
+			});
+			const enrichedResponse: any = response;
+			if (!enrichedResponse.highlight_issue) {
+				enrichedResponse.highlight_issue = extractTopIssueText(editor, summary) || '-';
+			}
+			if (!enrichedResponse.highlight_fix) {
+				enrichedResponse.highlight_fix = 'Use Fix Code to apply correction.';
+			}
+			postAssistantMessage({ type: 'assistantResponse', payload: enrichedResponse });
+		} catch (error: any) {
+			const localResponse = createLocalAssistantResponse(action, editor, summary);
+			if (action === 'fix' && localResponse.changed) {
+				await applyFixedCode(editor, localResponse.fixed_code);
+				updateAssistantDiagnostics(editor);
+			}
+			postAssistantMessage({ type: 'assistantResponse', payload: localResponse });
+		}
+	}
+
+	class AssistantViewProvider implements vscode.WebviewViewProvider {
+		resolveWebviewView(webviewView: vscode.WebviewView) {
+			assistantView = webviewView;
+			webviewView.webview.options = {
+				enableScripts: true,
+				localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'webview')]
+			};
+			try {
+				webviewView.webview.html = getWebviewHtml(webviewView.webview);
+			} catch (error) {
+				console.error('[preecode] Failed to load assistant webview', error);
+				webviewView.webview.html = `<!DOCTYPE html><html><body>
+					<h3>Preecode AI</h3>
+					<p>Failed to load the assistant UI.</p>
+					<p>Reload the window and try again.</p>
+				</body></html>`;
+			}
+
+			webviewView.webview.onDidReceiveMessage(async (message) => {
+				if (!message || !message.type) return;
+				if (message.type === 'ready') {
+					const editor = vscode.window.activeTextEditor;
+					const summary = editor ? summarizeDiagnostics(editor.document) : undefined;
+					postAssistantMessage({
+						type: 'init',
+						userName: getUserName(),
+						timer: timerStatusBar?.text?.replace('⏱', '').trim() || '00:00',
+						fileName: editor ? path.basename(editor.document.fileName) : 'No file',
+						language: editor?.document.languageId || '-',
+						monitor: buildMonitorPayload(editor, summary)
+					});
+					updateAssistantDiagnostics(editor);
+					return;
+				}
+				if (message.type === 'action') {
+					await handleAssistantAction(message.action as AssistantAction);
+				}
+			});
+		}
+	}
+
+	const openAssistantPanelCommand = vscode.commands.registerCommand(
+		'preecode.openAssistantPanel',
+		() => {
+			vscode.commands.executeCommand('preecode.assistantView.focus');
+		}
+	);
+
+	const assistantViewProvider = new AssistantViewProvider();
+	const assistantViewDisposable = vscode.window.registerWebviewViewProvider(
+		'preecode.assistantView',
+		assistantViewProvider,
+		{ webviewOptions: { retainContextWhenHidden: true } }
+	);
+
+	const assistantEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor((editor) => {
+		if (!editor) {
+			vscode.window.visibleTextEditors.forEach((openEditor) => {
+				openEditor.setDecorations(assistantIssueDecoration, []);
+			});
+		}
+		updateAssistantFileInfo(editor);
+		scheduleAssistantDiagnostics(editor);
+		sendMonitorUpdate(editor, undefined, 'File changed');
+	});
+
+	const assistantTextChangeDisposable = vscode.workspace.onDidChangeTextDocument((event) => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor || event.document !== editor.document) return;
+		notifyTyping();
+		scheduleAssistantDiagnostics(editor);
+	});
+
+	const assistantSelectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection((event) => {
+		if (event.textEditor !== vscode.window.activeTextEditor) return;
+		sendMonitorUpdate(event.textEditor, undefined, 'Selection changed');
+	});
+
+	const assistantVisibleRangeChangeDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+		if (event.textEditor !== vscode.window.activeTextEditor) return;
+		sendMonitorUpdate(event.textEditor, undefined, 'Viewport updated');
+	});
+
+	assistantStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 200);
+	assistantStatusBar.text = '$(hubot)';
+	assistantStatusBar.command = 'preecode.openAssistantPanel';
+	assistantStatusBar.tooltip = 'Open Preecode AI';
+	assistantStatusBar.show();
 	const checkTokenCommand = vscode.commands.registerCommand(
 	'preecode.checkToken',
 	async () => {
@@ -1840,7 +2307,15 @@ ${selectedText}`
 		timerControlCommand,
 		explainSelectionCommand,
 		removeSelectionExplanationCommand,
-		checkTokenCommand
+		checkTokenCommand,
+		openAssistantPanelCommand,
+		assistantViewDisposable,
+		assistantEditorChangeDisposable,
+		assistantTextChangeDisposable,
+		assistantSelectionChangeDisposable,
+		assistantVisibleRangeChangeDisposable,
+		assistantIssueDecoration,
+		assistantStatusBar
 	);
 }
 
