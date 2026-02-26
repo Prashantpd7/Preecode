@@ -4,132 +4,282 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Preecode – Profile</title>
+  <script src="/theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-config.js"></script>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body class="bg-[#0f0f0f] text-zinc-100 font-sans min-h-screen text-sm antialiased">
+<body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">
 
-  <div class="app-shell flex flex-col md:flex-row min-h-screen relative z-10">
-    <div class="app-main flex-1 md:ml-[230px] flex flex-col">
-      <div class="page-content flex-1 p-4 md:p-7 max-w-[1100px] w-full opacity-0 animate-fade-in">
+  <div class="app-shell min-h-screen relative z-10">
+    <div class="app-main flex-1 flex flex-col">
+      <div class="page-content flex-1 p-4 md:p-7 max-w-[1200px] w-full mx-auto opacity-0 animate-fade-in">
 
-        <!-- Profile Header -->
-        <div class="flex items-center gap-5 mb-6 opacity-0 animate-fade-in-1">
-          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-[#ffa116] to-[#e8920e] flex items-center justify-center text-xl font-bold text-[#0a0a0b] ring-2 ring-[#ffa116]/30 hover:ring-[#ffa116]/50 shadow-[0_0_20px_rgba(255,161,22,0.12)] hover:shadow-[0_0_28px_rgba(255,161,22,0.2)] transition-all duration-200 shrink-0 cursor-default" id="profileAvatar">?</div>
-          <div class="flex-1">
-            <div class="flex items-center gap-3 flex-wrap">
-              <h2 class="text-xl font-bold text-zinc-100 tracking-tight" id="profileName">User</h2>
-              <span class="founding-badge basic" id="foundingBadge" style="display:none;">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <span id="foundingBadgeText">Founding Member</span>
-              </span>
-              <button id="editProfileBtn" class="ml-auto text-xs px-4 py-1.5 bg-[#ffa116] hover:bg-[#ff9500] text-[#0a0a0b] font-semibold rounded-md transition-colors">Edit Profile</button>
+        <!-- ═══ Profile Header ═══ -->
+        <div class="profile-header-card opacity-0 animate-fade-in-1">
+          <div class="flex items-start sm:items-center gap-5 flex-col sm:flex-row">
+            <div class="profile-avatar" id="profileAvatar">?</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 flex-wrap">
+                <h2 class="text-xl font-extrabold text-txt tracking-tight" id="profileName">User</h2>
+                <span class="founding-badge basic" id="foundingBadge" style="display:none;">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span id="foundingBadgeText">Founding Member</span>
+                </span>
+              </div>
+              <p class="text-[13px] text-txt-sec mt-0.5" id="profileEmail">Loading...</p>
+              <!-- Micro-metrics -->
+              <div class="flex items-center gap-3 sm:gap-4 mt-2.5 flex-wrap">
+                <span class="profile-micro-stat">
+                  <span class="profile-micro-val" id="microSolved">0</span> Solved
+                </span>
+                <span class="profile-micro-dot"></span>
+                <span class="profile-micro-stat">
+                  <span class="profile-micro-val" id="microStreak">0</span> Day Streak
+                </span>
+                <span class="profile-micro-dot"></span>
+                <span class="profile-micro-stat">
+                  <span class="profile-micro-val" id="microPoints">0</span> Points
+                </span>
+              </div>
             </div>
-            <p class="text-sm text-zinc-500 mt-0.5" id="profileEmail">Loading...</p>
+            <button id="editProfileBtn" class="profile-edit-btn shrink-0">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+              Edit Profile
+            </button>
+          </div>
+          <!-- Member Since -->
+          <div class="mt-3 pt-3 border-t border-bdr">
+            <span class="text-xs text-txt-faint" id="memberSince">Member since --</span>
           </div>
         </div>
 
-        <!-- Early Access Status -->
-        <div class="app-card p-5 mb-5 opacity-0 animate-fade-in-1" id="eaStatusCard" style="display:none;">
+        <!-- ═══ Pro Access Card ═══ -->
+        <div class="pro-access-card opacity-0 animate-fade-in-1" id="eaStatusCard" style="display:none;">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-[rgba(255,107,0,0.1)] flex items-center justify-center">
-                <svg class="w-4.5 h-4.5 text-[#ff6b00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+              <div class="w-10 h-10 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-zinc-200">Pro Access <span class="text-[#ff6b00]" id="eaPlanLabel">Active</span></p>
-                <p class="text-xs text-zinc-500" id="eaDaysLeft">-- days remaining</p>
+                <p class="text-sm font-bold text-txt">Pro Access <span class="text-accent" id="eaPlanLabel">Active</span></p>
+                <p class="text-xs text-txt-faint" id="eaDaysLeft">-- days remaining</p>
               </div>
             </div>
-            <a href="/pages/certificate.html" class="text-xs font-semibold text-[#ff6b00] hover:text-[#e86000] transition-colors no-underline" id="viewCertLink" style="display:none;">View Certificate &rarr;</a>
+            <a href="/pages/certificate.html" class="text-xs font-semibold text-accent hover:text-accent-hover transition-colors no-underline" id="viewCertLink" style="display:none;">View Certificate &rarr;</a>
+          </div>
+          <!-- Progress bar -->
+          <div class="pro-progress-track mt-4">
+            <div class="pro-progress-fill" id="eaProgressBar" style="width:0%"></div>
+          </div>
+          <div class="flex justify-between mt-1.5">
+            <span class="text-[10px] text-txt-faint ea-progress-left">0 days used</span>
+            <span class="text-[10px] text-txt-faint ea-progress-right">90 days total</span>
           </div>
         </div>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 opacity-0 animate-fade-in-2">
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Total Solved</p>
-            <span class="metric-value" id="profileTotal">0</span>
-          </div>
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Points</p>
-            <span class="metric-value" style="color:#ffa116" id="profilePoints">0</span>
-          </div>
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Streak</p>
-            <div class="flex items-baseline gap-1.5">
-              <span class="metric-value" style="color:#ffa116" id="profileStreak">0</span>
-              <span class="metric-unit">days</span>
+        <!-- ═══ Two Column Layout ═══ -->
+        <div class="profile-grid">
+
+          <!-- ── LEFT COLUMN ── -->
+          <div class="profile-col-left">
+
+            <!-- Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 opacity-0 animate-fade-in-2">
+              <div class="metric-card profile-stat-card">
+                <div class="accent-line"></div>
+                <p class="metric-label">Total Solved</p>
+                <span class="metric-value profile-stat-value" id="profileTotal">0</span>
+                <span class="metric-trend" id="totalTrend"></span>
+              </div>
+              <div class="metric-card profile-stat-card">
+                <div class="accent-line"></div>
+                <p class="metric-label">Points</p>
+                <span class="metric-value profile-stat-value" style="color:var(--accent)" id="profilePoints">0</span>
+                <span class="metric-trend" id="pointsTrend"></span>
+              </div>
+              <div class="metric-card profile-stat-card">
+                <div class="accent-line"></div>
+                <p class="metric-label">Streak</p>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="metric-value profile-stat-value" style="color:var(--accent)" id="profileStreak">0</span>
+                  <span class="metric-unit">days</span>
+                </div>
+                <span class="metric-trend" id="streakTrend"></span>
+              </div>
+            </div>
+
+            <!-- Badges -->
+            <div class="app-card p-6 mb-5 opacity-0 animate-fade-in-3">
+              <span class="section-header">Badges</span>
+              <div class="badge-grid mt-4" id="badgesGrid">
+                <!-- First Solve -->
+                <div class="badge-card tooltip-wrap locked" data-badge="firstSolve" data-goal="1" data-type="total">
+                  <span class="tooltip">Solve your first problem</span>
+                  <span class="badge-icon">&#127941;</span>
+                  <span class="badge-name">First Solve</span>
+                  <div class="badge-progress"><div class="badge-progress-fill" id="badgeFirstBar" style="width:0%"></div></div>
+                  <span class="badge-meta" id="badgeFirstText">0/1 solved</span>
+                </div>
+                <!-- 7-Day Streak -->
+                <div class="badge-card tooltip-wrap locked" data-badge="7day" data-goal="7" data-type="streak">
+                  <span class="tooltip">Maintain a 7-day streak</span>
+                  <span class="badge-icon">&#128293;</span>
+                  <span class="badge-name">7-Day Streak</span>
+                  <div class="badge-progress"><div class="badge-progress-fill" id="badge7day" style="width:0%"></div></div>
+                  <span class="badge-meta" id="badge7dayText">0/7 days</span>
+                </div>
+                <!-- 50 Problems -->
+                <div class="badge-card tooltip-wrap locked" data-badge="50problems" data-goal="50" data-type="total">
+                  <span class="tooltip">Solve 50 problems</span>
+                  <span class="badge-icon">&#11088;</span>
+                  <span class="badge-name">50 Problems</span>
+                  <div class="badge-progress"><div class="badge-progress-fill" id="badge50" style="width:0%"></div></div>
+                  <span class="badge-meta" id="badge50Text">0/50 solved</span>
+                </div>
+                <!-- Hard Master -->
+                <div class="badge-card tooltip-wrap locked" data-badge="hardMaster" data-goal="10" data-type="hard">
+                  <span class="tooltip">Solve 10 hard problems</span>
+                  <span class="badge-icon">&#128142;</span>
+                  <span class="badge-name">Hard Master</span>
+                  <div class="badge-progress"><div class="badge-progress-fill" id="badgeHard" style="width:0%"></div></div>
+                  <span class="badge-meta" id="badgeHardText">0/10 hard</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Difficulty Breakdown -->
+            <div class="app-card p-6 mb-5 opacity-0 animate-fade-in-4">
+              <span class="section-header">Difficulty Breakdown</span>
+              <div class="flex flex-col gap-5 mt-5">
+                <div class="flex items-center gap-4">
+                  <span class="text-xs font-bold w-16 text-emerald-400">Easy</span>
+                  <div class="flex-1 diff-bar-track"><div class="diff-bar-fill easy" id="pEasyBar"></div></div>
+                  <span class="text-xs font-semibold text-txt-muted min-w-[36px] text-right" id="pEasyCount">0</span>
+                  <span class="text-[10px] text-txt-faint min-w-[32px] text-right" id="pEasyPct">0%</span>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-xs font-bold w-16 text-amber-400">Medium</span>
+                  <div class="flex-1 diff-bar-track"><div class="diff-bar-fill medium" id="pMedBar"></div></div>
+                  <span class="text-xs font-semibold text-txt-muted min-w-[36px] text-right" id="pMedCount">0</span>
+                  <span class="text-[10px] text-txt-faint min-w-[32px] text-right" id="pMedPct">0%</span>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span class="text-xs font-bold w-16 text-rose-400">Hard</span>
+                  <div class="flex-1 diff-bar-track"><div class="diff-bar-fill hard" id="pHardBar"></div></div>
+                  <span class="text-xs font-semibold text-txt-muted min-w-[36px] text-right" id="pHardCount">0</span>
+                  <span class="text-[10px] text-txt-faint min-w-[32px] text-right" id="pHardPct">0%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Activity Heatmap (Last 7 Days) -->
+            <div class="app-card p-6 opacity-0 animate-fade-in-4">
+              <span class="section-header">Recent Activity</span>
+              <p class="text-xs text-txt-faint mt-1 mb-4">Last 7 days</p>
+              <div class="activity-heatmap" id="activityHeatmap">
+                <!-- JS populates -->
+              </div>
+              <div class="flex items-center gap-2 mt-3">
+                <span class="text-[10px] text-txt-faint">Less</span>
+                <div class="flex gap-1">
+                  <div class="heatmap-legend-cell l0"></div>
+                  <div class="heatmap-legend-cell l1"></div>
+                  <div class="heatmap-legend-cell l2"></div>
+                  <div class="heatmap-legend-cell l3"></div>
+                  <div class="heatmap-legend-cell l4"></div>
+                </div>
+                <span class="text-[10px] text-txt-faint">More</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Badges -->
-        <div class="app-card p-6 mb-4 opacity-0 animate-fade-in-3">
-          <span class="section-header">Badges</span>
-          <div class="flex flex-wrap gap-3 mt-4" id="badgesGrid">
+          <!-- ── RIGHT COLUMN ── -->
+          <div class="profile-col-right">
 
-            <!-- First Solve -->
-            <div class="badge-card tooltip-wrap locked" data-badge="firstSolve" data-goal="1" data-type="total">
-              <span class="tooltip">Solve your first problem</span>
-              <span class="badge-icon">&#127941;</span>
-              <span class="badge-name">First Solve</span>
-              <div class="badge-progress"><div class="badge-progress-fill" id="badgeFirstBar" style="width:0%"></div></div>
-              <span class="badge-meta" id="badgeFirstText">0/1 solved</span>
+            <!-- Profile Completion -->
+            <div class="app-card p-6 mb-5 opacity-0 animate-fade-in-2">
+              <span class="section-header">Profile Completion</span>
+              <div class="flex items-center gap-5 mt-4">
+                <div class="profile-completion-ring">
+                  <svg viewBox="0 0 80 80" class="w-16 h-16">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="var(--border-subtle)" stroke-width="5"/>
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="5"
+                      stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke-linecap="round"
+                      transform="rotate(-90 40 40)" id="completionCircle"/>
+                  </svg>
+                  <span class="profile-completion-pct" id="completionPct">0%</span>
+                </div>
+                <div class="flex-1">
+                  <div class="flex flex-col gap-1.5" id="completionChecklist">
+                    <!-- JS populates -->
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <!-- 7-Day Streak -->
-            <div class="badge-card tooltip-wrap locked" data-badge="7day" data-goal="7" data-type="streak">
-              <span class="tooltip">Maintain a 7-day streak</span>
-              <span class="badge-icon">&#128293;</span>
-              <span class="badge-name">7-Day Streak</span>
-              <div class="badge-progress"><div class="badge-progress-fill" id="badge7day" style="width:0%"></div></div>
-              <span class="badge-meta" id="badge7dayText">0/7 days</span>
+            <!-- Rank / Level -->
+            <div class="app-card p-6 mb-5 opacity-0 animate-fade-in-3">
+              <span class="section-header">Rank</span>
+              <div class="mt-4">
+                <div class="flex items-center gap-3">
+                  <div class="rank-icon" id="rankIcon">1</div>
+                  <div class="flex-1">
+                    <p class="text-sm font-bold text-txt" id="rankName">Beginner</p>
+                    <p class="text-[11px] text-txt-faint" id="rankXP">0 / 50 XP</p>
+                  </div>
+                </div>
+                <div class="rank-progress-track mt-3">
+                  <div class="rank-progress-fill" id="rankBar" style="width:0%"></div>
+                </div>
+              </div>
             </div>
 
-            <!-- 50 Problems -->
-            <div class="badge-card tooltip-wrap locked" data-badge="50problems" data-goal="50" data-type="total">
-              <span class="tooltip">Solve 50 problems</span>
-              <span class="badge-icon">&#11088;</span>
-              <span class="badge-name">50 Problems</span>
-              <div class="badge-progress"><div class="badge-progress-fill" id="badge50" style="width:0%"></div></div>
-              <span class="badge-meta" id="badge50Text">0/50 solved</span>
+            <!-- Appearance -->
+            <div class="app-card p-6 mb-5 opacity-0 animate-fade-in-3">
+              <span class="section-header">Appearance</span>
+              <p class="text-xs text-txt-sec mt-2 mb-4">Choose your preferred theme</p>
+              <div class="grid grid-cols-2 gap-2.5" id="themeSelector">
+                <!-- Dark -->
+                <button type="button" data-theme-value="dark"
+                  class="theme-option flex flex-col items-center gap-2 p-2.5 rounded-xl border border-bdr cursor-pointer transition-all duration-200 hover:border-accent/30">
+                  <div class="w-full h-14 rounded-lg bg-[#0f0f0f] border border-[rgba(255,255,255,0.06)] flex flex-col p-1.5 gap-0.5">
+                    <div class="w-5 h-1 rounded bg-[rgba(255,255,255,0.1)]"></div>
+                    <div class="w-8 h-1 rounded bg-[rgba(255,255,255,0.06)]"></div>
+                    <div class="flex-1 mt-0.5 rounded bg-[#1a1a1a] border border-[rgba(255,255,255,0.04)]"></div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3 h-3 text-txt-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+                    <span class="text-[10px] font-semibold text-txt-sec">Dark</span>
+                  </div>
+                </button>
+                <!-- Light -->
+                <button type="button" data-theme-value="light"
+                  class="theme-option flex flex-col items-center gap-2 p-2.5 rounded-xl border border-bdr cursor-pointer transition-all duration-200 hover:border-accent/30">
+                  <div class="w-full h-14 rounded-lg bg-[#f5f6f8] border border-[rgba(0,0,0,0.08)] flex flex-col p-1.5 gap-0.5">
+                    <div class="w-5 h-1 rounded bg-[rgba(0,0,0,0.1)]"></div>
+                    <div class="w-8 h-1 rounded bg-[rgba(0,0,0,0.06)]"></div>
+                    <div class="flex-1 mt-0.5 rounded bg-white border border-[rgba(0,0,0,0.05)]"></div>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3 h-3 text-txt-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <span class="text-[10px] font-semibold text-txt-sec">Light</span>
+                  </div>
+                </button>
+              </div>
             </div>
 
-            <!-- Hard Master -->
-            <div class="badge-card tooltip-wrap locked" data-badge="hardMaster" data-goal="10" data-type="hard">
-              <span class="tooltip">Solve 10 hard problems</span>
-              <span class="badge-icon">&#128142;</span>
-              <span class="badge-name">Hard Master</span>
-              <div class="badge-progress"><div class="badge-progress-fill" id="badgeHard" style="width:0%"></div></div>
-              <span class="badge-meta" id="badgeHardText">0/10 hard</span>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Difficulty Breakdown -->
-        <div class="app-card p-6 opacity-0 animate-fade-in-4">
-          <span class="section-header">Difficulty Breakdown</span>
-          <div class="flex flex-col gap-4 mt-5">
-            <div class="flex items-center gap-4">
-              <span class="text-xs font-semibold w-16 text-emerald-400">Easy</span>
-              <div class="flex-1 diff-bar-track"><div class="diff-bar-fill easy" id="pEasyBar"></div></div>
-              <span class="text-xs font-semibold text-zinc-400 min-w-[36px] text-right" id="pEasyCount">0</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-xs font-semibold w-16 text-amber-400">Medium</span>
-              <div class="flex-1 diff-bar-track"><div class="diff-bar-fill medium" id="pMedBar"></div></div>
-              <span class="text-xs font-semibold text-zinc-400 min-w-[36px] text-right" id="pMedCount">0</span>
-            </div>
-            <div class="flex items-center gap-4">
-              <span class="text-xs font-semibold w-16 text-rose-400">Hard</span>
-              <div class="flex-1 diff-bar-track"><div class="diff-bar-fill hard" id="pHardBar"></div></div>
-              <span class="text-xs font-semibold text-zinc-400 min-w-[36px] text-right" id="pHardCount">0</span>
+            <!-- Account (Danger Zone) -->
+            <div class="danger-zone-card opacity-0 animate-fade-in-4">
+              <div class="flex items-center gap-2 mb-3">
+                <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                <span class="text-xs font-bold uppercase tracking-wider text-red-400">Danger Zone</span>
+              </div>
+              <p class="text-xs text-txt-faint mb-4">Sign out of your Preecode account. All local data will be cleared.</p>
+              <button id="profileLogoutBtn" class="logout-btn">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+              </button>
             </div>
           </div>
         </div>
@@ -139,31 +289,43 @@
   </div>
 
   <!-- Edit Profile Modal -->
-  <div id="editProfileModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-[#1a1a1a] rounded-lg max-w-md w-full border border-zinc-700 shadow-xl">
-      <div class="flex items-center justify-between p-6 border-b border-zinc-700">
-        <h3 class="text-lg font-bold text-zinc-100">Edit Profile</h3>
-        <button id="closeEditModal" class="text-zinc-500 hover:text-zinc-300 text-2xl leading-none">&times;</button>
+  <div id="editProfileModal" class="modal-overlay hidden">
+    <div class="modal-panel">
+      <div class="flex items-center justify-between p-6 border-b border-bdr">
+        <h3 class="text-lg font-bold text-txt">Edit Profile</h3>
+        <button id="closeEditModal" class="text-txt-muted hover:text-txt text-2xl leading-none cursor-pointer">&times;</button>
       </div>
-      
       <form id="editProfileForm" class="p-6 space-y-4">
-        <!-- Username -->
         <div>
-          <label class="block text-sm font-semibold text-zinc-300 mb-2">Username</label>
-          <input type="text" id="editUsername" placeholder="Enter username" class="w-full px-4 py-2 bg-[#0f0f0f] border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-600 focus:border-[#ffa116] focus:outline-none transition-colors" required />
+          <label class="block text-sm font-semibold text-txt-sec mb-2">Username</label>
+          <input type="text" id="editUsername" placeholder="Enter username" class="w-full px-4 py-2.5 bg-th-input border border-bdr-strong rounded-lg text-txt placeholder-txt-faint focus:border-accent focus:outline-none transition-colors" required />
         </div>
-        
-        <!-- Avatar URL -->
         <div>
-          <label class="block text-sm font-semibold text-zinc-300 mb-2">Profile Picture URL (optional)</label>
-          <input type="url" id="editAvatar" placeholder="Enter profile picture URL" class="w-full px-4 py-2 bg-[#0f0f0f] border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-600 focus:border-[#ffa116] focus:outline-none transition-colors" />
+          <label class="block text-sm font-semibold text-txt-sec mb-2">Profile Picture URL (optional)</label>
+          <input type="url" id="editAvatar" placeholder="Enter profile picture URL" class="w-full px-4 py-2.5 bg-th-input border border-bdr-strong rounded-lg text-txt placeholder-txt-faint focus:border-accent focus:outline-none transition-colors" />
         </div>
-        
         <div class="flex gap-3 pt-4">
-          <button type="button" id="cancelEditModal" class="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 font-semibold rounded-md transition-colors">Cancel</button>
-          <button type="submit" class="flex-1 px-4 py-2 bg-[#ffa116] hover:bg-[#ff9500] text-[#0a0a0b] font-semibold rounded-md transition-colors">Save Changes</button>
+          <button type="button" id="cancelEditModal" class="flex-1 px-4 py-2.5 bg-th-hover hover:bg-th-surface text-txt font-semibold rounded-lg border border-bdr transition-colors cursor-pointer">Cancel</button>
+          <button type="submit" class="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover text-txt-inv font-semibold rounded-lg transition-colors cursor-pointer">Save Changes</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Logout Confirmation Modal -->
+  <div id="logoutModal" class="modal-overlay hidden">
+    <div class="modal-panel" style="max-width:380px;">
+      <div class="p-6 text-center">
+        <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+          <svg class="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-txt mb-2">Sign Out?</h3>
+        <p class="text-sm text-txt-sec mb-6">Are you sure you want to log out? All local data will be cleared.</p>
+        <div class="flex gap-3">
+          <button id="cancelLogout" class="flex-1 px-4 py-2.5 bg-th-hover hover:bg-th-surface text-txt font-semibold rounded-lg border border-bdr transition-colors cursor-pointer">Cancel</button>
+          <button id="confirmLogout" class="flex-1 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold rounded-lg border border-red-500/30 transition-colors cursor-pointer">Sign Out</button>
+        </div>
+      </div>
     </div>
   </div>
 
