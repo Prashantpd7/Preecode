@@ -3,7 +3,7 @@
 (function () {
   if (!localStorage.getItem('token')) return;
 
-  var SHARE_TEXT = 'I just unlocked Preecode Pro — a premium developer performance system — free as an early access member.\n\nTracking real coding growth directly inside VS Code.\n\nJoin before public launch:\nhttps://preecode.netlify.app';
+  var SHARE_TEXT = 'I\'m using Preecode to track my coding practice and consistency — directly inside VS Code.\n\nCurrently in early access. Join before public launch:\nhttps://preecode.netlify.app';
   var SHARE_URL = 'https://preecode.netlify.app';
 
   // ── Welcome Modal (first-time only) ──
@@ -16,11 +16,11 @@
     overlay.className = 'ea-overlay';
     overlay.innerHTML =
       '<div class="ea-modal">' +
-        '<div class="ea-modal-icon">&#127881;</div>' +
+        '<div class="ea-modal-icon">&#128075;</div>' +
         '<h2>Welcome to Preecode</h2>' +
-        '<p>You\'ve been granted Early Access to Preecode Pro.</p>' +
+        '<p>You\'ve been granted early access to Preecode Pro.</p>' +
         '<div class="ea-tag">Pro Access Active</div>' +
-        '<p class="ea-tag-sub">Free for 3 Months</p>' +
+        '<p class="ea-tag-sub">Free during early access</p>' +
         '<button class="ea-btn" id="welcomeEnter">Enter Dashboard</button>' +
       '</div>';
 
@@ -50,8 +50,8 @@
     var banner = document.createElement('div');
     banner.className = 'ea-banner opacity-0 animate-fade-in';
     banner.innerHTML =
-      '<span class="ea-banner-text">You\'re an Early Access Member. Extend your Pro access and unlock Elite status.</span>' +
-      '<button class="ea-banner-btn" id="openShareModal">Become Elite Founding Member</button>';
+      '<span class="ea-banner-text">You\'re part of the early access beta. Help spread the word and earn Founding Member status.</span>' +
+      '<button class="ea-banner-btn" id="openShareModal">Become a Founding Member</button>';
 
     pageContent.insertBefore(banner, pageContent.firstChild);
 
@@ -67,14 +67,14 @@
     overlay.id = 'shareOverlay';
     overlay.innerHTML =
       '<div class="ea-modal">' +
-        '<div class="ea-modal-icon">&#127941;</div>' +
-        '<h2>Become an Elite Founding Member</h2>' +
-        '<p>Extend your Pro access + unlock exclusive status by sharing Preecode.</p>' +
+        '<div class="ea-modal-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div>' +
+        '<h2>Become a Founding Member</h2>' +
+        '<p>Share Preecode to extend your Pro access and earn a permanent Founding Member badge.</p>' +
         '<ul class="ea-rewards">' +
           '<li><span class="ea-check">&#10003;</span> +1 Month Pro Access</li>' +
-          '<li><span class="ea-check">&#10003;</span> Elite Founding Member Badge</li>' +
-          '<li><span class="ea-check">&#10003;</span> Shareable Certificate</li>' +
-          '<li><span class="ea-check">&#10003;</span> Priority Feature Access</li>' +
+          '<li><span class="ea-check">&#10003;</span> Founding Member Badge</li>' +
+          '<li><span class="ea-check">&#10003;</span> Verifiable Certificate</li>' +
+          '<li><span class="ea-check">&#10003;</span> Early feature access</li>' +
         '</ul>' +
         '<div class="ea-share-btns">' +
           '<button class="ea-share-btn" id="shareLinkedIn">' +
@@ -90,7 +90,7 @@
             'Copy Invite Link' +
           '</button>' +
         '</div>' +
-        '<button style="position:absolute;top:16px;right:16px;background:none;border:none;color:#71717a;font-size:18px;cursor:pointer;padding:4px;" id="shareClose">&times;</button>' +
+        '<button style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-muted);font-size:18px;cursor:pointer;padding:4px;" id="shareClose">&times;</button>' +
       '</div>';
 
     document.body.appendChild(overlay);
@@ -169,10 +169,10 @@
     overlay.className = 'ea-overlay';
     overlay.innerHTML =
       '<div class="ea-modal">' +
-        '<div class="ea-modal-icon">&#127942;</div>' +
-        '<h2>Elite Founding Member Unlocked!</h2>' +
+        '<div class="ea-modal-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>' +
+        '<h2>Founding Member Status Confirmed</h2>' +
         '<p>Your Pro access has been extended by 1 month.</p>' +
-        '<div class="ea-tag">Elite Status Active</div>' +
+        '<div class="ea-tag">Founding Member</div>' +
         '<p class="ea-tag-sub">Certificate now available on your Profile</p>' +
         '<button class="ea-btn" id="successClose">Continue</button>' +
       '</div>';
@@ -190,8 +190,8 @@
         var banner = document.querySelector('.ea-banner');
         if (banner) banner.remove();
         // Update navbar badge if present
-        var navBadge = document.querySelector('.nav-plan-badge');
-        if (navBadge) navBadge.textContent = 'Pro \u2022 Elite';
+        var navBadge = document.getElementById('navPlanBadge');
+        if (navBadge) navBadge.textContent = 'Founding';
       }, 300);
     });
   }
@@ -199,7 +199,7 @@
   // ── Confetti (fires once) ──
   function fireConfetti() {
     var colors = ['#ff6b00', '#ffa116', '#34d399', '#60a5fa', '#f87171', '#fbbf24'];
-    for (var i = 0; i < 40; i++) {
+    for (var i = 0; i < 20; i++) {
       var piece = document.createElement('div');
       piece.className = 'confetti-piece';
       piece.style.left = Math.random() * 100 + 'vw';
@@ -212,7 +212,7 @@
   }
 
   // ── Init ──
-  // Wait for DOM to be ready (layout.js injects sidebar first)
+  // Wait for DOM to be ready (layout.js injects topbar first)
   setTimeout(function () {
     showWelcomeModal();
     showShareBanner();

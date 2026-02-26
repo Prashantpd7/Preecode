@@ -1,6 +1,6 @@
 /* api.js – Preecode API helper */
 
-var API_BASE = "http://localhost:5000/api";
+var API_BASE = "http://localhost:5001/api";
 
 var Api = {
   // Login user
@@ -175,6 +175,57 @@ var Api = {
       body: JSON.stringify(data),
     }).then(function (res) {
       if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to update profile'); });
+      return res.json();
+    });
+  },
+
+  // Change password
+  changePassword: function (data) {
+    return fetch(API_BASE + '/users/change-password', {
+      method: 'PUT',
+      headers: Api._authHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
+      body: JSON.stringify(data),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to change password'); });
+      return res.json();
+    });
+  },
+
+  // Delete account
+  deleteAccount: function () {
+    return fetch(API_BASE + '/users/account', {
+      method: 'DELETE',
+      headers: Api._authHeaders(),
+      credentials: 'include',
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to delete account'); });
+      return res.json();
+    });
+  },
+
+  // Update notification preferences
+  updateNotificationPrefs: function (prefs) {
+    return fetch(API_BASE + '/users/notifications', {
+      method: 'PUT',
+      headers: Api._authHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
+      body: JSON.stringify(prefs),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to update preferences'); });
+      return res.json();
+    });
+  },
+
+  // Logout all devices
+  logoutAllDevices: function () {
+    return fetch(API_BASE + '/users/logout-all', {
+      method: 'POST',
+      headers: Api._authHeaders({ 'Content-Type': 'application/json' }),
+      credentials: 'include',
+      body: JSON.stringify({}),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to logout all devices'); });
       return res.json();
     });
   },

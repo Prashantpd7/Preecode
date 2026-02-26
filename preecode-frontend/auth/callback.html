@@ -1,18 +1,49 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Auth callback</title>
-  <style>body{background:#0B0F14;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:Inter,system-ui,Arial}</style>
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Inter, system-ui, Arial;
+    }
+    .cb-container { text-align: center; max-width: 520px; padding: 24px; }
+    .cb-title { margin-bottom: 8px; color: var(--text-primary); }
+    .cb-msg { color: var(--text-muted); }
+    .cb-actions { margin-top: 18px; display: none; }
+    .cb-link-primary { color: var(--accent); margin-right: 12px; text-decoration: none; }
+    .cb-link-primary:hover { color: var(--accent-hover); }
+    .cb-link-secondary { color: var(--text-muted); text-decoration: none; }
+    .cb-link-secondary:hover { color: var(--text-primary); }
+    .cb-btn {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: var(--text-inverse);
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.2s ease;
+    }
+    .cb-btn:hover { background: var(--accent-hover); }
+  </style>
 </head>
 <body>
-  <div id="container" style="text-align:center;max-width:520px;padding:24px">
-    <h2 id="title" style="margin-bottom:8px">Signing you in…</h2>
-    <p id="msg" style="color:#9ca3af">Please wait — finishing authentication.</p>
-    <div id="actions" style="margin-top:18px;display:none">
-      <a id="goLogin" href="/login.html" style="color:#ffa116;margin-right:12px;text-decoration:none">Go to Sign In</a>
-      <a id="goHome" href="/" style="color:#9ca3af;text-decoration:none">Return Home</a>
+  <div class="cb-container" id="container">
+    <h2 class="cb-title" id="title">Signing you in&hellip;</h2>
+    <p class="cb-msg" id="msg">Please wait &mdash; finishing authentication.</p>
+    <div class="cb-actions" id="actions">
+      <a id="goLogin" href="/login.html" class="cb-link-primary">Go to Sign In</a>
+      <a id="goHome" href="/" class="cb-link-secondary">Return Home</a>
     </div>
   </div>
 
@@ -25,7 +56,6 @@
         var msg = document.getElementById('msg');
 
         if (error && !token) {
-          // Show a friendly error with actions; do not auto-redirect immediately.
           var title = document.getElementById('title');
           title.textContent = 'Authentication failed';
           msg.textContent = 'There was a problem signing you in: ' + (error || 'unknown error') + '. Please try again.';
@@ -36,10 +66,8 @@
         }
 
         if (token) {
-          // Persist token
           try { localStorage.setItem('token', token); } catch (e) { /* ignore */ }
 
-          // Hydrate user profile for navbar/dashboard/submissions after OAuth login
           try {
             var meRes = await fetch('https://preecode.onrender.com/api/users/me', {
               headers: { Authorization: 'Bearer ' + token },
@@ -62,24 +90,17 @@
               if (me && me.hasShared !== undefined) localStorage.setItem('preecode_shared', me.hasShared);
             }
           } catch (e) {
-            // Ignore hydrate failure; token is still valid for app navigation
+            // Ignore hydrate failure; token is still valid
           }
 
-          // If opened as a popup, notify opener and close
           if (window.opener && !window.opener.closed) {
             try {
               window.opener.postMessage({ type: 'preecode_oauth', token: token }, '*');
-            } catch (e) {
-              // ignore
-            }
+            } catch (e) {}
             window.close();
             return;
           }
 
-          // If a redirect param is present, forward the token to it.
-          // Attempt an automatic navigation to the deep link. If the
-          // browser blocks it, show a clickable fallback the user can
-          // tap to open VS Code manually.
           var redirectParam = params.get('redirect');
           if (redirectParam) {
             try {
@@ -91,35 +112,22 @@
             var sep = decoded.indexOf('?') === -1 ? '?' : '&';
             var deepLink = decoded + sep + 'token=' + encodeURIComponent(token);
 
-            // Try automatic navigation first
             try {
               window.location.href = deepLink;
-              // In many browsers this will open VS Code immediately.
               return;
-            } catch (e) {
-              // Fall through to clickable fallback below
-            }
+            } catch (e) {}
 
-            // If automatic navigation didn't happen, show fallback UI
             var container = document.getElementById('container');
-            msg.textContent = 'Signed in — click the button below to open VS Code.';
+            msg.textContent = 'Signed in \u2014 click the button below to open VS Code.';
             var btn = document.createElement('a');
             btn.href = deepLink;
             btn.textContent = 'Open in VS Code';
-            btn.style.display = 'inline-block';
-            btn.style.marginTop = '18px';
-            btn.style.padding = '10px 14px';
-            btn.style.background = '#ffa116';
-            btn.style.color = '#081018';
-            btn.style.borderRadius = '8px';
-            btn.style.textDecoration = 'none';
+            btn.className = 'cb-btn';
             container.appendChild(btn);
             return;
           }
 
-          // Otherwise navigate to dashboard
-          msg.textContent = 'Signed in — redirecting to dashboard...';
-          // remove token from URL for cleanliness
+          msg.textContent = 'Signed in \u2014 redirecting to dashboard...';
           params.delete('token');
           var newSearch = params.toString();
           var newUrl = '/pages/dashboard.html' + (newSearch ? '?' + newSearch : '');
@@ -127,7 +135,6 @@
           return;
         }
 
-        // No token & no error — show actions to let user continue to login
         title.textContent = 'Authentication incomplete';
         msg.textContent = 'No authentication token was returned. Please sign in manually.';
         document.getElementById('actions').style.display = 'block';

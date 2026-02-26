@@ -1,13 +1,41 @@
 tailwind.config = {
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
         sans: ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
-        dark: { DEFAULT: '#0B0F14', '2': '#111113' },
-        surface: { DEFAULT: '#16161a', '2': '#1e1e23' },
-        accent: { DEFAULT: '#ffa116' },
+        th: {
+          bg:       'var(--bg-primary)',
+          bg2:      'var(--bg-secondary)',
+          card:     'var(--card-bg)',
+          surface:  'var(--bg-tertiary)',
+          section:  'var(--bg-section)',
+          input:    'var(--bg-input)',
+          hover:    'var(--bg-hover)',
+          topbar:   'var(--bg-topbar)',
+          sidebar:  'var(--bg-sidebar)',
+          modal:    'var(--bg-modal)',
+        },
+        txt: {
+          DEFAULT:  'var(--text-primary)',
+          sec:      'var(--text-secondary)',
+          muted:    'var(--text-muted)',
+          faint:    'var(--text-faint)',
+          inv:      'var(--text-inverse)',
+        },
+        bdr: {
+          DEFAULT:  'var(--border-subtle)',
+          subtle:   'var(--border-subtle)',
+          input:    'var(--border-strong)',
+          strong:   'var(--border-strong)',
+        },
+        accent: {
+          DEFAULT:  'var(--accent)',
+          hover:    'var(--accent-hover)',
+          soft:     'var(--accent-soft)',
+        },
       },
       animation: {
         'fade-in':   'fadeUp 0.5s ease forwards',
@@ -23,7 +51,7 @@ tailwind.config = {
           to:   { opacity: '1', transform: 'translateY(0)' },
         },
         streakPulse: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(255,161,22,0.25)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(249,115,22,0.25)' },
           '50%':      { boxShadow: '0 0 0 4px transparent' },
         },
       },

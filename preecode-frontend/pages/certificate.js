@@ -25,7 +25,7 @@
 
         var dateEl = document.getElementById('certDate');
         if (dateEl) {
-          var d = data.earlyAccessEndDate ? new Date(data.earlyAccessEndDate) : new Date();
+          var d = user.createdAt ? new Date(user.createdAt) : new Date();
           dateEl.textContent = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         }
       });
@@ -64,7 +64,7 @@
       useCORS: true,
     }).then(function (canvas) {
       var link = document.createElement('a');
-      link.download = 'preecode-elite-certificate.png';
+      link.download = 'preecode-founding-certificate.png';
       link.href = canvas.toDataURL('image/png');
       link.click();
     });
@@ -74,7 +74,7 @@
   var shareBtn = document.getElementById('shareLinkedInCert');
   if (shareBtn) {
     shareBtn.addEventListener('click', function () {
-      var text = 'I just earned Elite Founding Member status on preecode — a developer performance tracking system.\n\nJoin before public launch:\nhttps://preecode.netlify.app';
+      var text = 'I earned Founding Member status on Preecode — a developer practice tracking tool built into VS Code.\n\nJoin the early access:\nhttps://preecode.netlify.app';
       window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent('https://preecode.netlify.app'), '_blank', 'width=600,height=500');
     });
   }

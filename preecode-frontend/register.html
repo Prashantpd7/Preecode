@@ -4,14 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Preecode – Create Account</title>
+  <script src="theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tailwind-config.js"></script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body class="bg-[#0B0F14] text-white font-sans min-h-screen antialiased">
+<body class="bg-th-bg text-txt font-sans min-h-screen antialiased">
 
   <div class="min-h-screen flex flex-col lg:flex-row">
 
@@ -26,68 +28,64 @@
 
       <!-- Content -->
       <div class="relative z-10">
-        <a href="/" class="flex items-center gap-2.5 no-underline mb-10">
-          <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
-            <svg class="w-4 h-4 text-[#0B0F14]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3"/>
-            </svg>
-          </div>
-          <span class="text-lg font-semibold tracking-tight text-white">Preecode</span>
+        <a href="/" class="preecode-logo logo-auth mb-10">
+          <img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark">
+          <img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light">
         </a>
 
         <!-- Headline -->
-        <h1 class="text-[2rem] xl:text-[2.65rem] font-[800] tracking-tight leading-[1.08] text-white mb-3">
-          Build <span class="text-orange-400">Consistency</span><br>That Compounds.
+        <h1 class="text-[2rem] xl:text-[2.65rem] font-[800] tracking-tight leading-[1.08] text-txt mb-3">
+          Build <span class="text-accent">Consistency</span><br>That Compounds.
         </h1>
-        <p class="text-base text-gray-400 leading-relaxed max-w-sm mb-2.5">
+        <p class="text-base text-txt-sec leading-relaxed max-w-sm mb-2.5">
           Top developers don't rely on motivation. They build systems.
         </p>
-        <p class="text-xs text-gray-500 mb-8">Trusted by 1,200+ developers.</p>
+        <p class="text-xs text-txt-muted mb-8">Trusted by 1,200+ developers.</p>
 
         <!-- Feature bullets -->
-        <div class="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 space-y-5">
+        <div class="bg-th-surface border border-bdr rounded-2xl p-5 space-y-5">
           <div class="flex items-start gap-4">
-            <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <div class="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1.001A3.75 3.75 0 0012 18z"/>
               </svg>
             </div>
             <div>
-              <p class="text-sm font-bold text-white mb-0.5">Automatic Streak Tracking</p>
-              <p class="text-[13px] text-gray-500/80 leading-relaxed">Your coding consistency, tracked every single day.</p>
+              <p class="text-sm font-bold text-txt mb-0.5">Automatic Streak Tracking</p>
+              <p class="text-[13px] text-txt-muted leading-relaxed">Your coding consistency, tracked every single day.</p>
             </div>
           </div>
 
           <div class="flex items-start gap-4">
-            <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <div class="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
               </svg>
             </div>
             <div>
-              <p class="text-sm font-bold text-white mb-0.5">Difficulty Distribution Insights</p>
-              <p class="text-[13px] text-gray-500/80 leading-relaxed">Understand your Easy, Medium, and Hard solve ratio.</p>
+              <p class="text-sm font-bold text-txt mb-0.5">Difficulty Distribution Insights</p>
+              <p class="text-[13px] text-txt-muted leading-relaxed">Understand your Easy, Medium, and Hard solve ratio.</p>
             </div>
           </div>
 
           <div class="flex items-start gap-4">
-            <div class="w-11 h-11 rounded-xl bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-              <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <div class="w-11 h-11 rounded-xl bg-accent-soft flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
               </svg>
             </div>
             <div>
-              <p class="text-sm font-bold text-white mb-0.5">Weekly Growth Reports</p>
-              <p class="text-[13px] text-gray-500/80 leading-relaxed">Automated weekly summaries of your progress trend.</p>
+              <p class="text-sm font-bold text-txt mb-0.5">Weekly Growth Reports</p>
+              <p class="text-[13px] text-txt-muted leading-relaxed">Automated weekly summaries of your progress trend.</p>
             </div>
           </div>
         </div>
 
         <!-- Testimonial -->
         <div class="mt-6">
-          <p class="text-[13px] text-gray-500 leading-relaxed italic">"Preecode helped me maintain a 90-day streak."</p>
-          <p class="text-[11px] text-gray-600 mt-1.5">-- Placement Aspirant</p>
+          <p class="text-[13px] text-txt-muted leading-relaxed italic">"Preecode helped me maintain a 90-day streak."</p>
+          <p class="text-[11px] text-txt-faint mt-1.5">-- Placement Aspirant</p>
         </div>
       </div>
     </div>
@@ -100,14 +98,10 @@
       <div class="w-full max-w-[420px] opacity-0 animate-fade-in">
 
         <!-- Mobile logo -->
-        <div class="flex items-center gap-2.5 mb-10 lg:hidden">
-          <a href="/" class="flex items-center gap-2.5 no-underline">
-            <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
-              <svg class="w-4 h-4 text-[#0B0F14]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3"/>
-              </svg>
-            </div>
-            <span class="text-lg font-semibold tracking-tight text-white">Preecode</span>
+        <div class="mb-10 lg:hidden">
+          <a href="/" class="preecode-logo logo-auth">
+            <img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark">
+            <img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light">
           </a>
         </div>
 
@@ -116,8 +110,8 @@
 
           <!-- Header -->
           <div class="mb-8">
-            <h2 class="text-[22px] font-bold tracking-tight text-white mb-1.5">Create your account</h2>
-            <p class="text-sm text-gray-400">Start tracking your growth today.</p>
+            <h2 class="text-[22px] font-bold tracking-tight text-txt mb-1.5">Create your account</h2>
+            <p class="text-sm text-txt-sec">Start tracking your growth today.</p>
           </div>
 
           <!-- Form -->
@@ -168,7 +162,7 @@
               class="auth-btn-primary"
             >
               <span id="regBtnText">Create Account</span>
-              <svg id="regBtnSpinner" class="hidden animate-spin mx-auto h-5 w-5 text-[#0B0F14]" fill="none" viewBox="0 0 24 24">
+              <svg id="regBtnSpinner" class="hidden animate-spin mx-auto h-5 w-5 text-txt-inv" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -178,10 +172,10 @@
           <!-- Divider -->
           <div class="relative my-7">
             <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-white/[0.06]"></div>
+              <div class="w-full border-t border-bdr"></div>
             </div>
             <div class="relative flex justify-center text-xs">
-              <span class="bg-[#13171e] px-3 text-gray-500">or continue with</span>
+              <span class="bg-th-card px-3 text-txt-muted">or continue with</span>
             </div>
           </div>
 
@@ -206,18 +200,18 @@
           </div>
 
           <!-- Sign in link -->
-          <p class="text-center text-sm text-gray-500 mt-8">
+          <p class="text-center text-sm text-txt-muted mt-8">
             Already have an account?
-            <a href="login.html" class="text-orange-400 font-medium hover:text-orange-300 transition-colors duration-150 no-underline ml-1">Sign in</a>
+            <a href="login.html" class="text-accent font-medium hover:text-accent-hover transition-colors duration-150 no-underline ml-1">Sign in</a>
           </p>
         </div>
 
         <!-- Trust footer -->
         <div class="flex items-center justify-center gap-2 mt-6">
-          <svg class="w-3.5 h-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <svg class="w-3.5 h-3.5 text-txt-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
           </svg>
-          <p class="text-xs text-gray-600">Secure JWT-based authentication. Encrypted by design.</p>
+          <p class="text-xs text-txt-faint">Secure JWT-based authentication. Encrypted by design.</p>
         </div>
       </div>
     </div>
