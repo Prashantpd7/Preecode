@@ -9,78 +9,125 @@
 </head>
 <body>
   <div class="app" id="app">
-    <header class="header">
-      <div class="brand">
-        <div class="brand-mark">P</div>
-        <div class="brand-text">
-          <div class="ai-name">Preecode AI</div>
-          <div class="ai-tagline">Live coding assistant</div>
+    <section class="screen active" data-screen="1" id="screen1">
+      <div class="profile-card" id="profileCard">
+        <div class="profile-main">
+          <div class="avatar" aria-hidden="true">PC</div>
+          <div>
+            <div class="profile-title" id="profileTitle">User's Preecode AI</div>
+            <div class="profile-sub">Account and workspace assistant</div>
+          </div>
+        </div>
+        <div class="profile-menu" id="profileMenu">
+          <button class="menu-btn" id="openDashboardBtn">Open Dashboard</button>
         </div>
       </div>
-      <div class="header-right">
-        <div class="user">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span class="user-name" id="userName">User</span>
-        </div>
-        <div class="timer" id="timer">00:00</div>
-        <div class="typing" id="typingIndicator">Typing...</div>
-      </div>
-    </header>
 
-    <section class="monitor-grid">
-      <div class="monitor-card">
-        <span class="card-label">Active File</span>
-        <span class="card-value" id="fileName">No file</span>
+      <div class="status-strip">
+        <span class="status-item">File: <strong id="fileName">No file</strong></span>
+        <span class="status-item">Lang: <strong id="fileLanguage">-</strong></span>
+        <span class="status-item">State: <strong id="monitorState">Idle</strong></span>
+        <span class="status-item">Diag: <strong id="monitorDiagnostics">E:0 W:0</strong></span>
       </div>
-      <div class="monitor-card">
-        <span class="card-label">Language</span>
-        <span class="card-value" id="fileLanguage">-</span>
+
+      <div class="screen1-header">
+        <button class="icon-btn page-toggle" id="showOptionsBtn" aria-label="Show options">→</button>
       </div>
-      <div class="monitor-card">
-        <span class="card-label">Monitor State</span>
-        <span class="card-value" id="monitorState">Idle</span>
+
+      <div class="first-options" id="firstOptions">
+        <button class="secondary-btn" id="openToolsScreenBtn">Code Tools</button>
+        <button class="secondary-btn" id="openPracticeScreenBtn">Practice Session</button>
+        <button class="secondary-btn" id="openSolutionScreenBtn">Solution Workspace</button>
       </div>
-      <div class="monitor-card">
-        <span class="card-label">Diagnostics</span>
-        <span class="card-value" id="monitorDiagnostics">E:0 W:0</span>
+
+      <div class="chat-title">Conversation</div>
+      <div class="chat-feed" id="chatFeed">
+        <div class="chat-bubble ai">Ask anything about coding, debugging, or how to use Preecode.</div>
       </div>
-      <div class="monitor-card wide">
-        <span class="card-label">Selection</span>
-        <span class="card-value" id="monitorSelection">No selection</span>
-      </div>
-      <div class="monitor-card wide">
-        <span class="card-label">Visible Range</span>
-        <span class="card-value" id="monitorVisibleRange">-</span>
-      </div>
-      <div class="monitor-card wide issue" id="topIssueCard">
-        <span class="card-label">Top Issue Detected</span>
-        <span class="card-value" id="monitorTopIssue">No issue detected</span>
+      <div class="hidden-data" aria-hidden="true">
+        <span id="monitorSelection">No selection</span>
+        <span id="monitorVisibleRange">-</span>
       </div>
     </section>
 
-    <section class="actions">
-      <button class="action-btn" data-action="debug">
-        Debug Code
-      </button>
-      <button class="action-btn" data-action="fix">
-        Fix Code
-      </button>
-      <button class="action-btn" data-action="explain">
-        Explain Code
-      </button>
-      <button class="action-btn" data-action="line_execution">
-        Line-by-line Execution
-      </button>
-      <button class="action-btn chatbot" data-action="chatbot">
-        <span class="chatbot-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" role="img">
-            <path d="M7 6.5a5 5 0 0 1 5-5h0a5 5 0 0 1 5 5v1.2a4.8 4.8 0 0 1 3 4.5v2.6a4.7 4.7 0 0 1-4.7 4.7H11l-3.7 2.3c-.6.4-1.3-.1-1.3-.8V19a4.7 4.7 0 0 1-2.7-4.3v-2.5A4.7 4.7 0 0 1 7 7.7V6.5z" fill="currentColor" opacity="0.15" />
-            <path d="M8.5 9.5h7M8.5 12.5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-            <path d="M14.2 3.8l.6-1.4.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z" fill="currentColor" />
-          </svg>
-        </span>
-        AI Chatbot
-      </button>
+    <section class="screen" data-screen="2" id="screen2">
+      <button class="icon-btn back-to-chat" id="backToChatFromTools" aria-label="Back to chatbot">← Chatbot</button>
+
+      <div class="profile-card slim">
+        <div class="profile-main">
+          <div class="avatar" aria-hidden="true">PC</div>
+          <div class="profile-title" id="menuProfileTitle">User's Preecode AI</div>
+        </div>
+        <button class="icon-btn" id="toggleTools" aria-label="Toggle tools">Tools</button>
+      </div>
+
+      <div class="tools-panel" id="toolsPanel">
+        <button class="action-btn" data-action="debug">Debug Code</button>
+        <button class="action-btn" data-action="fix">Fix Code</button>
+        <button class="action-btn" data-action="explain">Explain Code</button>
+        <button class="action-btn" data-action="find_bugs">Review Code</button>
+      </div>
+
+      <div class="panel-card" id="topIssueCard">
+        <div class="panel-title">Detected Issue</div>
+        <div class="panel-body" id="monitorTopIssue">No issue detected</div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-title">Suggested Fix</div>
+        <div class="panel-body" id="expectedFixOutput">No automatic replacement found.</div>
+      </div>
+
+      <button class="primary-btn" id="gotoPracticeBtn">Open Practice Workspace</button>
+    </section>
+
+    <section class="screen" data-screen="3" id="screen3">
+      <button class="icon-btn back-to-chat" id="backToChatFromPractice" aria-label="Back to chatbot">← Chatbot</button>
+
+      <div class="section-head">Practice Session</div>
+      <div class="meta-row">
+        <div class="timer" id="timer">00:00</div>
+        <div class="typing" id="typingIndicator">Typing...</div>
+      </div>
+
+      <button class="primary-btn" id="generateQuestionBtn">Generate Question</button>
+      <button class="secondary-btn" id="detectQuestionBtn">Detect Question In File</button>
+      <button class="secondary-btn" id="gotoSolutionScreenBtn">Open Solution Workspace</button>
+    </section>
+
+    <section class="screen" data-screen="4" id="screen4">
+      <button class="icon-btn back-to-chat" id="backToChatFromSolution" aria-label="Back to chatbot">← Chatbot</button>
+
+      <div class="section-head">Solution Workspace</div>
+      <div class="meta-row split">
+        <div class="timer-box">Time: <span id="timeDisplay">00:00</span></div>
+        <div class="rating-box">Rating: <span id="solutionRating">-</span>/10</div>
+      </div>
+
+      <div class="panel-card compact">
+        <div class="panel-title">Current Question</div>
+        <div class="panel-body" id="problemOutput">Question available on screen.</div>
+      </div>
+
+      <button class="secondary-btn" id="explainQuestionBtn">Explain Question</button>
+      <div class="dual-btn">
+        <button class="secondary-btn" id="showHintBtn">Show Hint</button>
+        <button class="secondary-btn" id="showSolutionBtn">Show Solution</button>
+      </div>
+      <div class="dual-btn">
+        <button class="secondary-btn" id="explainSolutionBtn">Explain Solution</button>
+        <button class="secondary-btn" id="evaluateSolutionBtn">Evaluate Solution</button>
+      </div>
+      <button class="secondary-btn" id="anotherWayBtn">Alternative Approach</button>
+
+      <div class="hidden-data" aria-hidden="true">
+        <span id="reasonOutput">-</span>
+        <span id="issueHighlightOutput">-</span>
+        <span id="stepsOutput">-</span>
+        <span id="lineExecutionOutput">-</span>
+        <span id="fixedCodeOutput">-</span>
+        <span id="suggestionsOutput">-</span>
+      </div>
     </section>
 
     <section class="popup" id="helpPopup" aria-live="polite">
@@ -91,40 +138,12 @@
       </div>
     </section>
 
-    <section class="output">
-      <div class="output-card">
-        <div class="output-title">Problem</div>
-        <div class="output-body" id="problemOutput">-</div>
-      </div>
-      <div class="output-card">
-        <div class="output-title">Why it happened</div>
-        <div class="output-body" id="reasonOutput">-</div>
-      </div>
-      <div class="output-card">
-        <div class="output-title">Problematic part</div>
-        <div class="output-body highlight-issue" id="issueHighlightOutput">-</div>
-      </div>
-      <div class="output-card">
-        <div class="output-title">Expected fix</div>
-        <div class="output-body highlight-fix" id="expectedFixOutput">-</div>
-      </div>
-      <div class="output-card">
-        <div class="output-title">How to fix</div>
-        <div class="output-body" id="stepsOutput">-</div>
-      </div>
-      <div class="output-card">
-        <div class="output-title">Line-by-line execution</div>
-        <div class="output-body" id="lineExecutionOutput">-</div>
-      </div>
-      <div class="output-card">
-        <div class="output-title">Fixed code version</div>
-        <pre class="output-code" id="fixedCodeOutput">-</pre>
-      </div>
-      <div class="output-card">
-        <div class="output-title">Suggestions</div>
-        <div class="output-body" id="suggestionsOutput">-</div>
-      </div>
+    <section class="ask-bar">
+      <input id="askInput" type="text" placeholder="Ask Preecode AI anything..." />
+      <button id="askSendBtn">Ask AI</button>
     </section>
+
+    <span class="hidden-data" id="userName" aria-hidden="true">User</span>
   </div>
 
   <script nonce="{{nonce}}" src="{{scriptUri}}"></script>

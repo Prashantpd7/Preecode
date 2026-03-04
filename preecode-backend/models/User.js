@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema({
   hasShared: { type: Boolean, default: false },
   foundingBadgeLevel: { type: String, enum: ['basic', 'elite'], default: 'basic' },
   certificateId: { type: String, unique: true, sparse: true },
+  tokenVersion: { type: Number, default: 0 },
 
   createdAt: { type: Date, default: Date.now },
 });

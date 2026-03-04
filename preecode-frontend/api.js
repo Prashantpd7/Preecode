@@ -15,6 +15,7 @@ var Api = {
       return res.json();
     }).then(function (data) {
       if (data.token) localStorage.setItem('token', data.token);
+      if (data.avatar) localStorage.setItem('preecode_avatar', data.avatar);
       return data;
     }).catch(function (err) {
       if (err instanceof TypeError) throw new Error('Network error — could not reach server');
@@ -34,6 +35,7 @@ var Api = {
       return res.json();
     }).then(function (data) {
       if (data.token) localStorage.setItem('token', data.token);
+      if (data.avatar) localStorage.setItem('preecode_avatar', data.avatar);
       return data;
     }).catch(function (err) {
       if (err instanceof TypeError) throw new Error('Network error — could not reach server');

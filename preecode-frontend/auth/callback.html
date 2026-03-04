@@ -48,6 +48,7 @@
             if (meRes.ok) {
               var me = await meRes.json();
               if (me && me._id) localStorage.setItem('preecode_uid', me._id);
+              if (me && me.avatar) localStorage.setItem('preecode_avatar', me.avatar);
 
               var resolvedName = '';
               if (me && me.username) {
@@ -93,8 +94,15 @@
 
             // Try automatic navigation first
             try {
-              window.location.href = deepLink;
-              // In many browsers this will open VS Code immediately.
+              var probe = document.createElement('iframe');
+              probe.style.display = 'none';
+              probe.src = deepLink;
+              document.body.appendChild(probe);
+              setTimeout(function () {
+                try { document.body.removeChild(probe); } catch (e) { /* ignore */ }
+              }, 1200);
+
+              window.location.replace(deepLink);
               return;
             } catch (e) {
               // Fall through to clickable fallback below

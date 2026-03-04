@@ -22,6 +22,9 @@ export interface PracticeData {
     solutionViewed: boolean;
     language: string;
     date: string;           // ISO 8601 date string
+    difficulty?: 'easy' | 'medium' | 'hard';
+    hintUsagePercent?: number;
+    aiRating?: number;
 }
 
 // Shape of submission data sent when user submits a solution from the extension
@@ -32,6 +35,11 @@ export interface SubmissionData {
     topic?: string; // e.g., 'Arrays', 'Strings', etc.
     timeTaken?: string; // formatted "MM:SS"
     date?: string;  // ISO string
+}
+
+export interface ChatHistoryItem {
+    role: 'user' | 'assistant';
+    text: string;
 }
 
 function normalizeDifficulty(input?: string): 'easy' | 'medium' | 'hard' {
@@ -88,6 +96,11 @@ export async function sendSubmission(
         if (response.status === 401) {
             await deleteToken(context);
             vscode.window.showErrorMessage('preecode: Session expired. Please login again.');
+            return false;
+        }
+
+        if (response.status === 429) {
+            vscode.window.showWarningMessage('preecode: Too many requests right now. Please wait a few seconds and try again.');
             return false;
         }
 
@@ -149,6 +162,13 @@ console.log("Data being sent:", data);
             return false;
         }
 
+        if (response.status === 429) {
+            vscode.window.showWarningMessage(
+                'preecode: Too many requests right now. Please wait a few seconds and try saving again.'
+            );
+            return false;
+        }
+
         if (!response.ok) {
             vscode.window.showErrorMessage(
                 `preecode: Failed to save practice data (${response.status}). Will try again next time.`
@@ -171,5 +191,52 @@ console.log("Data being sent:", data);
             'preecode: Could not reach server. Practice data not saved. Check your connection.'
         );
         return false;
+    }
+}
+
+export async function sendAIChatMessage(
+    context: vscode.ExtensionContext,
+    message: string,
+    editorContext: string,
+    history: ChatHistoryItem[] = []
+): Promise<string> {
+    const token = await getToken(context);
+    if (!token) {
+        throw new Error('Please login first to use AI chat.');
+    }
+
+    const safeHistory = (Array.isArray(history) ? history : [])
+        .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.text === 'string')
+        .slice(-12)
+        .map((item) => ({ role: item.role, text: item.text.trim().slice(0, 2000) }));
+
+    try {
+        const response = await doFetch(`${API_BASE}/ai/chat`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message,
+                context: editorContext,
+                history: safeHistory
+            })
+        });
+
+        if (response.status === 401) {
+            await deleteToken(context);
+            throw new Error('Session expired. Please login again.');
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `AI chat failed (${response.status}).`);
+        }
+
+        const payload: any = await response.json();
+        return String(payload?.response || '').trim();
+    } catch (error: any) {
+        throw new Error(error?.message || 'Could not reach AI chat service.');
     }
 }

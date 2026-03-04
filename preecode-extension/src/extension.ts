@@ -1,2322 +1,2525 @@
-import * as vscode from 'vscode';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import * as fs from 'fs';
-import OpenAI from "openai";
-import { PracticeTimer } from './services/timerService';
-import { runActiveFile } from './services/runService';
-import { saveToken, getToken, deleteToken, isLoggedIn } from './services/authService';
-import { sendPracticeData, API_BASE, doFetch } from './services/apiService';
-import { requestAssistantAnalysis, AssistantAction } from './services/openaiService';
-import {
-	summarizeDiagnostics,
-	diagnosticsToPrompt,
-	hasIssueState,
-	DiagnosticsSummary
-} from './services/diagnosticsService';
-
-interface LocalAssistantResponse {
-	problem: string;
-	reason: string;
-	step_by_step: string[];
-	line_execution: string[];
-	fixed_code: string;
-	suggestions: string[];
-	highlight_issue: string;
-	highlight_fix: string;
-	changed: boolean;
-}
-
-
-
+import * as vscode from 'vscode';
+import { AuthManager } from './auth/authManager';
+import { runAiAction } from './services/aiActionService';
+import { sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
+import { requestAssistantAnalysis, requestAssistantChatText } from './services/openaiService';
+import { BackendSyncService } from './services/backendSyncService';
+import { preecodeStore } from './state/store';
+import { RunDetectionService } from './timer/runDetectionService';
+import { PracticeTimerService } from './timer/practiceTimerService';
+import { ControlCenterViewProvider } from './views/controlCenterView';
 
 dotenv.config({
-	path: path.resolve(__dirname, '../.env')
-});
-const openai = new OpenAI({
-	apiKey: process.env.OPENAI_API_KEY
+  path: path.resolve(__dirname, '../.env')
 });
 
-import { generatePracticeQuestion } from './services/aiService';
+type QuickAction = FullQuickAction;
+const CHAT_HISTORY_KEY = 'preecode.chatHistory';
+const MARKER_TOKEN = 'PREECODE';
 
-let storedHint: string | null = null;
-let storedSolution: string | null = null;
-let storedExplanation: string | null = null;
+type MarkerLabel =
+  | 'QUESTION_EXPLANATION'
+  | 'HINT'
+  | 'SOLUTION'
+  | 'SOLUTION_EXPLANATION'
+  | 'CODE_EVALUATION';
 
-// Feature 1: tracks whether question came from user-written text (not AI-generated)
-let isUserWrittenQuestion = false;
+type PracticeAction =
+  | 'practice'
+  | 'generate'
+  | 'detect'
+  | 'explainQuestion'
+  | 'showHint'
+  | 'showSolution'
+  | 'explainSolution'
+  | 'evaluateCode'
+  | 'differentApproach'
+  | 'saveQuestion';
 
-// Feature 2: Selection explanation — snapshot-based, supports multiple explains.
-// selectionFileSnapshot: full file content saved at the moment of FIRST explain.
-//   Used by "Remove Selection Explanation" to restore everything at once.
-// selectionExplainedBlocks: each explained block text, used to detect manual deletion.
-// hasSelectionExplanationFlag: true when at least one explain has been inserted.
-let selectionFileSnapshot: string | null = null;
-let selectionExplainedBlocks: string[] = [];
-let hasSelectionExplanationFlag = false;
+type ToolAction = 'debug' | 'fix' | 'explain' | 'review';
 
-// State flags for context management
-let hasQuestionFlag = false;
-let solutionVisibleFlag = false;
-let hasExplanationFlag = false;
-let hintVisibleFlag = false;
-let evaluationVisibleFlag = false;
-let practiceTimer: PracticeTimer;
-let timerStatusBar: vscode.StatusBarItem;
-let timerStarted = false;
-let accountStatusBar: vscode.StatusBarItem | null = null;
+type FullQuickAction = PracticeAction | ToolAction;
 
-// Guard flag: set TRUE before any programmatic editor.edit() or
-// runActiveFile() call so the onDidChangeTextDocument listener
-// ignores those events and never accidentally starts the timer.
-let isExtensionEditing = false;
-
-// ─────────────────────────────────────────────────────────────
-// PHASE 2: Practice session tracking
-// These are reset on every new question generation so each
-// practice session is tracked independently.
-// ─────────────────────────────────────────────────────────────
-let hintsUsed = 0;
-let solutionViewed = false;
-
-// ─────────────────────────────────────────────────────────────
-// FIX 2 & 3: detectManualQuestion
-// Detects common coding question patterns for manually pasted
-// questions. Used in onDidChangeTextDocument so the timer starts
-// correctly even when the user pastes their own question without
-// going through AI generation. Also fixes Problem 3 because once
-// hasQuestionFlag is set, buildAvailableActions() works identically
-// for manual and AI-generated flows.
-// ─────────────────────────────────────────────────────────────
-function detectManualQuestion(text: string): boolean {
-	if (text.includes('Question (')) return true;
-	const patterns = [
-		/write\s+a\s+function/i,
-		/write\s+a\s+program/i,
-		/implement\s+a/i,
-		/implement\s+the/i,
-		/create\s+a\s+function/i,
-		/create\s+a\s+program/i,
-		/given\s+an?\s+array/i,
-		/given\s+a\s+string/i,
-		/given\s+a\s+list/i,
-		/given\s+a\s+number/i,
-		/find\s+the\s+/i,
-		/return\s+the\s+/i,
-		/design\s+a\s+/i,
-		/you\s+are\s+given/i,
-		/your\s+task\s+is/i,
-		/write\s+an?\s+algorithm/i,
-		/solve\s+the\s+following/i,
-		/complete\s+the\s+function/i,
-	];
-	return patterns.some(p => p.test(text));
+interface DebugExecutionStep {
+  lineNumber: number;
+  codeLine: string;
+  variableState: Record<string, unknown>;
+  variableChanges: string[];
+  explanation: string;
+  outputEffect: string;
+  conditionResult: 'true' | 'false' | 'n/a';
 }
 
-export function activate(context: vscode.ExtensionContext) {
-	// Initialize context keys
-	vscode.commands.executeCommand('setContext', 'preecode.hasQuestion', false);
-	vscode.commands.executeCommand('setContext', 'preecode.solutionVisible', false);
-	vscode.commands.executeCommand('setContext', 'preecode.hasExplanation', false);
-	vscode.commands.executeCommand('setContext', 'preecode.hintVisible', false);
-	vscode.commands.executeCommand('setContext', 'preecode.evaluationVisible', false);
-	console.log('preecode is now active!');
-
-	// ─────────────────────────────────────────────────────────────
-	// PHASE 3: Auto-login persistence check on activation.
-	// If a token is already stored, user is considered logged in.
-	// No server validation — validation happens on first API call.
-	// ─────────────────────────────────────────────────────────────
-	isLoggedIn(context).then(loggedIn => {
-		if (loggedIn) {
-			console.log('preecode: User session restored.');
-		}
-	});
-
-	// ─────────────────────────────────────────────────────────────
-	// PHASE 1: URI handler for deep link redirect after browser login.
-	// Website redirects to: vscode://<extension-id>/auth?token=JWT
-	// VS Code intercepts this and fires the URI handler below.
-	// ─────────────────────────────────────────────────────────────
-const uriHandler = vscode.window.registerUriHandler({
-	handleUri: async (uri: vscode.Uri) => {
-
-		console.log("FULL URI:", uri.toString());
-		console.log("PATH:", uri.path);
-		console.log("QUERY:", uri.query);
-
-		const params = new URLSearchParams(uri.query);
-		const token = params.get('token');
-
-		if (token) {
-			console.log('[extension] URI handler: received token, saving...');
-			await saveToken(context, token);
-			console.log('[extension] URI handler: token saved, updating account status');
-			vscode.window.showInformationMessage('preecode: Login successful!');
-			// Refresh account status so the status bar shows the signed-in user
-			await new Promise(r => setTimeout(r, 500)); // brief delay to ensure token is persisted
-			try { 
-				await updateAccountStatus(); 
-				console.log('[extension] URI handler: account status updated');
-			} catch (e) { 
-				console.error('[extension] URI handler: failed to update account status', e);
-			}
-		} else {
-			vscode.window.showErrorMessage('No token received.');
-		}
-	}
-});
-
-	context.subscriptions.push(uriHandler);
-
-	// PHASE 1: Login command — opens browser to login page.
-	// After login, website redirects back via vscode:// deep link.
-	const loginCommand = vscode.commands.registerCommand(
-		'preecode.login',
-		async () => {
-				// Include a redirect param so the website can return the JWT
-				// back to the extension using the vscode URI handler.
-				const vscodeRedirect = encodeURIComponent('vscode://prashant.preecode/auth');
-				const loginUrl = vscode.Uri.parse(`https://preecode.vercel.app/login.html?redirect=${vscodeRedirect}`);
-			await vscode.env.openExternal(loginUrl);
-			vscode.window.showInformationMessage(
-				'preecode: Opening login page. After login, you will be redirected back automatically.'
-			);
-		}
-	);
-	context.subscriptions.push(loginCommand);
-
-		// Command: Login with Google (opens backend OAuth flow with vscode redirect)
-		const googleLoginCommand = vscode.commands.registerCommand(
-			'preecode.loginGoogle',
-			async () => {
-				const redirect = encodeURIComponent('vscode://prashant.preecode/auth');
-				const url = `${API_BASE}/auth/google?redirect=${redirect}`;
-				await vscode.env.openExternal(vscode.Uri.parse(url));
-				vscode.window.showInformationMessage('preecode: Opening Google login in browser...');
-			}
-		);
-		context.subscriptions.push(googleLoginCommand);
-
-	// Command: show account details + logout
-	const showAccountCommand = vscode.commands.registerCommand(
-		'preecode.showAccount',
-		async () => {
-			console.log('[extension] showAccount command triggered!');
-			const user: any = await fetchCurrentUser();
-			console.log('[extension] showAccount: user fetched =', user ? user.email : null);
-			if (!user) {
-				const pick = await vscode.window.showInformationMessage(
-					'Not signed in. Sign in now?',
-					'Sign in',
-					'Cancel'
-				);
-				if (pick === 'Sign in') {
-					await vscode.commands.executeCommand('preecode.login');
-				}
-				return;
-			}
-
-			const choice = await vscode.window.showQuickPick([
-				`Username: ${user.username || '(none)'}`,
-				`Email: ${user.email || '(none)'}`,
-				'Submit current question',
-				'Open dashboard',
-				'Logout'
-			], { placeHolder: 'Account' });
-			
-			if (choice === 'Submit current question') {
-				await vscode.commands.executeCommand('preecode.submitCurrentQuestion');
-				return;
-			}
-			if (choice === 'Open dashboard') {
-				const token = await getToken(context);
-				if (token) {
-					const url = `https://preecode.vercel.app/auth/callback.html?token=${encodeURIComponent(token)}`;
-					await vscode.env.openExternal(vscode.Uri.parse(url));
-				} else {
-					await vscode.env.openExternal(vscode.Uri.parse('https://preecode.vercel.app/pages/dashboard.html'));
-				}
-				return;
-			}
-			if (choice === 'Logout') {
-				await deleteToken(context);
-				vscode.window.showInformationMessage('Logged out');
-				updateAccountStatus().catch(() => {});
-			}
-		}
-	);
-	context.subscriptions.push(showAccountCommand);
-
-	// Command: open dashboard directly
-	const openDashboardCommand = vscode.commands.registerCommand(
-		'preecode.openDashboard',
-		async () => {
-			const token = await getToken(context);
-			if (token) {
-				const url = `https://preecode.vercel.app/auth/callback.html?token=${encodeURIComponent(token)}`;
-				await vscode.env.openExternal(vscode.Uri.parse(url));
-			} else {
-				await vscode.env.openExternal(vscode.Uri.parse('https://preecode.vercel.app/pages/dashboard.html'));
-			}
-		}
-	);
-	context.subscriptions.push(openDashboardCommand);
-
-	// Command: submit solution (manual)
-	const submitSolutionCommand = vscode.commands.registerCommand(
-		'preecode.submitSolution',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			const defaultName = editor ? (editor.document.fileName.split('/').pop() || 'submission') : 'submission';
-			const problemName = await vscode.window.showInputBox({ prompt: 'Problem name', value: defaultName });
-			if (!problemName) return;
-			const difficulty = await vscode.window.showQuickPick(['Easy','Medium','Hard'], { placeHolder: 'Difficulty (optional)' });
-			const status = await vscode.window.showQuickPick(['Accepted','Wrong Answer','Runtime Error','Time Limit Exceeded'], { placeHolder: 'Submission status' });
-			if (!status) return;
-
-			// Lazy import to avoid circular issues
-			const api = await import('./services/apiService.js');
-			const timeTaken = timerStatusBar?.text
-				? String(timerStatusBar.text).replace('⏱', '').trim() || '00:00'
-				: '00:00';
-			await api.sendSubmission(context, { problemName, difficulty: difficulty || undefined, status, timeTaken });
-		}
-	);
-	context.subscriptions.push(submitSolutionCommand);
-
-	function extractQuestionForSubmission(editor: vscode.TextEditor): string {
-		const lines = editor.document.getText().split('\n').slice(0, 40);
-		const commentPrefix = editor.document.languageId === 'python' ? '#' : '//';
-		for (const rawLine of lines) {
-			const line = rawLine.trim();
-			if (!line) continue;
-			if (!line.startsWith(commentPrefix)) continue;
-			const cleaned = line.replace(new RegExp(`^\\${commentPrefix}\\s*`), '').trim();
-			if (!cleaned) continue;
-			if (/^question\s*\(/i.test(cleaned)) continue;
-			if (/^hint\s*:/i.test(cleaned)) continue;
-			if (/^solution\s*:/i.test(cleaned)) continue;
-			if (/^evaluation\s*:/i.test(cleaned)) continue;
-			return cleaned;
-		}
-
-		const fileName = editor.document.fileName.split('/').pop() || 'Practice Question';
-		return fileName.replace(/\.[^.]+$/, '');
-	}
-
-	function extractDifficultyForSubmission(editor: vscode.TextEditor): string | undefined {
-		const content = editor.document.getText();
-		const match = content.match(/Question\s*\((Easy|Medium|Hard)\)/i);
-		if (!match) return undefined;
-		const value = match[1].toLowerCase();
-		if (value === 'easy' || value === 'medium' || value === 'hard') {
-			return value;
-		}
-		return undefined;
-	}
-
-	const submitCurrentQuestionCommand = vscode.commands.registerCommand(
-		'preecode.submitCurrentQuestion',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('preecode: Open a question file first.');
-				return;
-			}
-
-			let finalTime = '00:00';
-			if (timerStarted) {
-				finalTime = practiceTimer.stop();
-				timerStarted = false;
-			} else if (timerStatusBar?.text) {
-				finalTime = String(timerStatusBar.text).replace('⏱', '').trim() || '00:00';
-			}
-
-			const question = extractQuestionForSubmission(editor);
-			const difficulty = extractDifficultyForSubmission(editor);
-			const language = editor.document.languageId || 'unknown';
-
-			const status = await vscode.window.showQuickPick(
-				['Accepted', 'Wrong Answer'],
-				{ placeHolder: 'Select submission status for this question' }
-			);
-			if (!status) return;
-
-			const practiceSaved = await sendPracticeData(context, {
-				question,
-				timeTaken: finalTime,
-				hintsUsed,
-				solutionViewed,
-				language,
-				date: new Date().toISOString()
-			});
-
-			const api = await import('./services/apiService.js');
-			const submissionSaved = await api.sendSubmission(context, {
-				problemName: question,
-				difficulty,
-				status,
-				timeTaken: finalTime
-			});
-
-			if (practiceSaved && submissionSaved) {
-				vscode.window.showInformationMessage('preecode: Question submitted to website with timing data.');
-			} else if (practiceSaved || submissionSaved) {
-				vscode.window.showWarningMessage('preecode: Partially submitted. Please check your website dashboard.');
-			} else {
-				vscode.window.showErrorMessage('preecode: Submission failed. Please login and try again.');
-			}
-		}
-	);
-	context.subscriptions.push(submitCurrentQuestionCommand);
-
-	// PHASE 3: Logout command — deletes stored token.
-	const logoutCommand = vscode.commands.registerCommand(
-		'preecode.logout',
-		async () => {
-			await deleteToken(context);
-			vscode.window.showInformationMessage('preecode: Logged out successfully.');
-		}
-	);
-	context.subscriptions.push(logoutCommand);
-
-	// ============================
-	// Create Timer Status Bar
-	// ============================
-	timerStatusBar = vscode.window.createStatusBarItem(
-		vscode.StatusBarAlignment.Right,
-		100
-	);
-
-	timerStatusBar.text = "⏱ 00:00";
-	timerStatusBar.tooltip = "preecode Practice Timer";
-	timerStatusBar.command = "preecode.timerControls";
-	timerStatusBar.show();
-
-		// Account status bar (combined icon + username)
-		accountStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
-		accountStatusBar.command = 'preecode.showAccount';
-		accountStatusBar.text = '$(account) Not signed in';
-		accountStatusBar.tooltip = 'Click to sign in or view account';
-		accountStatusBar.color = '#9CA3AF';
-		accountStatusBar.show();
-		context.subscriptions.push(accountStatusBar);
-
-	// Initialize timer
-	practiceTimer = new PracticeTimer((time) => {
-		timerStatusBar.text = `⏱ ${time}`;
-		postAssistantMessage({ type: 'timer', timer: time });
-	});
-
-
-	async function fetchCurrentUser(): Promise<any | null> {
-		const token = await getToken(context);
-		console.log('[extension] fetchCurrentUser: token exists =', !!token);
-		if (!token) {
-			console.log('[extension] fetchCurrentUser: no token found');
-			return null;
-		}
-
-		try {
-			const url = `${API_BASE}/users/me`;
-			console.log('[extension] fetchCurrentUser: calling', url, 'with token:', token.substring(0, 20) + '...');
-			const res: any = await doFetch(url, {
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
-			
-			console.log('[extension] fetchCurrentUser: response received, type:', typeof res);
-			console.log('[extension] fetchCurrentUser: response ok =', res && res.ok, 'status =', res && res.status);
-			console.log('[extension] fetchCurrentUser: response statusText =', res && res.statusText);
-			
-			if (!res) {
-				console.error('[extension] fetchCurrentUser: response is null/undefined');
-				return null;
-			}
-			
-			if (!res.ok) {
-				const errText = res.statusText || 'unknown error';
-				console.error('[extension] fetchCurrentUser: response not ok -', res.status, errText);
-				return null;
-			}
-			
-			let user: any;
-			try {
-				user = await res.json();
-				console.log('[extension] fetchCurrentUser: parsed JSON successfully, user =', user);
-			} catch (parseErr) {
-				console.error('[extension] fetchCurrentUser: failed to parse JSON response', parseErr);
-				// Try text fallback
-				const text = await res.text();
-				console.log('[extension] fetchCurrentUser: response text =', text);
-				return null;
-			}
-			
-			console.log('[extension] fetchCurrentUser: returning user =', user ? (user.email || user.username) : null);
-			return user;
-		} catch (e) {
-			console.error('[extension] fetchCurrentUser error:', e);
-			if (e instanceof Error) {
-				console.error('[extension] fetchCurrentUser error message:', e.message);
-				console.error('[extension] fetchCurrentUser error stack:', e.stack);
-			}
-			return null;
-		}
-	}
-
-	async function updateAccountStatus() {
-		console.log('[extension] updateAccountStatus: starting');
-		if (!accountStatusBar) {
-			console.log('[extension] updateAccountStatus: accountStatusBar is null');
-			return;
-		}
-		
-		const token = await getToken(context);
-		console.log('[extension] updateAccountStatus: token exists =', !!token);
-		
-		// If no token, show "Sign in"
-		if (!token) {
-			accountStatusBar.text = '$(account) Sign in';
-			accountStatusBar.tooltip = 'Not signed in — click to login';
-			accountStatusBar.color = '#9CA3AF';
-			console.log('[extension] updateAccountStatus: no token, showing sign in');
-			return;
-		}
-		
-		// Token exists — try to fetch user details
-		const user: any = await fetchCurrentUser();
-		console.log('[extension] updateAccountStatus: user =', user ? (user.email || user.username) : null);
-		
-		// If fetch succeeded, show user details
-		if (user) {
-			accountStatusBar.text = `$(account) ${user.username || user.email}`;
-			accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
-			accountStatusBar.color = '#10B981';
-			console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
-			return;
-		}
-		
-		// Token exists but fetch failed — still show user is logged in (fallback)
-		accountStatusBar.text = '$(account) Logged in...';
-		accountStatusBar.tooltip = 'Token saved, user details loading...';
-		accountStatusBar.color = '#10B981'; // green (logged in)
-		console.log('[extension] updateAccountStatus: token exists but user fetch failed, showing fallback');
-	}
-
-	// Refresh account status on activation
-	updateAccountStatus().catch(() => {});
-
-	// Periodically retry fetching user details (every 3 seconds) if token exists
-	// This helps if /users/me was temporarily unavailable
-	setInterval(async () => {
-		const token = await getToken(context);
-		if (token && accountStatusBar && accountStatusBar.text.includes('loading')) {
-			console.log('[extension] periodic retry: attempting to fetch user details...');
-			updateAccountStatus().catch(() => {});
-		}
-	}, 3000);
-
-	// =====================================
-	// START TIMER ON FIRST USER TYPING
-	// FIX 2: Uses detectManualQuestion() so manually pasted questions
-	//        trigger the timer correctly, not just AI-generated ones.
-	// FIX 5: Re-evaluates hasExplanationFlag on every real document
-	//        change so undo/redo keeps Remove Explanation in sync.
-	// =====================================
-	vscode.workspace.onDidChangeTextDocument(async (event) => {
-
-		// Block ALL programmatic edits (editor.edit + save inside runService)
-		if (isExtensionEditing) return;
-
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) return;
-
-		// Only track the active file
-		if (event.document !== editor.document) return;
-
-		// ─────────────────────────────────────────────────────────────
-		// FIX 5: Undo/Redo state sync for explanation flag.
-		// After every real document change (including undo/redo),
-		// re-check whether storedExplanation still exists in the file
-		// and sync hasExplanationFlag accordingly. This costs only one
-		// string check per keystroke and needs no markers.
-		// ─────────────────────────────────────────────────────────────
-		if (storedExplanation) {
-			const docText = event.document.getText();
-			const explanationPresent = docText.includes(storedExplanation);
-			if (explanationPresent !== hasExplanationFlag) {
-				await updateContextFlag('preecode.hasExplanation', explanationPresent);
-			}
-		}
-
-		// Auto-reset selection explanation if user manually deleted all explained blocks.
-		// Check each stored block — if NONE of them exist in the file anymore, clear state.
-		if (hasSelectionExplanationFlag && selectionExplainedBlocks.length > 0) {
-			const currentContent = event.document.getText();
-			const anyBlockStillExists = selectionExplainedBlocks.some(
-				block => currentContent.includes(block)
-			);
-			if (!anyBlockStillExists) {
-				hasSelectionExplanationFlag = false;
-				selectionExplainedBlocks = [];
-				selectionFileSnapshot = null;
-			}
-		}
-
-		// ── FIX 2: Auto-detect manually pasted question ───────────────
-		// Set hasQuestionFlag SYNCHRONOUSLY first so the timer check
-		// on this SAME event sees the updated value immediately.
-		// VS Code does not await async event handlers, so if we only
-		// relied on the await inside updateContextFlag, the in-memory
-		// flag would be set but the timer check below would have already
-		// read the old value. Setting it directly here solves that.
-		if (!hasQuestionFlag) {
-			const docText = event.document.getText();
-			if (detectManualQuestion(docText)) {
-				hasQuestionFlag = true; // sync — makes timer check below work immediately
-				updateContextFlag('preecode.hasQuestion', true); // async — updates VS Code context (no await needed here)
-			}
-		}
-
-		// Timer already running — nothing to do
-		if (timerStarted) return;
-
-		// Only relevant once a question has been detected (AI or manual)
-		if (!hasQuestionFlag) return;
-
-		// A real keystroke: nothing was deleted/replaced AND new text arrived.
-		// Cursor blinks, cursor moves, saves, and auto-format all produce either
-		// zero contentChanges or changes where text === '' — they all fail here.
-		// NOTE: rangeLength > 0 means text was replaced/deleted — we skip those
-		// so that paste-over-selection doesn't trigger the timer either.
-		const userTyped = event.contentChanges.some(change =>
-			change.rangeLength === 0 && change.text.length > 0
-		);
-
-		if (!userTyped) return;
-
-		// ✅ Real user typing confirmed — start the timer
-		practiceTimer.start();
-		timerStarted = true;
-
-		vscode.window.showInformationMessage("Practice timer started");
-	});
-
-	// Helper function to update context flag and variable
-	async function updateContextFlag(contextKey: string, value: boolean) {
-		await vscode.commands.executeCommand('setContext', contextKey, value);
-		if (contextKey === 'preecode.hasQuestion') hasQuestionFlag = value;
-		if (contextKey === 'preecode.solutionVisible') solutionVisibleFlag = value;
-		if (contextKey === 'preecode.hasExplanation') hasExplanationFlag = value;
-		if (contextKey === 'preecode.hintVisible') hintVisibleFlag = value;
-		if (contextKey === 'preecode.evaluationVisible') evaluationVisibleFlag = value;
-	}
-
-	// Build available actions based on current state.
-	// Selection-based actions are injected by the caller after this returns.
-	function buildAvailableActions(): string[] {
-		const actions: string[] = [];
-
-		// Before solution is shown, manage hint toggle
-		if (hasQuestionFlag && !solutionVisibleFlag) {
-			if (hintVisibleFlag) {
-				actions.push('Hide Hint');
-			} else {
-				actions.push('Show Hint');
-			}
-			actions.push('Show Solution');
-		}
-
-		// After solution is shown
-		if (solutionVisibleFlag) {
-			if (!hasExplanationFlag) {
-				actions.push('Explain Code');
-			}
-			if (evaluationVisibleFlag) {
-				actions.push('Remove Evaluation');
-			} else {
-				actions.push('Evaluate Code');
-			}
-		}
-
-		// Explanation handling
-		if (hasExplanationFlag) {
-			actions.push('Remove Explanation');
-		}
-
-		return actions;
-	}
-
-	// Re-sync all in-memory flags against actual file content.
-	// Called every time startPractice dropdown is about to be shown,
-	// so that deletes, undos, and redos are always reflected correctly.
-	function syncFlagsFromFile(editor: vscode.TextEditor): void {
-		const content = editor.document.getText();
-		const trimmed = content.trim();
-
-		// If file is empty or has no question marker and hasQuestionFlag thinks there is one,
-		// reset everything — user wiped the file.
-		if (hasQuestionFlag) {
-			const hasAiQuestion = content.includes('Question (');
-			const hasUserQuestion = isUserWrittenQuestion && trimmed.length > 0;
-			if (!hasAiQuestion && !hasUserQuestion) {
-				hasQuestionFlag = false;
-				hintVisibleFlag = false;
-				solutionVisibleFlag = false;
-				hasExplanationFlag = false;
-				evaluationVisibleFlag = false;
-				return; // nothing more to check
-			}
-		}
-
-		// Sync hint visibility — check if "Hint:" marker is in file
-		if (hintVisibleFlag && !content.includes('Hint:')) {
-			hintVisibleFlag = false;
-		}
-
-		// Sync solution visibility — check if stored solution code is in file
-		if (solutionVisibleFlag && storedSolution && !content.includes(storedSolution)) {
-			solutionVisibleFlag = false;
-		}
-
-		// Sync explanation visibility — check if stored explanation is in file
-		if (hasExplanationFlag && storedExplanation && !content.includes(storedExplanation)) {
-			hasExplanationFlag = false;
-		}
-
-		// Sync evaluation visibility — check if evaluation marker is in file
-		if (evaluationVisibleFlag && !content.includes('Code Evaluation Summary:')) {
-			evaluationVisibleFlag = false;
-		}
-	}
-
-	// Returns true if question exists — either AI-generated header in file
-	// OR in-memory flag is set (covers user-written question sessions where
-	// no "Question (" header is inserted into the file).
-	function detectQuestionInFile(editor: vscode.TextEditor): boolean {
-		if (hasQuestionFlag) return true;
-		const content = editor.document.getText();
-		return content.includes('Question (');
-	}
-
-	// Feature 1: Detects if the file has a user-written question in comments
-	// at the top (before any code), but NO AI-generated "Question (" header.
-	// Returns the extracted question text, or null if not found.
-	function extractUserWrittenQuestion(editor: vscode.TextEditor): string | null {
-		const content = editor.document.getText();
-
-		// If question already active (AI-generated or user-written), do not re-detect
-		if (hasQuestionFlag) return null;
-		if (content.includes('Question (')) return null;
-
-		const lines = content.split('\n');
-		const languageId = editor.document.languageId;
-		const commentPrefix = languageId === 'python' ? '#' : '//';
-
-		const questionLines: string[] = [];
-
-		for (const line of lines) {
-			const trimmed = line.trim();
-
-			// Skip empty lines at top
-			if (trimmed === '') {
-				if (questionLines.length === 0) continue;
-				else break; // blank line ends the comment block
-			}
-
-			// Must be a comment line
-			if (!trimmed.startsWith(commentPrefix)) break;
-
-			// Strip the comment prefix and collect
-			const text = trimmed.replace(new RegExp(`^${commentPrefix}\\s*`), '').trim();
-			if (text.length > 0) {
-				questionLines.push(text);
-			}
-		}
-
-		// Need at least one non-empty comment line to count as a question
-		if (questionLines.length === 0) return null;
-
-		return questionLines.join(' ');
-	}
-
-	const timerControlCommand = vscode.commands.registerCommand(
-		"preecode.timerControls",
-		async () => {
-
-			const action = await vscode.window.showQuickPick(
-				["Pause", "Resume", "Reset", "Stop"],
-				{ placeHolder: "Timer Controls" }
-			);
-
-			if (!action) return;
-
-			if (action === "Pause") {
-				practiceTimer.pause();
-			}
-
-			if (action === "Resume") {
-				practiceTimer.resume();
-			}
-
-			if (action === "Reset") {
-				practiceTimer.reset();
-				timerStarted = false;
-			}
-
-			if (action === "Stop") {
-				const finalTime = practiceTimer.stop();
-				vscode.window.showInformationMessage(
-					`Practice completed in ${finalTime}`
-				);
-				timerStarted = false;
-			}
-		}
-	);
-
-
-	const disposable = vscode.commands.registerCommand(
-		'preecode.startPractice',
-		async () => {
-
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('No active file detected.');
-				return;
-			}
-
-			const hasQuestion = detectQuestionInFile(editor);
-
-			// ================================
-			// GENERATE QUESTION
-			// ================================
-			if (!hasQuestion) {
-
-				// ─────────────────────────────────────────────────────
-				// FEATURE 1: Check if user wrote their own question
-				// in comments at the top of the file.
-				// If yes → generate hint+solution silently, set flags,
-				// then fall through to dropdown immediately.
-				// ─────────────────────────────────────────────────────
-				const userQuestion = extractUserWrittenQuestion(editor);
-
-				if (userQuestion) {
-					const languageId = editor.document.languageId;
-
-					let aiContent: string;
-					try {
-						// Show progress spinner so UI doesn't appear frozen during AI call
-						aiContent = await vscode.window.withProgress(
-							{
-								location: vscode.ProgressLocation.Notification,
-								title: "Generating hint and solution for your question...",
-								cancellable: false
-							},
-							async () => {
-								return await generatePracticeQuestion(
-									userQuestion,
-									languageId,
-									'Medium'
-								);
-							}
-						);
-					} catch {
-						vscode.window.showErrorMessage('AI generation failed.');
-						return;
-					}
-
-					// Parse hint and solution only — question is not inserted
-					const hintMatch = aiContent.match(/\[HINT\]([\s\S]*?)(?=\[SOLUTION\]|$)/);
-					const solutionMatch = aiContent.match(/\[SOLUTION\]([\s\S]*)/);
-
-					storedHint = hintMatch ? hintMatch[1].trim() : null;
-					storedSolution = solutionMatch ? solutionMatch[1].trim() : null;
-					isUserWrittenQuestion = true;
-
-					// Reset practice tracking for new session
-					hintsUsed = 0;
-					solutionViewed = false;
-
-					// Set flags exactly like normal generation
-					await updateContextFlag('preecode.hintVisible', false);
-					await updateContextFlag('preecode.solutionVisible', false);
-					await updateContextFlag('preecode.hasExplanation', false);
-					await updateContextFlag('preecode.evaluationVisible', false);
-					await updateContextFlag('preecode.hasQuestion', true);
-
-					// DO NOT return — fall through to the dropdown below immediately
-
-				} else {
-					// No user-written question found — normal AI question generation flow
-					isUserWrittenQuestion = false;
-
-					// Reset practice tracking for new session
-					hintsUsed = 0;
-					solutionViewed = false;
-
-					// Reset context keys for new question
-					await updateContextFlag('preecode.hintVisible', false);
-					await updateContextFlag('preecode.solutionVisible', false);
-					await updateContextFlag('preecode.hasExplanation', false);
-					await updateContextFlag('preecode.evaluationVisible', false);
-
-					const fileName = editor.document.fileName;
-					const baseName = fileName.split('/').pop()?.toLowerCase() || '';
-
-					let detectedTopic = 'General Programming';
-
-					if (baseName.includes('binary') || baseName.includes('search')) {
-						detectedTopic = 'Searching';
-					} else if (baseName.includes('sort')) {
-						detectedTopic = 'Sorting';
-					} else if (baseName.includes('linked') || baseName.includes('list')) {
-						detectedTopic = 'Linked List';
-					}
-
-					const topicDecision = await vscode.window.showInformationMessage(
-						`Detected Topic: ${detectedTopic}`,
-						{ modal: true },
-						'Continue',
-						'Change Topic'
-					);
-
-					if (!topicDecision) return;
-
-					if (topicDecision === 'Change Topic') {
-						const manualTopic = await vscode.window.showInputBox({
-							prompt: 'Enter topic name manually'
-						});
-
-						if (manualTopic && manualTopic.trim() !== '') {
-							detectedTopic = manualTopic.trim();
-						}
-					}
-
-					const difficulty = await vscode.window.showQuickPick(
-						['Easy', 'Medium', 'Hard'],
-						{ placeHolder: 'Select difficulty level' }
-					);
-
-					if (!difficulty) return;
-
-					const languageId = editor.document.languageId;
-					let aiContent: string;
-
-					try {
-						aiContent = await vscode.window.withProgress(
-							{
-								location: vscode.ProgressLocation.Notification,
-								title: "Generating practice question...",
-								cancellable: false
-							},
-							async () => {
-								return await generatePracticeQuestion(
-									detectedTopic,
-									languageId,
-									difficulty
-								);
-							}
-						);
-					} catch {
-						vscode.window.showErrorMessage('AI generation failed.');
-						return;
-					}
-
-					const commentPrefix = languageId === 'python' ? '# ' : '// ';
-					const headerLine = `${commentPrefix}Question (${difficulty})\n\n`;
-
-					const questionMatch = aiContent.match(/\[QUESTION\]([\s\S]*?)(?=\[HINT\]|\[SOLUTION\]|$)/);
-					const hintMatch = aiContent.match(/\[HINT\]([\s\S]*?)(?=\[SOLUTION\]|$)/);
-					const solutionMatch = aiContent.match(/\[SOLUTION\]([\s\S]*)/);
-
-					storedHint = hintMatch ? hintMatch[1].trim() : null;
-					storedSolution = solutionMatch ? solutionMatch[1].trim() : null;
-
-					let finalContent = headerLine;
-
-					if (questionMatch) {
-						finalContent += questionMatch[1]
-							.trim()
-							.split('\n')
-							.map(line => commentPrefix + line)
-							.join('\n') + '\n\n';
-					}
-
-					// Guard: question insertion must not start the timer
-					isExtensionEditing = true;
-					await editor.edit(editBuilder => {
-						editBuilder.insert(
-							new vscode.Position(0, 0),
-							finalContent
-						);
-					});
-					isExtensionEditing = false;
-
-					await vscode.workspace.getConfiguration('editor').update(
-						'wordWrap',
-						'on',
-						vscode.ConfigurationTarget.Workspace
-					);
-
-					// Set context key and return — normal flow ends here
-					await updateContextFlag('preecode.hasQuestion', true);
-					return;
-				}
-			}
-
-			// ================================
-			// IF QUESTION EXISTS → Show Tools
-			// (also reached after user-written question generation above)
-			// FIX 1: Wrapped in while(true) loop so QuickPick reappears
-			// after each action. Breaks only when user presses Escape.
-			// ================================
-
-			// Re-sync all flags from actual file content before building dropdown.
-			// This ensures deletes, undos, and redos are always reflected correctly.
-			syncFlagsFromFile(editor);
-
-			// If syncFlagsFromFile determined there's no longer a question,
-			// treat this click as a fresh start.
-			if (!hasQuestionFlag) {
-				vscode.window.showInformationMessage('No question found. Use Start Practice to generate one.');
-				return;
-			}
-
-			// FIX 1: while loop keeps QuickPick alive after each action.
-			// User presses Escape (action === undefined) to dismiss.
-			while (true) {
-
-				// Selection check: independent of all question state flags.
-				const selection = editor.selection;
-				const hasSelection = !selection.isEmpty;
-
-				// Build state-based actions first
-				const availableActions = buildAvailableActions();
-
-				// Inject selection actions at the top:
-				// - "Explain Selection" appears whenever text is selected (always)
-				// - "Remove Selection Explanation" appears whenever explanations exist
-				// These are NOT mutually exclusive — both can appear simultaneously.
-				if (hasSelectionExplanationFlag) {
-					availableActions.unshift('Remove Selection Explanation');
-				}
-				if (hasSelection) {
-					availableActions.unshift('Explain Selection');
-				}
-
-				if (availableActions.length === 0) {
-					vscode.window.showInformationMessage('No actions available.');
-					break;
-				}
-
-				const action = await vscode.window.showQuickPick(
-					availableActions,
-					{ placeHolder: 'Select action — press Esc to close' }
-				);
-
-				// Escape pressed → exit loop
-				if (!action) break;
-
-				if (action === 'Explain Selection') {
-					await vscode.commands.executeCommand('preecode.explainSelection');
-				}
-
-				if (action === 'Remove Selection Explanation') {
-					await vscode.commands.executeCommand('preecode.removeSelectionExplanation');
-				}
-
-				if (action === 'Show Hint') {
-					await vscode.commands.executeCommand('preecode.showHint');
-				}
-
-				if (action === 'Hide Hint') {
-					await vscode.commands.executeCommand('preecode.hideHint');
-				}
-
-				if (action === 'Show Solution') {
-					await vscode.commands.executeCommand('preecode.showSolution');
-				}
-
-				if (action === 'Explain Code') {
-					await vscode.commands.executeCommand('preecode.explainCode');
-				}
-
-				if (action === 'Evaluate Code') {
-					await vscode.commands.executeCommand('preecode.evaluateSolution');
-				}
-
-				if (action === 'Remove Evaluation') {
-					await vscode.commands.executeCommand('preecode.removeEvaluation');
-				}
-
-				if (action === 'Remove Explanation') {
-					await vscode.commands.executeCommand('preecode.removeExplanation');
-				}
-			}
-		}
-	);
-
-	const hintCommand = vscode.commands.registerCommand(
-		'preecode.showHint',
-		async () => {
-
-			const editor = vscode.window.activeTextEditor;
-			if (!editor || !storedHint) {
-				vscode.window.showInformationMessage('No hint available.');
-				return;
-			}
-
-			if (editor.document.getText().includes('Hint:')) {
-				vscode.window.showInformationMessage('Hint already revealed.');
-				return;
-			}
-
-			const commentPrefix = editor.document.languageId === 'python' ? '# ' : '// ';
-
-			const hintContent =
-				`\n${commentPrefix}Hint:\n` +
-				storedHint
-					.split('\n')
-					.map(line => commentPrefix + line)
-					.join('\n') +
-				'\n\n';
-
-			// Guard: hint insertion must not start the timer
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				editBuilder.insert(
-					new vscode.Position(editor.document.lineCount, 0),
-					hintContent
-				);
-			});
-			isExtensionEditing = false;
-
-			// PHASE 2: Track hint usage for practice data sync
-			hintsUsed++;
-
-			// Set context key to show hide hint button
-			await updateContextFlag('preecode.hintVisible', true);
-		}
-	);
-
-	const hideHintCommand = vscode.commands.registerCommand(
-		'preecode.hideHint',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('No active file.');
-				return;
-			}
-
-			const currentText = editor.document.getText();
-			const lines = currentText.split('\n');
-			const commentPrefix = editor.document.languageId === 'python' ? '# ' : '// ';
-			const commentChar = commentPrefix.trim(); // '#' or '//'
-
-			// Find the line that starts with "# Hint:" or "// Hint:"
-			let hintStartIndex = -1;
-			for (let i = 0; i < lines.length; i++) {
-				if (lines[i].trim().startsWith(commentPrefix + 'Hint:')) {
-					hintStartIndex = i;
-					break;
-				}
-			}
-
-			if (hintStartIndex === -1) {
-				vscode.window.showErrorMessage('Hint not found.');
-				return;
-			}
-
-			// Find end of hint block (consecutive comment lines)
-			let hintEndIndex = hintStartIndex;
-			for (let i = hintStartIndex + 1; i < lines.length; i++) {
-				const trimmedLine = lines[i].trim();
-				// Continue if line is empty or starts with comment character
-				if (trimmedLine === '' || trimmedLine.startsWith(commentChar)) {
-					hintEndIndex = i;
-					// Stop at blank line
-					if (trimmedLine === '') {
-						break;
-					}
-				} else {
-					// Non-comment line found, stop here
-					hintEndIndex = i - 1;
-					break;
-				}
-			}
-
-			// Remove the hint block
-			lines.splice(hintStartIndex, hintEndIndex - hintStartIndex + 1);
-			const newText = lines.join('\n');
-
-			// Guard: hint removal must not start the timer
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				const fullRange = new vscode.Range(
-					editor.document.positionAt(0),
-					editor.document.positionAt(currentText.length)
-				);
-				editBuilder.replace(fullRange, newText);
-			});
-			isExtensionEditing = false;
-
-			await updateContextFlag('preecode.hintVisible', false);
-			vscode.window.showInformationMessage('Hint hidden.');
-		}
-	);
-
-	const removeHintCommand = vscode.commands.registerCommand(
-		'preecode.removeHint',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('No active file.');
-				return;
-			}
-
-			const currentText = editor.document.getText();
-			const lines = currentText.split('\n');
-			const commentPrefix = editor.document.languageId === 'python' ? '# ' : '// ';
-			const commentChar = commentPrefix.trim(); // '#' or '//'
-
-			// Find the line that starts with "# Hint:" or "// Hint:"
-			let hintStartIndex = -1;
-			for (let i = 0; i < lines.length; i++) {
-				if (lines[i].trim().startsWith(commentPrefix + 'Hint:')) {
-					hintStartIndex = i;
-					break;
-				}
-			}
-
-			if (hintStartIndex === -1) {
-				vscode.window.showErrorMessage('Hint not found.');
-				return;
-			}
-
-			// Find end of hint block (consecutive comment lines)
-			let hintEndIndex = hintStartIndex;
-			for (let i = hintStartIndex + 1; i < lines.length; i++) {
-				const trimmedLine = lines[i].trim();
-				// Continue if line is empty or starts with comment character
-				if (trimmedLine === '' || trimmedLine.startsWith(commentChar)) {
-					hintEndIndex = i;
-					// Stop at blank line
-					if (trimmedLine === '') {
-						break;
-					}
-				} else {
-					// Non-comment line found, stop here
-					hintEndIndex = i - 1;
-					break;
-				}
-			}
-
-			// Remove the hint block
-			lines.splice(hintStartIndex, hintEndIndex - hintStartIndex + 1);
-			const newText = lines.join('\n');
-
-			// Guard: hint removal must not start the timer
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				const fullRange = new vscode.Range(
-					editor.document.positionAt(0),
-					editor.document.positionAt(currentText.length)
-				);
-				editBuilder.replace(fullRange, newText);
-			});
-			isExtensionEditing = false;
-
-			await updateContextFlag('preecode.hintVisible', false);
-			vscode.window.showInformationMessage('Hint removed.');
-		}
-	);
-
-	const solutionCommand = vscode.commands.registerCommand(
-		'preecode.showSolution',
-		async () => {
-
-			const editor = vscode.window.activeTextEditor;
-			if (!editor || !storedSolution) {
-				vscode.window.showInformationMessage('No solution available.');
-				return;
-			}
-
-			const currentText = editor.document.getText();
-
-			if (currentText.includes(storedSolution)) {
-				vscode.window.showInformationMessage('Solution already revealed.');
-				return;
-			}
-
-			const solutionContent = `\n${storedSolution}\n\n`;
-
-			// Guard: solution insertion must not start the timer
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				editBuilder.insert(
-					new vscode.Position(editor.document.lineCount, 0),
-					solutionContent
-				);
-			});
-			isExtensionEditing = false;
-
-			// PHASE 2: Track solution view for practice data sync
-			solutionViewed = true;
-
-			// Set context key to show explain and evaluate options
-			await updateContextFlag('preecode.solutionVisible', true);
-		}
-	);
-
-	const evaluateCommand = vscode.commands.registerCommand(
-		'preecode.evaluateSolution',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('No active file.');
-				return;
-			}
-
-			if (!storedSolution) {
-				vscode.window.showErrorMessage('No solution available for evaluation.');
-				return;
-			}
-
-			const userCode = editor.document.getText();
-			const languageId = editor.document.languageId;
-			const commentPrefix = languageId === 'python' ? '# ' : '// ';
-
-			let evaluationResult: string;
-
-			try {
-				evaluationResult = await vscode.window.withProgress(
-					{
-						location: vscode.ProgressLocation.Notification,
-						title: "Evaluating your code...",
-						cancellable: false
-					},
-					async () => {
-						const response = await openai.chat.completions.create({
-							model: "gpt-4o-mini",
-							messages: [
-								{
-									role: "user",
-									content: `You are a code reviewer. Analyze this ${languageId} code and provide a SHORT evaluation.
-
-REFERENCE SOLUTION:
-${storedSolution}
-
-USER'S CODE:
-${userCode}
-
-Respond EXACTLY in this format (no markdown, no decorators):
-
-Code Evaluation Summary:
-
-Correctness:
-<2 sentences max about correctness. Use "Your code">
-
-Edge Cases:
-<2 sentences max, or "Handles edge cases well">
-
-Time Complexity:
-<2 sentences max, or "Complexity is appropriate">
-
-Code Quality:
-<2 sentences max, or "Code is clean and readable">
-
-Final Verdict:
-<Correct / Partially Correct / Needs Improvement>
-
-IF YOUR CODE NEEDS IMPROVEMENTS, append this section ONLY IF NEEDED:
-
-Suggestions:
-
-LINE <number>:
-Issue: <brief issue description>
-Better Approach: <what to do instead>
-Example Replacement: <1-2 lines of code>
-
-Only suggest lines with clear improvements. Keep to 2-3 suggestions maximum.
-
-IMPORTANT:
-- Do NOT add markdown formatting.
-- Do NOT wrap anything in backticks.
-- Do NOT add decorative lines or borders.
-- Speak directly: "Your code" not "the user's code".
-- If no improvements needed, do NOT include Suggestions section.`
-								}
-							],
-							temperature: 0.4
-						});
-
-						return response.choices[0].message.content || "Evaluation could not be generated.";
-					}
-				);
-
-				// Parse evaluation response
-				const summaryMatch = evaluationResult.match(/Code Evaluation Summary:([\s\S]*?)(?=Suggestions:|$)/);
-				const suggestionsMatch = evaluationResult.match(/Suggestions:([\s\S]*?)$/);
-
-				const summary = summaryMatch ? summaryMatch[1].trim() : evaluationResult;
-				const suggestionsText = suggestionsMatch ? suggestionsMatch[1].trim() : '';
-
-				// Check if evaluation already exists
-				const currentFullText = editor.document.getText();
-				if (currentFullText.includes('Code Evaluation Summary:')) {
-					vscode.window.showWarningMessage('Evaluation already exists. Remove it before running again.');
-					return;
-				}
-
-				// Insert summary at end of file
-				const summaryBlock =
-					`\n\n${commentPrefix}Evaluation:\n` +
-					summary
-						.split('\n')
-						.map(line => commentPrefix + (line.trim() ? line : ''))
-						.join('\n') +
-					'\n';
-
-				// Guard: evaluation insertion must not start the timer
-				isExtensionEditing = true;
-				await editor.edit(editBuilder => {
-					editBuilder.insert(
-						new vscode.Position(editor.document.lineCount, 0),
-						summaryBlock
-					);
-				});
-				isExtensionEditing = false;
-
-				// Set evaluation flag
-				await updateContextFlag('preecode.evaluationVisible', true);
-
-				// Do not auto-submit based on AI evaluation verdict.
-				// User should explicitly submit with status from account menu.
-
-				if (suggestionsText.length > 0) {
-					const lineMatches = suggestionsText.matchAll(/LINE\s*(\d+):([\s\S]*?)(?=LINE\s*\d+:|$)/gi);
-					const suggestions = Array.from(lineMatches).map(match => ({
-						lineNumber: parseInt(match[1]),
-						content: match[2].trim()
-					}));
-
-					// Sort by line number descending to avoid offset issues
-					suggestions.sort((a, b) => b.lineNumber - a.lineNumber);
-
-					const updatedText = editor.document.getText();
-					const lines = updatedText.split('\n');
-
-					for (const suggestion of suggestions) {
-						const lineIndex = suggestion.lineNumber - 1;
-
-						if (lineIndex >= 0 && lineIndex < lines.length) {
-							// Check if suggestion already exists
-							if (!lines[lineIndex - 1]?.includes('Suggestion:')) {
-								const suggestionLines = suggestion.content
-									.split('\n')
-									.filter(line => line.trim().length > 0)
-									.map(line => commentPrefix + line.trim())
-									.join('\n');
-
-								const insertionPos = new vscode.Position(lineIndex, 0);
-
-								// Guard: each inline suggestion must not start the timer
-								isExtensionEditing = true;
-								await editor.edit(editBuilder => {
-									editBuilder.insert(insertionPos, suggestionLines + '\n');
-								});
-								isExtensionEditing = false;
-							}
-						}
-					}
-				}
-
-				vscode.window.showInformationMessage('Code evaluation complete. Review suggestions in file.');
-
-			} catch (error) {
-				vscode.window.showErrorMessage('Code evaluation failed. Please try again.');
-				console.error('Evaluation error:', error);
-			}
-		}
-	);
-
-	const explainCommand = vscode.commands.registerCommand(
-		'preecode.explainCode',
-		async () => {
-			console.log("Explain Code clicked");
-			vscode.window.showInformationMessage("Explain command triggered");
-
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showInformationMessage('No active file.');
-				return;
-			}
-
-			const fullText = editor.document.getText();
-
-			if (!storedSolution || !fullText.includes(storedSolution)) {
-				vscode.window.showInformationMessage('Generate solution first.');
-				return;
-			}
-
-			try {
-
-				const explainedCode = await vscode.window.withProgress(
-					{
-						location: vscode.ProgressLocation.Notification,
-						title: "Explaining code...",
-						cancellable: false
-					},
-					async () => {
-
-						const response = await openai.chat.completions.create({
-							model: "gpt-4o-mini",
-							messages: [
-								{
-									role: "user",
-									content: `
-Explain the following ${editor.document.languageId} code.
-
-Rules:
-- Add ONE short comment line before each line of code.
-- Do NOT remove original code.
-- Do NOT add markdown formatting.
-- Do NOT wrap in triple backticks.
-- Return ONLY code with explanation comments.
-
-Code:
-${storedSolution}
-`
-								}
-							],
-							temperature: 0.3
-						});
-
-						return response.choices[0].message.content || "";
-					}
-				);
-
-				const currentText = editor.document.getText();
-
-				// ── FIX 4: Safe line-boundary insertion ──────────────────────
-				// Old approach: currentText.replace(storedSolution, explainedCode)
-				// Problem: raw string replace can land mid-line and break syntax.
-				// Fix: locate the exact character position of storedSolution,
-				// convert to VS Code positions, snap both ends to full line
-				// boundaries, then replace that clean Range. Never mid-line.
-				const solutionStartIndex = currentText.indexOf(storedSolution!);
-				if (solutionStartIndex === -1) {
-					vscode.window.showInformationMessage('Solution block not found in file.');
-					return;
-				}
-
-				const solutionEndIndex = solutionStartIndex + storedSolution!.length;
-				const rawStartPos = editor.document.positionAt(solutionStartIndex);
-				const rawEndPos = editor.document.positionAt(solutionEndIndex);
-
-				// Snap to line boundaries so insertion is always clean
-				const safeStart = new vscode.Position(rawStartPos.line, 0);
-				const safeEnd = new vscode.Position(
-					rawEndPos.line,
-					editor.document.lineAt(rawEndPos.line).text.length
-				);
-				const safeRange = new vscode.Range(safeStart, safeEnd);
-
-				// Guard: explanation replacement must not start the timer
-				isExtensionEditing = true;
-				await editor.edit(editBuilder => {
-					editBuilder.replace(safeRange, explainedCode.trim());
-				});
-				isExtensionEditing = false;
-
-				// Store explanation and update context flag
-				storedExplanation = explainedCode.trim();
-				await updateContextFlag('preecode.hasExplanation', true);
-
-			} catch (error) {
-				vscode.window.showErrorMessage('Explanation failed.');
-			}
-		}
-	);
-
-	const removeExplanationCommand = vscode.commands.registerCommand(
-		'preecode.removeExplanation',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor || !storedExplanation) {
-				vscode.window.showInformationMessage('No explanation to remove.');
-				return;
-			}
-
-			const currentText = editor.document.getText();
-
-			// Revert to stored solution
-			if (storedSolution && currentText.includes(storedExplanation)) {
-				const revertedText = currentText.replace(
-					storedExplanation,
-					storedSolution
-				);
-
-				// Guard: revert replacement must not start the timer
-				isExtensionEditing = true;
-				await editor.edit(editBuilder => {
-					const fullRange = new vscode.Range(
-						editor.document.positionAt(0),
-						editor.document.positionAt(currentText.length)
-					);
-					editBuilder.replace(fullRange, revertedText);
-				});
-				isExtensionEditing = false;
-
-				// Clear explanation and update context flag
-				storedExplanation = null;
-				await updateContextFlag('preecode.hasExplanation', false);
-			}
-		}
-	);
-
-	const removeEvaluationCommand = vscode.commands.registerCommand(
-		'preecode.removeEvaluation',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showErrorMessage('No active file.');
-				return;
-			}
-
-			const currentText = editor.document.getText();
-			const lines = currentText.split('\n');
-			const commentPrefix = editor.document.languageId === 'python' ? '# ' : '// ';
-			const commentChar = commentPrefix.trim(); // '#' or '//'
-
-			// Find the line that starts with "# Evaluation:" or "// Evaluation:"
-			let evalStartIndex = -1;
-			for (let i = 0; i < lines.length; i++) {
-				if (lines[i].trim().startsWith(commentPrefix + 'Evaluation:')) {
-					evalStartIndex = i;
-					break;
-				}
-			}
-
-			if (evalStartIndex === -1) {
-				vscode.window.showErrorMessage('Evaluation not found.');
-				return;
-			}
-
-			// Find end of evaluation block (consecutive comment lines)
-			let evalEndIndex = evalStartIndex;
-			for (let i = evalStartIndex + 1; i < lines.length; i++) {
-				const trimmedLine = lines[i].trim();
-				// Continue if line is empty or starts with comment character
-				if (trimmedLine === '' || trimmedLine.startsWith(commentChar)) {
-					evalEndIndex = i;
-					// Stop at blank line
-					if (trimmedLine === '') {
-						break;
-					}
-				} else {
-					// Non-comment line found, stop here
-					evalEndIndex = i - 1;
-					break;
-				}
-			}
-
-			// Remove the evaluation block
-			lines.splice(evalStartIndex, evalEndIndex - evalStartIndex + 1);
-			const newText = lines.join('\n');
-
-			// Guard: evaluation removal must not start the timer
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				const fullRange = new vscode.Range(
-					editor.document.positionAt(0),
-					editor.document.positionAt(currentText.length)
-				);
-				editBuilder.replace(fullRange, newText);
-			});
-			isExtensionEditing = false;
-
-			await updateContextFlag('preecode.evaluationVisible', false);
-			vscode.window.showInformationMessage('Evaluation removed.');
-		}
-	);
-
-	// ─────────────────────────────────────────────────────────────
-	// RUN COMMAND
-	// isExtensionEditing wraps runActiveFile() to block the
-	// save() inside runService from accidentally starting the timer.
-	// ─────────────────────────────────────────────────────────────
-	const runCommand = vscode.commands.registerCommand(
-		'preecode.run',
-		async () => {
-
-			// Block the save() inside runActiveFile from triggering the timer
-			isExtensionEditing = true;
-			const result = await runActiveFile();
-			isExtensionEditing = false;
-
-			if (result.success) {
-				// Stop timer ONLY if it was actually started by real user typing
-				if (timerStarted) {
-					const finalTime = practiceTimer.stop();
-					timerStarted = false;
-					vscode.window.showInformationMessage(
-						`Practice completed in ${finalTime}`
-					);
-
-					// ─────────────────────────────────────────────────────
-					// PHASE 2: Send practice data to backend after success.
-					// All session data is available here in extension.ts —
-					// no changes needed in runService.ts.
-					// ─────────────────────────────────────────────────────
-					const editor = vscode.window.activeTextEditor;
-					const language = editor?.document.languageId ?? 'unknown';
-					const question = storedSolution
-						? (storedHint ?? 'Practice session')
-						: 'Practice session';
-
-					sendPracticeData(context, {
-						question: question,
-						timeTaken: finalTime,
-						hintsUsed: hintsUsed,
-						solutionViewed: solutionViewed,
-						language: language,
-						date: new Date().toISOString()
-					}); // intentionally not awaited — fire and forget, don't block UI
-
-					// No auto-submission on run.
-					// Running code only saves practice time; submission status is user-selected.
-				}
-			} else {
-				vscode.window.showErrorMessage(
-					result.error || "Execution failed."
-				);
-			}
-		}
-	);
-
-	// ─────────────────────────────────────────────────────────────
-	// FEATURE 2: EXPLAIN SELECTION
-	// Explains only the currently selected lines of code.
-	// Inserts comment-per-line explanations above each selected line.
-	// Tracked separately from storedExplanation (full-solution explain).
-	// ─────────────────────────────────────────────────────────────
-	const explainSelectionCommand = vscode.commands.registerCommand(
-		'preecode.explainSelection',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor) {
-				vscode.window.showInformationMessage('No active file.');
-				return;
-			}
-
-			const selection = editor.selection;
-			if (selection.isEmpty) {
-				vscode.window.showInformationMessage('No text selected. Please select code first.');
-				return;
-			}
-
-			// ── BUG 1 FIX: Expand selection to full line boundaries ───────
-			// If user selects a partial line (e.g. just "in" from "for char in s:"),
-			// replacing that mid-line token with a multi-line explained block
-			// breaks indentation and splits the line, causing syntax errors.
-			// Fix: always expand to complete lines — from col 0 of the first
-			// selected line to the end of the last selected line.
-			// This means the AI sees and replaces complete lines only.
-			const startLine = selection.start.line;
-			const endLine = selection.end.line;
-			const fullLineRange = new vscode.Range(
-				new vscode.Position(startLine, 0),
-				new vscode.Position(endLine, editor.document.lineAt(endLine).text.length)
-			);
-
-			// Capture the FULL LINES of selected text to send to AI
-			const selectedText = editor.document.getText(fullLineRange);
-			const languageId = editor.document.languageId;
-
-			let explainedBlock: string;
-
-			try {
-				explainedBlock = await vscode.window.withProgress(
-					{
-						location: vscode.ProgressLocation.Notification,
-						title: "Explaining selection...",
-						cancellable: false
-					},
-					async () => {
-						const response = await openai.chat.completions.create({
-							model: "gpt-4o-mini",
-							messages: [
-								{
-									role: "user",
-									content: `You are a coding tutor explaining code to a beginner.
-
-Explain the following ${languageId} code selection line by line.
-
-Rules:
-- Before EACH line of code, add ONE short comment explaining what that line does.
-- Use very simple, clear language. Avoid jargon.
-- Be creative and use different analogies or examples each time.
-- If helpful, add a tiny inline example in the comment.
-- Do NOT remove any original code lines.
-- Do NOT add markdown formatting.
-- Do NOT wrap in triple backticks.
-- Do NOT add decorative borders or separators.
-- Return ONLY the commented + original code. Nothing else.
-
-Code to explain:
-${selectedText}`
-								}
-							],
-							temperature: 0.7
-						});
-
-						return response.choices[0].message.content?.trim() || selectedText;
-					}
-				);
-			} catch {
-				vscode.window.showErrorMessage('Explanation failed. Please try again.');
-				return;
-			}
-
-			// On FIRST explain: save a snapshot of the full file before any changes.
-			// This snapshot is what "Remove Selection Explanation" restores.
-			if (!hasSelectionExplanationFlag) {
-				selectionFileSnapshot = editor.document.getText();
-			}
-
-			// Track this explained block for auto-detection of manual deletion
-			selectionExplainedBlocks.push(explainedBlock);
-			hasSelectionExplanationFlag = true;
-
-			// Replace the full-line range (not the original partial selection)
-			// so the explained block always lands on clean line boundaries
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				editBuilder.replace(fullLineRange, explainedBlock);
-			});
-			isExtensionEditing = false;
-
-			vscode.window.showInformationMessage('Selection explained. Select more to explain again, or use Remove Selection Explanation to remove all.');
-		}
-	);
-
-	// ─────────────────────────────────────────────────────────────
-	// FEATURE 2: REMOVE SELECTION EXPLANATION
-	// Reverts the explained block back to the original selected code.
-	// ─────────────────────────────────────────────────────────────
-	const removeSelectionExplanationCommand = vscode.commands.registerCommand(
-		'preecode.removeSelectionExplanation',
-		async () => {
-			const editor = vscode.window.activeTextEditor;
-			if (!editor || !hasSelectionExplanationFlag || !selectionFileSnapshot) {
-				vscode.window.showInformationMessage('No selection explanation to remove.');
-				return;
-			}
-
-			// Restore the full file snapshot taken before the first explain.
-			// This removes ALL accumulated selection explanations at once,
-			// regardless of how many times the user selected and explained.
-			isExtensionEditing = true;
-			await editor.edit(editBuilder => {
-				const fullRange = new vscode.Range(
-					editor.document.positionAt(0),
-					editor.document.positionAt(editor.document.getText().length)
-				);
-				editBuilder.replace(fullRange, selectionFileSnapshot!);
-			});
-			isExtensionEditing = false;
-
-			// Clear all selection explanation state
-			hasSelectionExplanationFlag = false;
-			selectionExplainedBlocks = [];
-			selectionFileSnapshot = null;
-
-			vscode.window.showInformationMessage('All selection explanations removed.');
-		}
-	);
-
-	// ─────────────────────────────────────────────────────────────
-	// PREECODE AI ASSISTANT PANEL (RIGHT SIDE)
-	// ─────────────────────────────────────────────────────────────
-	let assistantView: vscode.WebviewView | null = null;
-	let assistantDiagnosticsTimer: NodeJS.Timeout | null = null;
-	let assistantTypingTimer: NodeJS.Timeout | null = null;
-	let lastDiagnosticsSummary: DiagnosticsSummary | null = null;
-	let assistantStatusBar: vscode.StatusBarItem | null = null;
-	const assistantIssueDecoration = vscode.window.createTextEditorDecorationType({
-		backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
-		borderColor: new vscode.ThemeColor('editorWarning.foreground'),
-		borderStyle: 'solid',
-		borderWidth: '1px'
-	});
-
-	function getUserName(): string {
-		return process.env.USER || process.env.USERNAME || 'User';
-	}
-
-	function getWebviewHtml(webview: vscode.Webview): string {
-		const htmlPath = vscode.Uri.joinPath(context.extensionUri, 'webview', 'index.html');
-		const htmlContent = fs.readFileSync(htmlPath.fsPath, 'utf8');
-		const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'webview', 'style.css'));
-		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'webview', 'script.js'));
-		const nonce = String(Date.now());
-
-		return htmlContent
-			.replace(/\{\{styleUri\}\}/g, styleUri.toString())
-			.replace(/\{\{scriptUri\}\}/g, scriptUri.toString())
-			.replace(/\{\{nonce\}\}/g, nonce)
-			.replace(/\{\{cspSource\}\}/g, webview.cspSource);
-	}
-
-	function postAssistantMessage(message: any) {
-		assistantView?.webview.postMessage(message);
-	}
-
-	function getTopIssueRange(editor: vscode.TextEditor, summary: DiagnosticsSummary): vscode.Range | null {
-		const topIssue = summary.issues.find(issue => issue.severity === 'error') || summary.issues[0];
-		if (!topIssue) return null;
-		const start = new vscode.Position(Math.max(topIssue.line - 1, 0), Math.max(topIssue.character - 1, 0));
-		let end = new vscode.Position(Math.max(topIssue.endLine - 1, 0), Math.max(topIssue.endCharacter - 1, 0));
-		if (start.isEqual(end)) {
-			const lineText = editor.document.lineAt(start.line).text;
-			const toChar = Math.min(start.character + Math.max(lineText.length, 1), lineText.length);
-			end = new vscode.Position(start.line, Math.max(toChar, start.character + 1));
-		}
-		return new vscode.Range(start, end);
-	}
-
-	function highlightTopIssue(editor: vscode.TextEditor, summary: DiagnosticsSummary) {
-		const range = getTopIssueRange(editor, summary);
-		editor.setDecorations(assistantIssueDecoration, range ? [range] : []);
-	}
-
-	function extractTopIssueText(editor: vscode.TextEditor, summary: DiagnosticsSummary): string {
-		const range = getTopIssueRange(editor, summary);
-		if (!range) return '';
-		return editor.document.getText(range).trim();
-	}
-
-	function updateAssistantFileInfo(editor: vscode.TextEditor | undefined) {
-		if (!editor) return;
-		postAssistantMessage({
-			type: 'fileInfo',
-			fileName: path.basename(editor.document.fileName),
-			language: editor.document.languageId
-		});
-	}
-
-	function buildMonitorPayload(
-		editor: vscode.TextEditor | undefined,
-		summary?: DiagnosticsSummary,
-		state?: string
-	) {
-		if (!editor) {
-			return {
-				state: state || 'No active file',
-				errors: 0,
-				warnings: 0,
-				selection: 'No selection',
-				visibleRange: '-',
-				topIssue: 'No issue detected'
-			};
-		}
-
-		const workingSummary = summary || summarizeDiagnostics(editor.document);
-		const errors = workingSummary.issues.filter(issue => issue.severity === 'error').length;
-		const warnings = workingSummary.issues.filter(issue => issue.severity === 'warning').length;
-
-		const selection = editor.selection;
-		const hasSelection = selection && !selection.isEmpty;
-		const selectedText = hasSelection
-			? editor.document.getText(selection).replace(/\s+/g, ' ').trim().slice(0, 120)
-			: '';
-
-		const selectionLabel = hasSelection
-			? `L${selection.start.line + 1}-L${selection.end.line + 1}: ${selectedText || '(blank)'}`
-			: `Cursor at L${selection.active.line + 1}`;
-
-		const firstVisible = editor.visibleRanges?.[0];
-		const visibleRange = firstVisible
-			? `L${firstVisible.start.line + 1} - L${firstVisible.end.line + 1}`
-			: '-';
-
-		const topIssue = workingSummary.issues[0]
-			? `${workingSummary.issues[0].severity.toUpperCase()}: ${workingSummary.issues[0].message}`
-			: 'No issue detected';
-
-		let monitorState = state || 'Monitoring';
-		if (errors > 0) {
-			monitorState = 'Issue detected';
-		} else if (warnings > 0) {
-			monitorState = 'Warning detected';
-		}
-
-		return {
-			state: monitorState,
-			errors,
-			warnings,
-			selection: selectionLabel,
-			visibleRange,
-			topIssue
-		};
-	}
-
-	function sendMonitorUpdate(editor: vscode.TextEditor | undefined, summary?: DiagnosticsSummary, state?: string) {
-		postAssistantMessage({
-			type: 'monitor',
-			payload: buildMonitorPayload(editor, summary, state)
-		});
-	}
-
-	function updateAssistantStatusBar(summary: DiagnosticsSummary) {
-		if (!assistantStatusBar) return;
-		const hasIssues = hasIssueState(summary);
-		assistantStatusBar.text = hasIssues ? '$(hubot) $(circle-filled)' : '$(hubot)';
-		assistantStatusBar.color = hasIssues
-			? new vscode.ThemeColor('statusBarItem.warningForeground')
-			: undefined;
-	}
-
-	function updateAssistantDiagnostics(editor: vscode.TextEditor | undefined) {
-		if (!editor) return;
-		const summary = summarizeDiagnostics(editor.document);
-		lastDiagnosticsSummary = summary;
-		const monitor = buildMonitorPayload(editor, summary);
-		postAssistantMessage({
-			type: 'diagnostics',
-			hasIssues: hasIssueState(summary),
-			monitor
-		});
-		updateAssistantStatusBar(summary);
-		highlightTopIssue(editor, summary);
-	}
-
-	function scheduleAssistantDiagnostics(editor: vscode.TextEditor | undefined) {
-		if (!editor) return;
-		if (assistantDiagnosticsTimer) {
-			clearTimeout(assistantDiagnosticsTimer);
-		}
-		assistantDiagnosticsTimer = setTimeout(() => {
-			updateAssistantDiagnostics(editor);
-		}, 1200);
-	}
-
-	function notifyTyping() {
-		if (assistantTypingTimer) return;
-		postAssistantMessage({ type: 'typing' });
-		sendMonitorUpdate(vscode.window.activeTextEditor, lastDiagnosticsSummary || undefined, 'User is typing');
-		assistantTypingTimer = setTimeout(() => {
-			sendMonitorUpdate(vscode.window.activeTextEditor, lastDiagnosticsSummary || undefined, 'Monitoring');
-			assistantTypingTimer = null;
-		}, 400);
-	}
-
-	function buildLocalLineExecution(editor: vscode.TextEditor): string[] {
-		const lines = editor.document.getText().split('\n').slice(0, 10);
-		const execution: string[] = [];
-		let step = 1;
-		for (let index = 0; index < lines.length; index++) {
-			const raw = lines[index];
-			const line = raw.trim();
-			if (!line || line.startsWith('#') || line.startsWith('//')) continue;
-			execution.push(`${step}. Line ${index + 1}: runs \"${line.slice(0, 60)}\".`);
-			if (/=/.test(line) && !/==|!=|<=|>=/.test(line)) {
-				execution.push(`${step}. Variable update: assignment changes program state.`);
-			}
-			if (/if |for |while /.test(line)) {
-				execution.push(`${step}. Control flow: this condition/loop decides next path.`);
-			}
-			step++;
-			if (step > 7) break;
-		}
-		return execution.length ? execution : ['1. Program starts from top and executes line by line.'];
-	}
-
-	function createLocalAssistantResponse(
-		action: AssistantAction,
-		editor: vscode.TextEditor,
-		summary: DiagnosticsSummary
-	): LocalAssistantResponse {
-		const originalCode = editor.document.getText();
-		let fixedCode = originalCode;
-		const steps: string[] = [];
-		let highlightIssue = extractTopIssueText(editor, summary);
-		let highlightFix = '';
-
-		const replacements: Array<{ find: RegExp; replace: string; issue: string; fix: string }> = [
-			{ find: /\bretrn\b/g, replace: 'return', issue: 'retrn', fix: 'return' },
-			{ find: /\bpritn\b/g, replace: 'print', issue: 'pritn', fix: 'print' },
-			{ find: /\bdeff\b/g, replace: 'def', issue: 'deff', fix: 'def' },
-			{ find: /\bflase\b/g, replace: 'False', issue: 'flase', fix: 'False' },
-			{ find: /\bture\b/g, replace: 'True', issue: 'ture', fix: 'True' }
-		];
-
-		replacements.forEach((rule) => {
-			if (rule.find.test(fixedCode)) {
-				fixedCode = fixedCode.replace(rule.find, rule.replace);
-				steps.push(`Replace "${rule.issue}" with "${rule.fix}".`);
-				if (!highlightFix) {
-					highlightIssue = highlightIssue || rule.issue;
-					highlightFix = rule.fix;
-				}
-			}
-		});
-
-		if (editor.document.languageId === 'python') {
-			const lines = fixedCode.split('\n');
-			for (let index = 0; index < lines.length; index++) {
-				const line = lines[index];
-				if (/^\s*(if|elif|else|for|while|def|class|try|except|finally)\b/.test(line)) {
-					const trimmed = line.trim();
-					if (!trimmed.endsWith(':')) {
-						lines[index] = `${line}:`;
-						steps.push(`Added missing ':' at line ${index + 1}.`);
-						if (!highlightFix) {
-							highlightIssue = highlightIssue || trimmed;
-							highlightFix = `${trimmed}:`;
-						}
-					}
-				}
-			}
-			fixedCode = lines.join('\n');
-		}
-
-		const changed = fixedCode !== originalCode;
-		const issue = summary.issues[0];
-		const baseReason = issue
-			? `${issue.severity.toUpperCase()} on line ${issue.line}: ${issue.message}`
-			: 'No diagnostics details were available.';
-
-		let problem = 'No immediate fix generated locally.';
-		if (changed) {
-			problem = 'Issue detected and corrected with local safe fixes.';
-		} else if (summary.issues.length) {
-			problem = 'Detected issue needs deeper AI analysis or manual change.';
-		}
-
-		let localSteps = steps;
-		if (!localSteps.length) {
-			localSteps = [
-				'Review the top diagnostic message and line number in the monitor.',
-				'Use Debug Code for explanation and apply a manual correction.',
-				'Configure OPENAI_API_KEY for advanced automatic fixes.'
-			];
-		}
-
-		if (!highlightIssue && summary.issues[0]) {
-			highlightIssue = `Line ${summary.issues[0].line}: ${summary.issues[0].message}`;
-		}
-		if (!highlightFix) {
-			highlightFix = changed ? 'Review fixed code version below.' : 'No automatic replacement found.';
-		}
-
-		const suggestions = [
-			'Save and run the file after applying fixes.',
-			'Keep function names and keywords spell-checked.',
-			'Use the monitor panel to follow new diagnostics instantly.'
-		];
-
-		return {
-			problem,
-			reason: baseReason,
-			step_by_step: localSteps,
-			line_execution: action === 'line_execution' ? buildLocalLineExecution(editor) : [],
-			fixed_code: fixedCode,
-			suggestions,
-			highlight_issue: highlightIssue,
-			highlight_fix: highlightFix,
-			changed
-		};
-	}
-
-	async function applyFixedCode(editor: vscode.TextEditor, fixedCode: string): Promise<void> {
-		isExtensionEditing = true;
-		try {
-			await editor.edit((editBuilder) => {
-				const fullRange = new vscode.Range(
-					editor.document.positionAt(0),
-					editor.document.positionAt(editor.document.getText().length)
-				);
-				editBuilder.replace(fullRange, fixedCode);
-			});
-		} finally {
-			isExtensionEditing = false;
-		}
-	}
-
-	async function handleAssistantAction(action: AssistantAction) {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			postAssistantMessage({
-				type: 'assistantError',
-				error: 'Open a file to use Preecode AI.'
-			});
-			return;
-		}
-
-		const summary = summarizeDiagnostics(editor.document);
-		lastDiagnosticsSummary = summary;
-		highlightTopIssue(editor, summary);
-		const diagnostics = diagnosticsToPrompt(summary);
-		const selection = editor.selection;
-		const selectedText = selection && !selection.isEmpty
-			? editor.document.getText(selection)
-			: undefined;
-		const selectedLine = selection ? selection.active.line + 1 : undefined;
-
-		try {
-			const response = await requestAssistantAnalysis({
-				action,
-				code: editor.document.getText(),
-				language: editor.document.languageId,
-				diagnostics,
-				selectedLine,
-				selectedText,
-				fileName: path.basename(editor.document.fileName)
-			});
-			const enrichedResponse: any = response;
-			if (!enrichedResponse.highlight_issue) {
-				enrichedResponse.highlight_issue = extractTopIssueText(editor, summary) || '-';
-			}
-			if (!enrichedResponse.highlight_fix) {
-				enrichedResponse.highlight_fix = 'Use Fix Code to apply correction.';
-			}
-			postAssistantMessage({ type: 'assistantResponse', payload: enrichedResponse });
-		} catch (error: any) {
-			const localResponse = createLocalAssistantResponse(action, editor, summary);
-			if (action === 'fix' && localResponse.changed) {
-				await applyFixedCode(editor, localResponse.fixed_code);
-				updateAssistantDiagnostics(editor);
-			}
-			postAssistantMessage({ type: 'assistantResponse', payload: localResponse });
-		}
-	}
-
-	class AssistantViewProvider implements vscode.WebviewViewProvider {
-		resolveWebviewView(webviewView: vscode.WebviewView) {
-			assistantView = webviewView;
-			webviewView.webview.options = {
-				enableScripts: true,
-				localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'webview')]
-			};
-			try {
-				webviewView.webview.html = getWebviewHtml(webviewView.webview);
-			} catch (error) {
-				console.error('[preecode] Failed to load assistant webview', error);
-				webviewView.webview.html = `<!DOCTYPE html><html><body>
-					<h3>Preecode AI</h3>
-					<p>Failed to load the assistant UI.</p>
-					<p>Reload the window and try again.</p>
-				</body></html>`;
-			}
-
-			webviewView.webview.onDidReceiveMessage(async (message) => {
-				if (!message || !message.type) return;
-				if (message.type === 'ready') {
-					const editor = vscode.window.activeTextEditor;
-					const summary = editor ? summarizeDiagnostics(editor.document) : undefined;
-					postAssistantMessage({
-						type: 'init',
-						userName: getUserName(),
-						timer: timerStatusBar?.text?.replace('⏱', '').trim() || '00:00',
-						fileName: editor ? path.basename(editor.document.fileName) : 'No file',
-						language: editor?.document.languageId || '-',
-						monitor: buildMonitorPayload(editor, summary)
-					});
-					updateAssistantDiagnostics(editor);
-					return;
-				}
-				if (message.type === 'action') {
-					await handleAssistantAction(message.action as AssistantAction);
-				}
-			});
-		}
-	}
-
-	const openAssistantPanelCommand = vscode.commands.registerCommand(
-		'preecode.openAssistantPanel',
-		() => {
-			vscode.commands.executeCommand('preecode.assistantView.focus');
-		}
-	);
-
-	const assistantViewProvider = new AssistantViewProvider();
-	const assistantViewDisposable = vscode.window.registerWebviewViewProvider(
-		'preecode.assistantView',
-		assistantViewProvider,
-		{ webviewOptions: { retainContextWhenHidden: true } }
-	);
-
-	const assistantEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor((editor) => {
-		if (!editor) {
-			vscode.window.visibleTextEditors.forEach((openEditor) => {
-				openEditor.setDecorations(assistantIssueDecoration, []);
-			});
-		}
-		updateAssistantFileInfo(editor);
-		scheduleAssistantDiagnostics(editor);
-		sendMonitorUpdate(editor, undefined, 'File changed');
-	});
-
-	const assistantTextChangeDisposable = vscode.workspace.onDidChangeTextDocument((event) => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor || event.document !== editor.document) return;
-		notifyTyping();
-		scheduleAssistantDiagnostics(editor);
-	});
-
-	const assistantSelectionChangeDisposable = vscode.window.onDidChangeTextEditorSelection((event) => {
-		if (event.textEditor !== vscode.window.activeTextEditor) return;
-		sendMonitorUpdate(event.textEditor, undefined, 'Selection changed');
-	});
-
-	const assistantVisibleRangeChangeDisposable = vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
-		if (event.textEditor !== vscode.window.activeTextEditor) return;
-		sendMonitorUpdate(event.textEditor, undefined, 'Viewport updated');
-	});
-
-	assistantStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 200);
-	assistantStatusBar.text = '$(hubot)';
-	assistantStatusBar.command = 'preecode.openAssistantPanel';
-	assistantStatusBar.tooltip = 'Open Preecode AI';
-	assistantStatusBar.show();
-	const checkTokenCommand = vscode.commands.registerCommand(
-	'preecode.checkToken',
-	async () => {
-		const token = await context.secrets.get('CFX_AUTH_TOKEN');
-		if (token) {
-			vscode.window.showInformationMessage(`Stored Token: ${token}`);
-		} else {
-			vscode.window.showInformationMessage('No token found in storage.');
-		}
-	}
-);
-
-	context.subscriptions.push(
-		disposable,
-		hintCommand,
-		hideHintCommand,
-		removeHintCommand,
-		solutionCommand,
-		evaluateCommand,
-		explainCommand,
-		removeExplanationCommand,
-		removeEvaluationCommand,
-		runCommand,
-		timerControlCommand,
-		explainSelectionCommand,
-		removeSelectionExplanationCommand,
-		checkTokenCommand,
-		openAssistantPanelCommand,
-		assistantViewDisposable,
-		assistantEditorChangeDisposable,
-		assistantTextChangeDisposable,
-		assistantSelectionChangeDisposable,
-		assistantVisibleRangeChangeDisposable,
-		assistantIssueDecoration,
-		assistantStatusBar
-	);
+interface DebugSessionState {
+  fileUri: string;
+  lines: string[];
+  lineNumbers: number[];
+  startLine: number;
+  endLine: number;
+  currentIndex: number;
+  executionSteps: DebugExecutionStep[];
+  lastAnswer: string;
 }
 
-export function deactivate() {}
+function commentPrefixForLanguage(language: string): string {
+  return language === 'python' ? '# ' : '// ';
+}
+
+function stripCodeFences(text: string): string {
+  return text
+    .replace(/```[\w-]*\n?/g, '')
+    .replace(/```/g, '')
+    .trim();
+}
+
+function extractNamedBlock(raw: string, name: 'QUESTION' | 'HINT' | 'SOLUTION'): string {
+  const rx = new RegExp(`\\[${name}\\]([\\s\\S]*?)(?=\\[QUESTION\\]|\\[HINT\\]|\\[SOLUTION\\]|$)`, 'i');
+  const match = raw.match(rx);
+  return stripCodeFences((match?.[1] || '').trim());
+}
+
+function extractQuestionBlock(raw: string): string {
+  const match = raw.match(/\[QUESTION\]([\s\S]*?)(?=\[HINT\]|\[SOLUTION\]|$)/i);
+  return (match?.[1] || raw).trim();
+}
+
+async function insertGeneratedQuestion(editor: vscode.TextEditor, rawQuestionText: string, difficulty: string): Promise<void> {
+  const language = editor.document.languageId || 'plaintext';
+  const prefix = commentPrefixForLanguage(language);
+  const questionBody = extractQuestionBlock(rawQuestionText);
+  const commented = questionBody
+    .split('\n')
+    .map((line) => `${prefix}${line}`)
+    .join('\n');
+
+  const block = `${prefix}Question (${difficulty})\n\n${commented}\n`;
+
+  const current = editor.document.getText();
+  const glue = current.trim().length === 0 ? '' : '\n\n';
+
+  await editor.edit((builder) => {
+    builder.insert(new vscode.Position(editor.document.lineCount, 0), `${glue}${block}`);
+  });
+}
+
+function markerLine(language: string, label: MarkerLabel, type: 'START' | 'END'): string {
+  return `${commentPrefixForLanguage(language)}[${MARKER_TOKEN} ${label} ${type}]`;
+}
+
+function getMarkerLines(language: string, label: MarkerLabel): { start: string; end: string } {
+  return {
+    start: markerLine(language, label, 'START'),
+    end: markerLine(language, label, 'END')
+  };
+}
+
+function hasMarkerBlock(source: string, label: MarkerLabel): boolean {
+  return source.includes(`[${MARKER_TOKEN} ${label} START]`) && source.includes(`[${MARKER_TOKEN} ${label} END]`);
+}
+
+function removeMarkerBlock(source: string, language: string, label: MarkerLabel): string {
+  const { start, end } = getMarkerLines(language, label);
+  const from = source.indexOf(start);
+  if (from < 0) return source;
+  const to = source.indexOf(end, from);
+  if (to < 0) return source;
+  const endIndex = to + end.length;
+  const before = source.slice(0, from).replace(/[ \t]*\n?$/, '\n');
+  const after = source.slice(endIndex).replace(/^\n+/, '\n');
+  return `${before}${after}`.replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function appendSection(source: string, block: string): string {
+  const trimmed = source.trimEnd();
+  if (!trimmed) return `${block.trim()}\n`;
+  return `${trimmed}\n\n${block.trim()}\n`;
+}
+
+function buildCommentSection(language: string, label: MarkerLabel, heading: string, body: string): string {
+  const prefix = commentPrefixForLanguage(language);
+  const { start, end } = getMarkerLines(language, label);
+  const lines = stripCodeFences(body)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `${prefix}${line}`)
+    .join('\n');
+
+  const headingLine = `${prefix}${heading}`;
+  return `${start}\n${headingLine}\n${lines || `${prefix}No details available.`}\n${end}`;
+}
+
+async function replaceDocument(editor: vscode.TextEditor, nextText: string): Promise<void> {
+  const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+  const fullRange = new vscode.Range(new vscode.Position(0, 0), lastLine.range.end);
+  await editor.edit((builder) => {
+    builder.replace(fullRange, nextText);
+  });
+}
+
+function extractQuestionFromSource(source: string, language: string): string {
+  const lines = source.split('\n').slice(0, 80);
+  const prefix = language === 'python' ? '#' : '//';
+  const questionLines: string[] = [];
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      if (questionLines.length > 0) break;
+      continue;
+    }
+    if (!line.startsWith(prefix)) {
+      if (questionLines.length > 0) break;
+      continue;
+    }
+    const content = line.replace(new RegExp(`^\\${prefix}\\s*`), '').trim();
+    if (!content) continue;
+    if (/^question\s*\(/i.test(content)) continue;
+    questionLines.push(content);
+  }
+
+  return questionLines.join(' ').trim();
+}
+
+function localChatReply(prompt: string, language: string, source: string, history: { role: 'user' | 'assistant'; text: string }[]): string {
+  const normalized = prompt.toLowerCase();
+  const question = extractQuestionFromSource(source, language);
+  const lastUser = [...history].reverse().find((m) => m.role === 'user')?.text.toLowerCase() || '';
+
+  if (/^(hi|hello|hey|hii|yo)$/.test(normalized.trim())) {
+    return `Hi! I can help with debugging, explaining this question, optimizing code, or writing a clean solution in ${language}. Tell me what you want first.`;
+  }
+
+  if (normalized.includes('yes') || normalized.includes('suggest')) {
+    if (question) {
+      return `Great. Suggested plan:\n1) Define function signature with clear input/output.\n2) Solve core logic using one pass where possible.\n3) Add edge cases (empty input, single item, duplicates).\n4) Run sample test and verify output.\n\nIf you want, I can now draft the exact ${language} function.`;
+    }
+    return 'Sure. Share your code snippet and I will suggest exact line-by-line improvements.';
+  }
+
+  if ((normalized.includes('explain') || normalized.includes('question')) && question) {
+    return `This question asks you to process input and return the required result correctly. For this one: ${question}\n\nStart by writing a clear function signature, handle edge cases, then run with 2-3 sample inputs to verify output.`;
+  }
+
+  if (normalized.includes('error') || normalized.includes('bug')) {
+    return `Debug checklist:\n1) Read the first error line in terminal.\n2) Check the same line in editor for syntax/indentation/name mismatch.\n3) Print key variables before the failing line.\n4) Re-run and confirm the error changed or disappeared.`;
+  }
+  if (normalized.includes('solve') || normalized.includes('solution')) {
+    if (question) {
+      return `Approach:\n1) Parse input and constraints.\n2) Implement core logic in a function.\n3) Return result and test with sample input.\n\nCurrent question: ${question}`;
+    }
+    return 'Share your exact question text and I will give a direct step-by-step solution approach.';
+  }
+  if (normalized.includes('time complexity') || normalized.includes('optimize')) {
+    return 'Try reducing nested loops, use a hash map/set for lookups, and track repeated work with memoization if needed.';
+  }
+  if (normalized.includes('fix') || normalized.includes('review')) {
+    return 'Paste the function you want reviewed and I will return: issue summary, root cause, and corrected version.';
+  }
+  if (question) {
+    if (lastUser.includes('explain') || lastUser.includes('question')) {
+      return `Next step: write the function now and share it here. I will evaluate correctness, edge cases, and complexity.`;
+    }
+    return `Based on this question, start with a minimal correct function first. Then we can optimize. If you share your current code, I’ll give exact fixes.`;
+  }
+
+  return `Share the exact function or error line and I will guide a step-by-step fix in ${language}.`;
+}
+
+function detectQuestionFromFile(editor: vscode.TextEditor): { question: string; difficulty: 'easy' | 'medium' | 'hard' } | null {
+  const text = editor.document.getText();
+  const lines = text.split('\n');
+  const prefix = commentPrefixForLanguage(editor.document.languageId).trim();
+  const questionLines: string[] = [];
+
+  let startAt = -1;
+  let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
+
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const trimmed = lines[index].trim();
+    if (!trimmed.startsWith(prefix)) {
+      continue;
+    }
+    const content = trimmed.replace(new RegExp(`^\\${prefix}\\s*`), '').trim();
+    const diffMatch = content.match(/^question\s*\((easy|medium|hard)\)/i);
+    if (diffMatch) {
+      difficulty = diffMatch[1].toLowerCase() as 'easy' | 'medium' | 'hard';
+      startAt = index + 1;
+      break;
+    }
+  }
+
+  if (startAt < 0) {
+    return null;
+  }
+
+  for (let index = startAt; index < lines.length; index++) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (questionLines.length > 0) break;
+      continue;
+    }
+    if (!trimmed.startsWith(prefix)) {
+      if (questionLines.length > 0) break;
+      continue;
+    }
+    const content = trimmed.replace(new RegExp(`^\\${prefix}\\s*`), '').trim();
+    if (!content || /^question\s*\(/i.test(content)) continue;
+    questionLines.push(content);
+  }
+
+  if (!questionLines.length) return null;
+  return { question: questionLines.join(' '), difficulty };
+}
+
+function toTitleCase(text: string): string {
+  return text
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+    .trim();
+}
+
+const CODING_TOPIC_RULES: Array<{ topic: string; patterns: RegExp[] }> = [
+  { topic: 'Loops', patterns: [/\bloop|loops|iteration|iterate|while|for\b/i] },
+  { topic: 'Conditionals', patterns: [/\bconditional|conditionals|if|else|elif|switch\b/i] },
+  { topic: 'Arrays', patterns: [/\barray|arrays|list|lists|vector\b/i] },
+  { topic: 'Strings', patterns: [/\bstring|strings|text|substring|palindrome\b/i] },
+  { topic: 'Hashing', patterns: [/\bhash|hashmap|hashing|dictionary|dict|map|set\b/i] },
+  { topic: 'Sorting', patterns: [/\bsort|sorting|merge|quick|heap\b/i] },
+  { topic: 'Searching', patterns: [/\bsearch|searching|binarysearch|linearsearch\b/i] },
+  { topic: 'Recursion', patterns: [/\brecursion|recursive\b/i] },
+  { topic: 'Trees', patterns: [/\btree|trees|bst|binarytree|trie\b/i] },
+  { topic: 'Graphs', patterns: [/\bgraph|graphs|bfs|dfs|dijkstra|topological\b/i] },
+  { topic: 'DP', patterns: [/\bdp|dynamicprogramming|memoization|tabulation\b/i] },
+  { topic: 'Greedy', patterns: [/\bgreedy\b/i] },
+  { topic: 'Backtracking', patterns: [/\bbacktracking|backtrack\b/i] },
+  { topic: 'Stacks', patterns: [/\bstack|stacks\b/i] },
+  { topic: 'Queues', patterns: [/\bqueue|queues|deque\b/i] },
+  { topic: 'Math', patterns: [/\bmath|number|numbers|prime|gcd|lcm\b/i] }
+];
+
+const CODING_FALLBACK_TOPICS = CODING_TOPIC_RULES.map((entry) => entry.topic);
+
+function normalizeTopicToOneWord(input: string, fallback = 'General'): string {
+  const text = String(input || '').trim();
+  if (!text) {
+    return fallback;
+  }
+
+  for (const rule of CODING_TOPIC_RULES) {
+    if (rule.patterns.some((pattern) => pattern.test(text))) {
+      return rule.topic;
+    }
+  }
+
+  const firstWord = text
+    .replace(/[^a-zA-Z\s]/g, ' ')
+    .trim()
+    .split(/\s+/)[0];
+  if (!firstWord) {
+    return fallback;
+  }
+  return toTitleCase(firstWord);
+}
+
+function stableRandomTopic(seedSource: string): string {
+  const seed = String(seedSource || 'general');
+  let hash = 0;
+  for (let index = 0; index < seed.length; index++) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+  return CODING_FALLBACK_TOPICS[hash % CODING_FALLBACK_TOPICS.length] || 'General';
+}
+
+function inferTopicFromPath(filePath: string, language: string, sourceHint = ''): string {
+  const extension = path.extname(filePath);
+  const fileStem = path.basename(filePath, extension).replace(/[._-]+/g, ' ').trim();
+  const parentFolder = path.basename(path.dirname(filePath)).replace(/[._-]+/g, ' ').trim();
+  const grandParentFolder = path.basename(path.dirname(path.dirname(filePath))).replace(/[._-]+/g, ' ').trim();
+
+  const ignored = new Set(['src', 'app', 'pages', 'components', 'utils', 'lib', 'code', 'files', 'vscode', 'test']);
+  const segments = [grandParentFolder, parentFolder, fileStem]
+    .map((segment) => segment.toLowerCase())
+    .filter((segment) => segment && !ignored.has(segment));
+
+  const combined = `${segments.join(' ')} ${String(sourceHint || '').slice(0, 1200)}`;
+  for (const rule of CODING_TOPIC_RULES) {
+    if (rule.patterns.some((pattern) => pattern.test(combined))) {
+      return rule.topic;
+    }
+  }
+
+  const languageDefault = normalizeTopicToOneWord(language, 'General');
+  const maybeGeneralLike = ['python', 'javascript', 'typescript', 'java', 'cpp', 'c', 'go', 'ruby'];
+  if (!maybeGeneralLike.includes(languageDefault.toLowerCase())) {
+    return languageDefault;
+  }
+
+  return stableRandomTopic(`${filePath}|${language}|${combined}`);
+}
+
+function getTopDiagnostic(editor: vscode.TextEditor): vscode.Diagnostic | null {
+  const diagnostics = vscode.languages.getDiagnostics(editor.document.uri);
+  if (!diagnostics.length) {
+    return null;
+  }
+  return diagnostics
+    .slice()
+    .sort((a, b) => {
+      const severityDiff = Number(a.severity) - Number(b.severity);
+      if (severityDiff !== 0) return severityDiff;
+      const lineDiff = a.range.start.line - b.range.start.line;
+      if (lineDiff !== 0) return lineDiff;
+      return a.range.start.character - b.range.start.character;
+    })[0];
+}
+
+function getProblemSnippetForDiagnostic(editor: vscode.TextEditor, diagnostic: vscode.Diagnostic): { text: string; range: vscode.Range } {
+  const line = editor.document.lineAt(diagnostic.range.start.line);
+  return {
+    text: line.text.trim(),
+    range: line.range
+  };
+}
+
+async function generateExactReplacement(editor: vscode.TextEditor, diagnostic: vscode.Diagnostic, problemCode: string): Promise<string> {
+  const response = await requestAssistantAnalysis({
+    action: 'fix',
+    code: problemCode,
+    language: editor.document.languageId,
+    diagnostics: `${diagnostic.message} @ line ${diagnostic.range.start.line + 1}`,
+    selectedLine: diagnostic.range.start.line + 1,
+    selectedText: problemCode,
+    fileName: editor.document.fileName,
+    chatPrompt: 'Return ONLY the corrected replacement code for this exact problematic snippet. No explanation.'
+  });
+
+  return stripCodeFences(response.fixed_code || '').trim();
+}
+
+function getSortedDiagnostics(editor: vscode.TextEditor): vscode.Diagnostic[] {
+  return vscode.languages
+    .getDiagnostics(editor.document.uri)
+    .slice()
+    .sort((a, b) => {
+      const severityDiff = Number(a.severity) - Number(b.severity);
+      if (severityDiff !== 0) return severityDiff;
+      const lineDiff = a.range.start.line - b.range.start.line;
+      if (lineDiff !== 0) return lineDiff;
+      return a.range.start.character - b.range.start.character;
+    });
+}
+
+function buildDiagnosticsSummary(editor: vscode.TextEditor): string {
+  return getSortedDiagnostics(editor)
+    .map((diag) => `L${diag.range.start.line + 1}: ${diag.message}`)
+    .join('\n');
+}
+
+async function generateFixedFileCode(editor: vscode.TextEditor): Promise<string> {
+  const response = await requestAssistantAnalysis({
+    action: 'fix',
+    code: editor.document.getText(),
+    language: editor.document.languageId,
+    diagnostics: buildDiagnosticsSummary(editor),
+    selectedText: editor.document.getText(),
+    fileName: editor.document.fileName,
+    chatPrompt: [
+      'Fix all diagnostics in this file.',
+      'Return the full corrected file code only.',
+      'Do not add explanations.',
+      'Keep functionality the same and only apply error-fix changes.'
+    ].join(' ')
+  });
+
+  return stripCodeFences(response.fixed_code || '').trim();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getTopIssueAndFix(editor: vscode.TextEditor, previewCache: Map<string, string>): { topIssue: string; expectedFix: string; cacheKey: string | null } {
+  const top = getTopDiagnostic(editor);
+  if (!top) {
+    return {
+      topIssue: '',
+      expectedFix: '',
+      cacheKey: null
+    };
+  }
+
+  const problem = getProblemSnippetForDiagnostic(editor, top);
+  const cacheKey = [
+    editor.document.uri.toString(),
+    top.range.start.line,
+    top.range.start.character,
+    top.range.end.line,
+    top.range.end.character,
+    top.message,
+    problem.text
+  ].join('|');
+
+  return {
+    topIssue: problem.text || `L${top.range.start.line + 1}: ${top.message}`,
+    expectedFix: previewCache.get(cacheKey) || '...',
+    cacheKey
+  };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getLatestMarkerContent(source: string, language: string, label: MarkerLabel): string {
+  const { start, end } = getMarkerLines(language, label);
+  const pattern = new RegExp(`${escapeRegExp(start)}\\n([\\s\\S]*?)\\n${escapeRegExp(end)}`, 'g');
+  let latest = '';
+  let match: RegExpExecArray | null = pattern.exec(source);
+  while (match) {
+    latest = match[1] || '';
+    match = pattern.exec(source);
+  }
+  return latest.trim();
+}
+
+function findLastSimpleHintRange(source: string, language: string): { startLine: number; endLine: number } | null {
+  const prefix = commentPrefixForLanguage(language).trim();
+  const lines = source.split('\n');
+  const hintHeading = new RegExp(`^${escapeRegExp(prefix)}\\s*hint\\s*$`, 'i');
+
+  let startLine = -1;
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (hintHeading.test(lines[index].trim())) {
+      startLine = index;
+      break;
+    }
+  }
+
+  if (startLine < 0) {
+    return null;
+  }
+
+  let endLine = startLine;
+  for (let index = startLine + 1; index < lines.length; index++) {
+    const trimmed = lines[index].trim();
+    if (!trimmed.startsWith(prefix) || trimmed.includes(`[${MARKER_TOKEN} `)) {
+      break;
+    }
+    endLine = index;
+  }
+
+  return { startLine, endLine };
+}
+
+function findLastHeadingCommentRange(source: string, language: string, heading: string): { startLine: number; endLine: number } | null {
+  const prefix = commentPrefixForLanguage(language).trim();
+  const lines = source.split('\n');
+  const headingPattern = new RegExp(`^${escapeRegExp(prefix)}\\s*${escapeRegExp(heading)}\\s*$`, 'i');
+
+  let startLine = -1;
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (headingPattern.test(lines[index].trim())) {
+      startLine = index;
+      break;
+    }
+  }
+
+  if (startLine < 0) {
+    return null;
+  }
+
+  let endLine = startLine;
+  for (let index = startLine + 1; index < lines.length; index++) {
+    const trimmed = lines[index].trim();
+    if (!trimmed.startsWith(prefix) || trimmed.includes(`[${MARKER_TOKEN} `)) {
+      break;
+    }
+    endLine = index;
+  }
+
+  return { startLine, endLine };
+}
+
+function hasSimpleQuestionExplanationBlock(source: string, language: string): boolean {
+  return findLastHeadingCommentRange(source, language, 'Question Explanation') !== null;
+}
+
+function removeSimpleQuestionExplanationBlock(source: string, language: string): string {
+  const range = findLastHeadingCommentRange(source, language, 'Question Explanation');
+  if (!range) {
+    return source;
+  }
+  const lines = source.split('\n');
+  lines.splice(range.startLine, range.endLine - range.startLine + 1);
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function hasSimpleHintBlock(source: string, language: string): boolean {
+  return findLastSimpleHintRange(source, language) !== null;
+}
+
+function removeSimpleHintBlock(source: string, language: string): string {
+  const range = findLastSimpleHintRange(source, language);
+  if (!range) {
+    return source;
+  }
+
+  const lines = source.split('\n');
+  lines.splice(range.startLine, range.endLine - range.startLine + 1);
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function singleLineHint(text: string): string {
+  const line = text
+    .split('\n')
+    .map((value) => value.trim())
+    .find((value) => value.length > 0) || 'Try solving one small example by hand first, then convert those steps into code.';
+
+  return line
+    .replace(/^[-*\d.\s]+/, '')
+    .replace(/^hint\s*[:\-]?\s*/i, '')
+    .trim();
+}
+
+function replaceLastOccurrence(source: string, find: string, replaceWith: string): string {
+  const idx = source.lastIndexOf(find);
+  if (idx < 0) {
+    return source;
+  }
+  return `${source.slice(0, idx)}${replaceWith}${source.slice(idx + find.length)}`;
+}
+
+function removeLastOccurrence(source: string, value: string): string {
+  return replaceLastOccurrence(source, value, '').replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function removeAllOccurrences(source: string, value: string): string {
+  if (!value) {
+    return source;
+  }
+  return source.split(value).join('');
+}
+
+function findLatestQuestionRange(source: string, language: string): { startLine: number; endLine: number } | null {
+  const prefix = commentPrefixForLanguage(language).trim();
+  const lines = source.split('\n');
+  const headingPattern = new RegExp(`^${escapeRegExp(prefix)}\\s*question\\s*\\((easy|medium|hard)\\)`, 'i');
+  const hintPattern = new RegExp(`^${escapeRegExp(prefix)}\\s*hint\\b`, 'i');
+
+  let startLine = -1;
+  for (let index = lines.length - 1; index >= 0; index--) {
+    if (headingPattern.test(lines[index].trim())) {
+      startLine = index;
+      break;
+    }
+  }
+
+  if (startLine < 0) {
+    return null;
+  }
+
+  let endLine = startLine;
+  for (let index = startLine + 1; index < lines.length; index++) {
+    const trimmed = lines[index].trim();
+    if (!trimmed) {
+      endLine = index;
+      continue;
+    }
+    if (hintPattern.test(trimmed)) {
+      break;
+    }
+    if (!trimmed.startsWith(prefix)) {
+      break;
+    }
+    endLine = index;
+  }
+
+  return { startLine, endLine };
+}
+
+function insertHintAfterQuestion(source: string, language: string, block: string): string {
+  const range = findLatestQuestionRange(source, language);
+  if (!range) {
+    return appendSection(source, block);
+  }
+
+  const lines = source.split('\n');
+  const before = lines.slice(0, range.endLine + 1).join('\n').trimEnd();
+  const after = lines.slice(range.endLine + 1).join('\n').trimStart();
+
+  if (!after) {
+    return `${before}\n\n${block.trim()}\n`;
+  }
+
+  return `${before}\n\n${block.trim()}\n\n${after}`;
+}
+
+function looksLikeRunnableCode(code: string, language: string): boolean {
+  const text = stripCodeFences(code);
+  if (!text) {
+    return false;
+  }
+
+  if (language === 'python') {
+    return /\bdef\b/.test(text) && /\breturn\b/.test(text) && (/__name__\s*==\s*["']__main__["']/.test(text) || /\bprint\(/.test(text));
+  }
+
+  return /\bfunction\b|=>/.test(text) && /\breturn\b/.test(text) && (/console\.log\(/.test(text) || /\bmain\(/.test(text));
+}
+
+function commentOutSolutionBlocks(source: string, language: string): string {
+  const prefix = commentPrefixForLanguage(language);
+  const { start, end } = getMarkerLines(language, 'SOLUTION');
+  const pattern = new RegExp(`${escapeRegExp(start)}\\n([\\s\\S]*?)\\n${escapeRegExp(end)}`, 'g');
+  return source.replace(pattern, (_full, inner) => {
+    const commented = String(inner)
+      .split('\n')
+      .map((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return line;
+        if (trimmed.startsWith(commentPrefixForLanguage(language).trim())) return line;
+        return `${prefix}${line}`;
+      })
+      .join('\n');
+    return `${start}\n${commented}\n${end}`;
+  });
+}
+
+function getCurrentQuestion(editor: vscode.TextEditor): string {
+  const fromState = preecodeStore.getState().practice.question.trim();
+  if (fromState) return fromState;
+  const detected = detectQuestionFromFile(editor);
+  return detected?.question || '';
+}
+
+function formatElapsedToClock(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const mm = String(Math.floor(safeSeconds / 60)).padStart(2, '0');
+  const ss = String(safeSeconds % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+function parseAiRating(raw: string): number {
+  const match = String(raw || '').match(/\d+(?:\.\d+)?/);
+  if (!match) {
+    return 7;
+  }
+  const value = Number(match[0]);
+  if (!Number.isFinite(value)) {
+    return 7;
+  }
+  return Math.max(0, Math.min(10, Math.round(value)));
+}
+
+async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string, fallback: string): Promise<string> {
+  try {
+    const response = await requestAssistantAnalysis({
+      action: 'chatbot',
+      code: editor.document.getText(),
+      language: editor.document.languageId,
+      diagnostics: '',
+      selectedText: '',
+      chatPrompt: prompt,
+      fileName: editor.document.fileName
+    });
+    const text = [
+      response.problem,
+      response.reason,
+      Array.isArray(response.step_by_step) ? response.step_by_step.join('\n') : response.step_by_step
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+    return stripCodeFences(text || fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+async function generateRunnableSolution(editor: vscode.TextEditor, question: string): Promise<string> {
+  const language = editor.document.languageId || 'plaintext';
+  const practice = preecodeStore.getState().practice;
+
+  try {
+    const ai = await import('./services/aiService.js');
+    const raw = await ai.generatePracticeQuestion(
+      question || practice.topic || 'General Programming',
+      language,
+      practice.difficulty || 'medium'
+    );
+    const solution = extractNamedBlock(raw, 'SOLUTION');
+    if (solution) {
+      return stripCodeFences(solution);
+    }
+  } catch {
+    // Fall through to assistant fallback
+  }
+
+  try {
+    const response = await requestAssistantAnalysis({
+      action: 'fix',
+      code: editor.document.getText(),
+      language,
+      diagnostics: '',
+      selectedText: question,
+      chatPrompt: `Write a complete runnable ${language} solution for this question with a function and execution block. Return code only.`,
+      fileName: editor.document.fileName
+    });
+    const fixed = stripCodeFences(response.fixed_code || '');
+    if (fixed) {
+      return fixed;
+    }
+  } catch {
+    // Fall through to static fallback
+  }
+
+  if (language === 'python') {
+    return [
+      'def solve_example(value):',
+      '    return value',
+      '',
+      'if __name__ == "__main__":',
+      '    print(solve_example(1))'
+    ].join('\n');
+  }
+
+  return [
+    'function solveExample(value) {',
+    '  return value;',
+    '}',
+    '',
+    'console.log(solveExample(1));'
+  ].join('\n');
+}
+
+async function generateAlternativeRunnableSolution(editor: vscode.TextEditor, question: string, previousSolution: string): Promise<string> {
+  const language = editor.document.languageId || 'plaintext';
+
+  try {
+    const response = await requestAssistantAnalysis({
+      action: 'fix',
+      code: previousSolution || editor.document.getText(),
+      language,
+      diagnostics: '',
+      selectedText: question,
+      chatPrompt: [
+        `Write a different runnable ${language} solution for this question.`,
+        'Return only raw code.',
+        'Do not add explanations, bullets, or instructions.',
+        'Include function and executable test block.',
+        `Question: ${question}`,
+        `Previous solution to avoid:\n${previousSolution}`
+      ].join('\n\n'),
+      fileName: editor.document.fileName
+    });
+
+    const code = stripCodeFences(response.fixed_code || response.reason || '');
+    if (looksLikeRunnableCode(code, language)) {
+      return code;
+    }
+  } catch {
+    // fallback below
+  }
+
+  return generateRunnableSolution(editor, question);
+}
+
+function lineWhy(line: string): string {
+  const t = line.trim();
+  if (!t) return 'This keeps spacing clear and readable.';
+  if (/^(def|function)\b/.test(t)) return 'This defines the main function used to solve the question.';
+  if (/^if\s+__name__\s*==\s*["']__main__["']/.test(t)) return 'This ensures the test code runs only when you execute this file directly.';
+  if (/^if\b/.test(t)) return 'This checks a condition to choose the correct branch.';
+  if (/^for\b|^while\b/.test(t)) return 'This loop processes values step by step.';
+  if (/\breturn\b/.test(t)) return 'This returns the final computed result from the function.';
+  if (/\bprint\(|\bconsole\.log\(/.test(t)) return 'This prints the output so you can verify the result quickly.';
+  if (/=/.test(t)) return 'This stores a value needed for the next steps.';
+  return 'This line is part of the solution logic for the question.';
+}
+
+interface DebugSourceLine {
+  lineNumber: number;
+  code: string;
+  trimmed: string;
+  indent: number;
+}
+
+const DEFAULT_DEBUG_INPUT = 4;
+
+function cloneVariableState(state: Record<string, unknown>): Record<string, unknown> {
+  try {
+    return structuredClone(state);
+  } catch {
+    return JSON.parse(JSON.stringify(state)) as Record<string, unknown>;
+  }
+}
+
+function formatDebugValue(value: unknown): string {
+  if (value === undefined) return 'undefined';
+  if (typeof value === 'string') return `"${value}"`;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function computeVariableChanges(before: Record<string, unknown>, after: Record<string, unknown>): string[] {
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const changes: string[] = [];
+  for (const key of keys) {
+    const prev = before[key];
+    const next = after[key];
+    if (JSON.stringify(prev) !== JSON.stringify(next)) {
+      changes.push(`${key}: ${formatDebugValue(prev)} → ${formatDebugValue(next)}`);
+    }
+  }
+  return changes;
+}
+
+function toJsExpression(expr: string): string {
+  return expr
+    .replace(/\bTrue\b/g, 'true')
+    .replace(/\bFalse\b/g, 'false')
+    .replace(/\bNone\b/g, 'null')
+    .replace(/\bint\s*\(/g, 'Number(')
+    .replace(/\bfloat\s*\(/g, 'Number(')
+    .replace(/\bstr\s*\(/g, 'String(')
+    .replace(/\band\b/g, '&&')
+    .replace(/\bor\b/g, '||')
+    .replace(/\bnot\b/g, '!');
+}
+
+function evaluateExpression(expr: string, variables: Record<string, unknown>): unknown {
+  const cleaned = expr.trim();
+  if (!cleaned) {
+    return undefined;
+  }
+
+  const jsExpr = toJsExpression(cleaned).replace(/\binput\s*\([^)]*\)/g, '__preecode_input');
+  const keys = Object.keys(variables);
+  const values = keys.map((key) => variables[key]);
+  try {
+    const evaluator = new Function(...keys, '__preecode_input', `return (${jsExpr});`);
+    return evaluator(...values, DEFAULT_DEBUG_INPUT);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseRangeValues(rawArgs: string, variables: Record<string, unknown>): number[] {
+  const args = rawArgs
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => Number(evaluateExpression(part, variables)));
+
+  if (!args.length || args.some((value) => Number.isNaN(value))) {
+    return [];
+  }
+
+  let start = 0;
+  let end = 0;
+  let step = 1;
+
+  if (args.length === 1) {
+    end = args[0];
+  } else if (args.length === 2) {
+    start = args[0];
+    end = args[1];
+  } else {
+    start = args[0];
+    end = args[1];
+    step = args[2];
+  }
+
+  if (step === 0) {
+    return [];
+  }
+
+  const values: number[] = [];
+  if (step > 0) {
+    for (let current = start; current < end; current += step) {
+      values.push(current);
+    }
+  } else {
+    for (let current = start; current > end; current += step) {
+      values.push(current);
+    }
+  }
+  return values;
+}
+
+function parseIterableValues(raw: string, variables: Record<string, unknown>): unknown[] {
+  const match = raw.match(/^range\((.*)\)$/);
+  if (match) {
+    return parseRangeValues(match[1], variables);
+  }
+
+  const evaluated = evaluateExpression(raw, variables);
+  if (Array.isArray(evaluated)) {
+    return evaluated;
+  }
+  if (typeof evaluated === 'string') {
+    return evaluated.split('');
+  }
+  if (evaluated && typeof evaluated === 'object') {
+    return Object.values(evaluated as Record<string, unknown>);
+  }
+  return [];
+}
+
+function findBlockEnd(lines: DebugSourceLine[], blockStart: number, parentIndent: number): number {
+  let index = blockStart;
+  while (index < lines.length) {
+    const line = lines[index];
+    if (!line.trimmed) {
+      index += 1;
+      continue;
+    }
+    if (line.indent <= parentIndent) {
+      break;
+    }
+    index += 1;
+  }
+  return index;
+}
+
+function formatRuntimeInline(runtime: Record<string, unknown>): string {
+  const keys = Object.keys(runtime);
+  if (!keys.length) {
+    return 'No variables yet.';
+  }
+  return keys.map((key) => `${key} = ${formatDebugValue(runtime[key])}`).join(', ');
+}
+
+function buildExecutionSteps(lines: DebugSourceLine[]): DebugExecutionStep[] {
+  const runtime: Record<string, unknown> = {};
+  const executionSteps: DebugExecutionStep[] = [];
+  const MAX_WHILE_ITERATIONS = 100;
+
+  const addStep = (
+    sourceLine: DebugSourceLine,
+    before: Record<string, unknown>,
+    after: Record<string, unknown>,
+    explanation: string,
+    outputEffect = 'None',
+    conditionResult: 'true' | 'false' | 'n/a' = 'n/a'
+  ): void => {
+    executionSteps.push({
+      lineNumber: sourceLine.lineNumber,
+      codeLine: sourceLine.code,
+      variableState: cloneVariableState(after),
+      variableChanges: computeVariableChanges(before, after),
+      explanation,
+      outputEffect,
+      conditionResult
+    });
+  };
+
+  const executeBlock = (start: number, end: number, expectedIndent: number): number => {
+    let index = start;
+
+    while (index < end) {
+      const line = lines[index];
+      if (!line.trimmed || line.trimmed.startsWith('#')) {
+        index += 1;
+        continue;
+      }
+
+      if (line.indent < expectedIndent) {
+        break;
+      }
+
+      if (line.indent > expectedIndent) {
+        index += 1;
+        continue;
+      }
+
+      const forMatch = line.trimmed.match(/^for\s+([A-Za-z_][\w]*)\s+in\s+(.+):$/);
+      if (forMatch) {
+        const variableName = forMatch[1];
+        const iterableExpr = forMatch[2].trim();
+        const blockEnd = findBlockEnd(lines, index + 1, line.indent);
+        const iterableValues = parseIterableValues(iterableExpr, runtime);
+
+        if (!iterableValues.length) {
+          const before = cloneVariableState(runtime);
+          addStep(line, before, cloneVariableState(runtime), `Loop checks ${iterableExpr}, but it has no values so the loop body does not run.`);
+        } else {
+          for (let iterationIndex = 0; iterationIndex < iterableValues.length; iterationIndex++) {
+            const iterationValue = iterableValues[iterationIndex];
+            const before = cloneVariableState(runtime);
+            runtime[variableName] = iterationValue;
+            const after = cloneVariableState(runtime);
+            addStep(
+              line,
+              before,
+              after,
+              `Loop iteration ${iterationIndex + 1} starts. ${variableName} = ${formatDebugValue(iterationValue)}. Current values: ${formatRuntimeInline(after)}.`
+            );
+            executeBlock(index + 1, blockEnd, line.indent + 1);
+          }
+
+          const beforeExit = cloneVariableState(runtime);
+          addStep(line, beforeExit, cloneVariableState(runtime), `Loop ends after ${iterableValues.length} iterations. Current values: ${formatRuntimeInline(runtime)}.`);
+        }
+
+        index = blockEnd;
+        continue;
+      }
+
+      const defMatch = line.trimmed.match(/^def\s+([A-Za-z_][\w]*)\s*\(.*\)\s*:\s*$/);
+      if (defMatch) {
+        const functionName = defMatch[1];
+        const blockEnd = findBlockEnd(lines, index + 1, line.indent);
+        const before = cloneVariableState(runtime);
+        addStep(line, before, cloneVariableState(runtime), `Defines the function ${functionName}. Function body will run only when it is called.`);
+        index = blockEnd;
+        continue;
+      }
+
+      const whileMatch = line.trimmed.match(/^while\s+(.+):$/);
+      if (whileMatch) {
+        const conditionExpr = whileMatch[1].trim();
+        const blockEnd = findBlockEnd(lines, index + 1, line.indent);
+        let guard = 0;
+        while (guard < MAX_WHILE_ITERATIONS) {
+          const conditionValue = Boolean(evaluateExpression(conditionExpr, runtime));
+          const before = cloneVariableState(runtime);
+          addStep(
+            line,
+            before,
+            cloneVariableState(runtime),
+            conditionValue
+              ? `While condition ${conditionExpr} is true, so this iteration runs. Current values: ${formatRuntimeInline(runtime)}.`
+              : `While condition ${conditionExpr} is false, so the loop stops.`,
+            'None',
+            conditionValue ? 'true' : 'false'
+          );
+
+          if (!conditionValue) {
+            break;
+          }
+
+          executeBlock(index + 1, blockEnd, line.indent + 1);
+          guard += 1;
+        }
+        index = blockEnd;
+        continue;
+      }
+
+      const ifMatch = line.trimmed.match(/^if\s+(.+):$/);
+      if (ifMatch) {
+        type Clause = { index: number; type: 'if' | 'elif' | 'else'; condition?: string; blockEnd: number };
+        const clauses: Clause[] = [];
+        let scan = index;
+
+        while (scan < end) {
+          const current = lines[scan];
+          if (!current.trimmed || current.indent !== line.indent) {
+            break;
+          }
+
+          const ifClause = current.trimmed.match(/^if\s+(.+):$/);
+          const elifClause = current.trimmed.match(/^elif\s+(.+):$/);
+          const elseClause = /^else\s*:$/.test(current.trimmed);
+
+          if (ifClause) {
+            clauses.push({ index: scan, type: 'if', condition: ifClause[1].trim(), blockEnd: findBlockEnd(lines, scan + 1, current.indent) });
+          } else if (elifClause) {
+            clauses.push({ index: scan, type: 'elif', condition: elifClause[1].trim(), blockEnd: findBlockEnd(lines, scan + 1, current.indent) });
+          } else if (elseClause) {
+            clauses.push({ index: scan, type: 'else', blockEnd: findBlockEnd(lines, scan + 1, current.indent) });
+          } else {
+            break;
+          }
+
+          scan = clauses[clauses.length - 1].blockEnd;
+          const next = lines[scan];
+          if (!next || next.indent !== line.indent || !/^(elif\s+.+:|else\s*:)$/.test(next.trimmed)) {
+            break;
+          }
+        }
+
+        let executedClause: Clause | null = null;
+        for (const clause of clauses) {
+          const clauseLine = lines[clause.index];
+          if (clause.type === 'else') {
+            const before = cloneVariableState(runtime);
+            addStep(clauseLine, before, cloneVariableState(runtime), 'All previous conditions are false, so else block runs.', 'None', 'n/a');
+            executedClause = clause;
+            break;
+          }
+
+          const conditionExpr = clause.condition || 'False';
+          const conditionValue = Boolean(evaluateExpression(conditionExpr, runtime));
+          const before = cloneVariableState(runtime);
+          addStep(
+            clauseLine,
+            before,
+            cloneVariableState(runtime),
+            conditionValue
+              ? `Condition ${conditionExpr} is true, so this block runs. Current values: ${formatRuntimeInline(runtime)}.`
+              : `Condition ${conditionExpr} is false, so the next branch is checked.`,
+            'None',
+            conditionValue ? 'true' : 'false'
+          );
+
+          if (conditionValue) {
+            executedClause = clause;
+            break;
+          }
+        }
+
+        if (executedClause) {
+          executeBlock(executedClause.index + 1, executedClause.blockEnd, line.indent + 1);
+          index = clauses[clauses.length - 1].blockEnd;
+        } else {
+          index = scan;
+        }
+        continue;
+      }
+
+      const augAssignMatch = line.trimmed.match(/^([A-Za-z_][\w]*)\s*([+\-*/%]=)\s*(.+)$/);
+      if (augAssignMatch) {
+        const variableName = augAssignMatch[1];
+        const operator = augAssignMatch[2];
+        const expr = augAssignMatch[3].trim();
+        const before = cloneVariableState(runtime);
+        const previousValue = Number(runtime[variableName] ?? 0);
+        const evalValue = Number(evaluateExpression(expr, runtime) ?? 0);
+        let nextValue = previousValue;
+        if (operator === '+=') nextValue = previousValue + evalValue;
+        if (operator === '-=') nextValue = previousValue - evalValue;
+        if (operator === '*=') nextValue = previousValue * evalValue;
+        if (operator === '/=') nextValue = evalValue === 0 ? previousValue : previousValue / evalValue;
+        if (operator === '%=') nextValue = evalValue === 0 ? previousValue : previousValue % evalValue;
+        runtime[variableName] = nextValue;
+        const after = cloneVariableState(runtime);
+        const readable = operator.replace('=', '');
+        addStep(
+          line,
+          before,
+          after,
+          `${variableName} = ${formatDebugValue(previousValue)} ${readable} ${formatDebugValue(evalValue)} → ${formatDebugValue(nextValue)}. Current values: ${formatRuntimeInline(after)}.`
+        );
+        index += 1;
+        continue;
+      }
+
+      const assignMatch = line.trimmed.match(/^([A-Za-z_][\w]*)\s*=\s*(.+)$/);
+      if (assignMatch && !line.trimmed.includes('==')) {
+        const variableName = assignMatch[1];
+        const expr = assignMatch[2].trim();
+        const before = cloneVariableState(runtime);
+        const evaluated = evaluateExpression(expr, runtime);
+        runtime[variableName] = evaluated;
+        const after = cloneVariableState(runtime);
+        if (/\binput\s*\(/.test(expr)) {
+          addStep(
+            line,
+            before,
+            after,
+            `Reads simulated input value ${DEFAULT_DEBUG_INPUT} and stores it in ${variableName}. Current values: ${formatRuntimeInline(after)}.`
+          );
+        } else {
+          addStep(
+            line,
+            before,
+            after,
+            `${variableName} is set to ${formatDebugValue(evaluated)}. Current values: ${formatRuntimeInline(after)}.`
+          );
+        }
+        index += 1;
+        continue;
+      }
+
+      const printMatch = line.trimmed.match(/^print\((.*)\)$/);
+      if (printMatch) {
+        const before = cloneVariableState(runtime);
+        const expr = printMatch[1].trim();
+        const printParts = expr
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map((part) => {
+            const value = evaluateExpression(part, runtime);
+            if (value === undefined) {
+              return part.replace(/^['"]|['"]$/g, '');
+            }
+            return String(value);
+          });
+        const output = printParts.join(' ');
+        addStep(
+          line,
+          before,
+          cloneVariableState(runtime),
+          `Prints output: ${output || '(empty)'}. Current values: ${formatRuntimeInline(runtime)}.`,
+          output || 'None'
+        );
+        index += 1;
+        continue;
+      }
+
+      const before = cloneVariableState(runtime);
+      addStep(line, before, cloneVariableState(runtime), lineWhy(line.code));
+      index += 1;
+    }
+
+    return index;
+  };
+
+  executeBlock(0, lines.length, 0);
+  return executionSteps;
+}
+
+function formatDebugStepSummary(step: DebugExecutionStep, stepIndex: number, totalSteps: number): string {
+  void stepIndex;
+  void totalSteps;
+  return [`Line ${step.lineNumber}`, step.explanation].join('\n');
+}
+
+function buildInlineExplainedSolution(language: string, code: string): string {
+  const prefix = commentPrefixForLanguage(language);
+  const lines = code.split('\n');
+  if (!lines.length) {
+    return '';
+  }
+
+  return lines
+    .map((line) => {
+      if (!line.trim()) {
+        return '';
+      }
+      return `${line}\n${prefix}${lineWhy(line)}`;
+    })
+    .join('\n');
+}
+
+function blockCommentForLanguage(language: string, title: string, body: string): string {
+  const cleanBody = stripCodeFences(body).trim() || 'No details available.';
+  if (language === 'python') {
+    const lines = cleanBody.split('\n').map((line) => `# ${line}`);
+    return [`# ${title}`, ...lines].join('\n');
+  }
+  return [
+    '/*',
+    `${title}`,
+    '',
+    cleanBody,
+    '*/'
+  ].join('\n');
+}
+
+function toShortSimpleExplanation(text: string, maxLines = 2): string {
+  const cleaned = stripCodeFences(text)
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) {
+    return 'This code runs step by step to produce the result.';
+  }
+
+  const sentenceParts = cleaned
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const selectedParts = (sentenceParts.length ? sentenceParts : [cleaned]).slice(0, maxLines);
+  return selectedParts.join(' ');
+}
+
+async function insertSelectionExplanationAsComments(editor: vscode.TextEditor, explanation: string): Promise<void> {
+  const selection = editor.selection;
+  if (selection.isEmpty) {
+    throw new Error('No code selected');
+  }
+
+  const language = editor.document.languageId || 'plaintext';
+  const prefix = commentPrefixForLanguage(language);
+  const commentBlock = [
+    `${prefix}Explanation:`,
+    ...stripCodeFences(explanation)
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => `${prefix}${line}`)
+  ].join('\n');
+
+  const insertionPoint = new vscode.Position(selection.start.line, 0);
+  await editor.edit((builder) => {
+    builder.insert(insertionPoint, `${commentBlock}\n`);
+  });
+}
+
+async function generateDebugLineExplanation(
+  editor: vscode.TextEditor,
+  lineText: string,
+  lineNumber: number,
+  startLine: number,
+  endLine: number
+): Promise<string> {
+  const fallback = lineWhy(lineText);
+  return getSimpleAssistantText(
+    editor,
+    [
+      `Explain this line in simple language for a beginner: ${lineText}`,
+      `Line number: ${lineNumber}`,
+      `Debug range: ${startLine}-${endLine}`,
+      'Keep the explanation to 1-2 short sentences.'
+    ].join('\n'),
+    fallback
+  );
+}
+
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  const authManager = new AuthManager(context);
+  const timerService = new PracticeTimerService();
+  const runDetectionService = new RunDetectionService(timerService);
+  const backendSyncService = new BackendSyncService();
+  const latestSolutionByFile = new Map<string, string>();
+  const plainSolutionBackupByFile = new Map<string, string>();
+  const evaluationBlockByFile = new Map<string, string>();
+  const selectionExplanationBlocksByFile = new Map<string, string[]>();
+  const reviewBlockByFile = new Map<string, string>();
+  const issueFixPreviewCache = new Map<string, string>();
+  const issueFixPreviewInFlight = new Set<string>();
+  let debugSession: DebugSessionState | null = null;
+
+  const getFileKey = (editor: vscode.TextEditor): string => editor.document.uri.toString();
+
+  const withGenerationNotification = async <T>(title: string, work: () => Promise<T>): Promise<T> => {
+    const result = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title,
+        cancellable: false
+      },
+      async () => work()
+    );
+    void vscode.window.showInformationMessage(`${title} completed.`);
+    return result;
+  };
+
+  context.subscriptions.push(
+    vscode.window.registerUriHandler(authManager),
+    timerService,
+    backendSyncService
+  );
+
+  await authManager.restoreSession();
+
+  let lastAuthSyncAt = 0;
+  const syncAuthIfNeeded = async (): Promise<void> => {
+    const now = Date.now();
+    if (now - lastAuthSyncAt < 8000) {
+      return;
+    }
+    lastAuthSyncAt = now;
+    await authManager.syncFromStoredToken();
+  };
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeWindowState((event) => {
+      if (event.focused) {
+        void syncAuthIfNeeded();
+      }
+    })
+  );
+
+  const getChatDisplayName = (): string => {
+    const session = preecodeStore.getState().user;
+    return (session.username || session.email || 'there').toString();
+  };
+
+  const newChatGreeting = (): string => {
+    const name = getChatDisplayName();
+    return `Hi ${name}! I’m your Preecode AI assistant. Ask me anything about your code, file, or any topic and I’ll guide you step by step.`;
+  };
+
+  const resetChat = async (): Promise<void> => {
+    preecodeStore.setState((state) => ({
+      ...state,
+      chat: {
+        ...state.chat,
+        isLoading: false,
+        messages: [
+          {
+            role: 'assistant',
+            text: newChatGreeting(),
+            timestamp: Date.now()
+          }
+        ]
+      }
+    }));
+    await context.workspaceState.update(CHAT_HISTORY_KEY, []);
+  };
+
+  await resetChat();
+
+  timerService.bindWorkspaceLifecycle(context);
+  runDetectionService.bind(context);
+  backendSyncService.start();
+
+  const updateExactFixPreview = async (editor: vscode.TextEditor): Promise<void> => {
+    const issueInfo = getTopIssueAndFix(editor, issueFixPreviewCache);
+    if (!issueInfo.cacheKey || issueFixPreviewCache.has(issueInfo.cacheKey) || issueFixPreviewInFlight.has(issueInfo.cacheKey)) {
+      return;
+    }
+
+    const top = getTopDiagnostic(editor);
+    if (!top) {
+      return;
+    }
+
+    issueFixPreviewInFlight.add(issueInfo.cacheKey);
+    try {
+      const problem = getProblemSnippetForDiagnostic(editor, top);
+      const fixed = await generateExactReplacement(editor, top, problem.text);
+      if (!fixed) {
+        return;
+      }
+      issueFixPreviewCache.set(issueInfo.cacheKey, fixed);
+
+      const active = vscode.window.activeTextEditor;
+      if (active && active.document.uri.toString() === editor.document.uri.toString()) {
+        updateEditorState(active);
+      }
+    } catch {
+      // Keep fallback text when exact replacement can't be generated.
+    } finally {
+      issueFixPreviewInFlight.delete(issueInfo.cacheKey);
+    }
+  };
+
+  const updateEditorState = (editor: vscode.TextEditor | undefined): void => {
+    if (!editor) {
+      preecodeStore.setState((state) => ({
+        ...state,
+        editor: {
+          fileName: 'No file',
+          language: '-',
+          selection: '',
+          hasSelection: false,
+          topIssue: '',
+          expectedFix: '',
+          hasQuestionExplanation: false,
+          hasHint: false,
+          hasSolutionExplanation: false,
+          hasCodeEvaluation: false,
+          hasSelectionExplanation: false,
+          hasVisibleSolution: false,
+          hasReview: false
+        }
+      }));
+      return;
+    }
+
+    const selectionText = editor.document.getText(editor.selection);
+    const issueInfo = getTopIssueAndFix(editor, issueFixPreviewCache);
+    const source = editor.document.getText();
+    const fileKey = getFileKey(editor);
+    const trackedSelectionExplanationBlocks = selectionExplanationBlocksByFile.get(fileKey) || [];
+    const presentSelectionExplanationBlocks = trackedSelectionExplanationBlocks.filter((block) => source.includes(block));
+    if (presentSelectionExplanationBlocks.length !== trackedSelectionExplanationBlocks.length) {
+      if (presentSelectionExplanationBlocks.length) {
+        selectionExplanationBlocksByFile.set(fileKey, presentSelectionExplanationBlocks);
+      } else {
+        selectionExplanationBlocksByFile.delete(fileKey);
+      }
+    }
+    const reviewBlock = reviewBlockByFile.get(fileKey);
+    const hasReview = Boolean(reviewBlock && source.includes(reviewBlock));
+    if (!hasReview && reviewBlock) {
+      reviewBlockByFile.delete(fileKey);
+    }
+    const latestSolution = latestSolutionByFile.get(fileKey);
+    preecodeStore.setState((state) => ({
+      ...state,
+      editor: {
+        fileName: path.basename(editor.document.fileName),
+        language: editor.document.languageId,
+        selection: selectionText,
+        hasSelection: Boolean(selectionText.trim()),
+        topIssue: issueInfo.topIssue,
+        expectedFix: issueInfo.expectedFix,
+        hasQuestionExplanation: hasMarkerBlock(source, 'QUESTION_EXPLANATION') || hasSimpleQuestionExplanationBlock(source, editor.document.languageId || 'plaintext'),
+        hasHint: hasMarkerBlock(source, 'HINT') || hasSimpleHintBlock(source, editor.document.languageId || 'plaintext'),
+        hasSolutionExplanation: plainSolutionBackupByFile.has(getFileKey(editor)),
+        hasCodeEvaluation: hasMarkerBlock(source, 'CODE_EVALUATION') || (evaluationBlockByFile.get(getFileKey(editor)) ? source.includes(evaluationBlockByFile.get(getFileKey(editor)) as string) : false),
+        hasSelectionExplanation: presentSelectionExplanationBlocks.length > 0,
+        hasVisibleSolution: Boolean(latestSolution && source.includes(latestSolution)),
+        hasReview
+      }
+    }));
+
+    void updateExactFixPreview(editor);
+  };
+
+  const postDebugState = (): void => {
+    if (!debugSession) {
+      return;
+    }
+    const session = debugSession;
+    const currentStep = session.executionSteps[session.currentIndex];
+    if (!currentStep) {
+      return;
+    }
+
+    const active = vscode.window.activeTextEditor;
+    if (active && active.document.uri.toString() === session.fileUri) {
+      const targetLine = Math.max(0, Math.min(active.document.lineCount - 1, currentStep.lineNumber - 1));
+      const lineRange = active.document.lineAt(targetLine).range;
+      active.selection = new vscode.Selection(lineRange.start, lineRange.end);
+      active.revealRange(lineRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    }
+
+    controlCenter.postMessage({
+      type: 'debugState',
+      payload: {
+        lines: session.lines,
+        lineNumbers: session.lineNumbers,
+        currentIndex: session.currentIndex,
+        totalSteps: session.executionSteps.length,
+        currentLine: currentStep.lineNumber,
+        endLine: session.endLine,
+        explanation: formatDebugStepSummary(currentStep, session.currentIndex, session.executionSteps.length),
+        answer: session.lastAnswer || ''
+      }
+    });
+  };
+
+  const runQuickAction = async (action: QuickAction): Promise<void> => {
+    const trackHelpUsage = (): void => {
+      preecodeStore.setState((state) => ({
+        ...state,
+        practice: {
+          ...state.practice,
+          hintsUsed: state.practice.hintsUsed + 1
+        }
+      }));
+    };
+
+    if (action === 'practice') {
+      timerService.prepareForPractice();
+      preecodeStore.setState((state) => ({
+        ...state,
+        practice: {
+          ...state.practice,
+          hintsUsed: 0,
+          solutionViewed: false,
+          success: false,
+          runStatus: 'idle'
+        }
+      }));
+      return;
+    }
+
+    if (action === 'generate') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to generate a practice question.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const detectedTopic = inferTopicFromPath(active.document.fileName, language, active.document.getText());
+
+      const topicConfirmation = await vscode.window.showQuickPick(
+        ['Yes, use detected topic', 'No, enter my own topic'],
+        {
+          placeHolder: `Detected topic: ${detectedTopic}. Is this okay?`
+        }
+      );
+      if (!topicConfirmation) {
+        return;
+      }
+
+      let topic = detectedTopic;
+      if (topicConfirmation.startsWith('No')) {
+        const customTopic = await vscode.window.showInputBox({
+          prompt: 'Enter your topic for practice question',
+          value: detectedTopic
+        });
+        if (!customTopic?.trim()) {
+          return;
+        }
+        topic = normalizeTopicToOneWord(customTopic.trim(), detectedTopic);
+      }
+
+      topic = normalizeTopicToOneWord(topic, detectedTopic);
+
+      const difficultyPick = await vscode.window.showQuickPick(['Easy', 'Medium', 'Hard'], {
+        placeHolder: 'Select difficulty level'
+      });
+      if (!difficultyPick) return;
+
+      const difficulty = difficultyPick.toLowerCase() as 'easy' | 'medium' | 'hard';
+
+      const generated = await withGenerationNotification('Generating question', async () => {
+        try {
+          const ai = await import('./services/aiService.js');
+          return await ai.generatePracticeQuestion(topic, language, difficultyPick);
+        } catch {
+          return `[QUESTION]\nWrite a function that returns the sum of two numbers.\nInclude one test call and print the result.`;
+        }
+      });
+
+      await insertGeneratedQuestion(active, generated, difficulty);
+
+      preecodeStore.setState((state) => ({
+        ...state,
+        practice: {
+          ...state.practice,
+          question: extractQuestionBlock(generated) || `Practice started for ${state.editor.fileName}`,
+          difficulty,
+          topic,
+          hintsUsed: 0,
+          solutionViewed: false,
+          success: false,
+          runStatus: 'idle'
+        }
+      }));
+      controlCenter.postMessage({ type: 'setMode', mode: 'solution' });
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'detect') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to detect question.');
+        return;
+      }
+
+      const detected = await withGenerationNotification('Detecting question', async () => detectQuestionFromFile(active));
+      if (!detected) {
+        vscode.window.showWarningMessage('No question detected in current file comments.');
+        return;
+      }
+
+      preecodeStore.setState((state) => ({
+        ...state,
+        practice: {
+          ...state.practice,
+          question: detected.question,
+          difficulty: detected.difficulty,
+          topic: active.document.languageId || state.practice.topic,
+          hintsUsed: 0,
+          solutionViewed: false,
+          success: false,
+          runStatus: 'idle'
+        }
+      }));
+      controlCenter.postMessage({ type: 'setMode', mode: 'solution' });
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'explainQuestion') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to explain question.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const current = active.document.getText();
+
+      if (hasMarkerBlock(current, 'QUESTION_EXPLANATION')) {
+        const next = removeMarkerBlock(current, language, 'QUESTION_EXPLANATION');
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      if (hasSimpleQuestionExplanationBlock(current, language)) {
+        const next = removeSimpleQuestionExplanationBlock(current, language);
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const question = getCurrentQuestion(active);
+      if (!question) {
+        vscode.window.showWarningMessage('No detected question found. Generate or detect a question first.');
+        return;
+      }
+
+      const explanation = await withGenerationNotification('Generating question explanation', async () => getSimpleAssistantText(
+        active,
+        `Explain this coding question in very simple language for a beginner. Keep it clear and short. Question: ${question}`,
+        `This question asks you to write a function that solves the required task correctly. Break it into small steps: understand input, process data, and return the final result.`
+      ));
+
+      const prefix = commentPrefixForLanguage(language);
+      const explanationLines = stripCodeFences(explanation)
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => `${prefix}${line}`)
+        .join('\n');
+      const block = `${prefix}Question Explanation\n${explanationLines}`;
+      const next = appendSection(current, block);
+      await replaceDocument(active, next);
+      trackHelpUsage();
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'showHint') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to show hint.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const current = active.document.getText();
+
+      if (hasMarkerBlock(current, 'HINT')) {
+        const next = removeMarkerBlock(current, language, 'HINT');
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      if (hasSimpleHintBlock(current, language)) {
+        const next = removeSimpleHintBlock(current, language);
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const question = getCurrentQuestion(active);
+      if (!question) {
+        vscode.window.showWarningMessage('No detected question found. Generate or detect a question first.');
+        return;
+      }
+
+      const hintRaw = await withGenerationNotification('Generating hint', async () => getSimpleAssistantText(
+        active,
+        `Give one short direct hint for this coding question without giving full solution. Return one sentence only. Question: ${question}`,
+        'Start with a small helper function and test it on one simple input before handling all cases.'
+      ));
+      const hint = singleLineHint(hintRaw);
+
+      const prefix = commentPrefixForLanguage(language);
+      const block = `${prefix}Hint\n${prefix}${hint}`;
+      const next = insertHintAfterQuestion(current, language, block);
+      await replaceDocument(active, next);
+      trackHelpUsage();
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'showSolution') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to show solution.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const fileKey = getFileKey(active);
+      const current = active.document.getText();
+      const existingSolution = latestSolutionByFile.get(fileKey);
+      if (existingSolution && current.includes(existingSolution)) {
+        const next = removeLastOccurrence(current, existingSolution);
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        plainSolutionBackupByFile.delete(fileKey);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const question = getCurrentQuestion(active);
+      if (!question) {
+        vscode.window.showWarningMessage('No detected question found. Generate or detect a question first.');
+        return;
+      }
+
+      let prepared = commentOutSolutionBlocks(current, language);
+      const previousSolution = latestSolutionByFile.get(fileKey);
+      if (previousSolution && prepared.includes(previousSolution)) {
+        const prefix = commentPrefixForLanguage(language);
+        const commentedPrevious = previousSolution
+          .split('\n')
+          .map((line) => (line.trim() ? `${prefix}${line}` : line))
+          .join('\n');
+        prepared = replaceLastOccurrence(prepared, previousSolution, commentedPrevious);
+      }
+
+      const solution = await withGenerationNotification('Generating solution', async () => generateRunnableSolution(active, question));
+      const cleanSolution = stripCodeFences(solution);
+      const next = appendSection(prepared, cleanSolution);
+
+      await replaceDocument(active, next);
+      latestSolutionByFile.set(fileKey, cleanSolution);
+      plainSolutionBackupByFile.delete(fileKey);
+      preecodeStore.setState((state) => ({
+        ...state,
+        practice: {
+          ...state.practice,
+          solutionViewed: true
+        }
+      }));
+      trackHelpUsage();
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'explainSolution') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to explain solution.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const fileKey = getFileKey(active);
+      const current = active.document.getText();
+
+      const backedUpPlain = plainSolutionBackupByFile.get(fileKey);
+      if (backedUpPlain) {
+        const explainedVersion = buildInlineExplainedSolution(language, backedUpPlain);
+        const reverted = current.includes(explainedVersion)
+          ? replaceLastOccurrence(current, explainedVersion, backedUpPlain)
+          : current;
+        await replaceDocument(active, `${reverted.trimEnd()}\n`);
+        plainSolutionBackupByFile.delete(fileKey);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const latestSolution = latestSolutionByFile.get(fileKey) || getLatestMarkerContent(current, language, 'SOLUTION');
+      if (!latestSolution || !current.includes(latestSolution)) {
+        vscode.window.showWarningMessage('Generate solution first, then explain it.');
+        return;
+      }
+
+      const explained = await withGenerationNotification('Generating solution explanation', async () => buildInlineExplainedSolution(language, latestSolution));
+      const next = replaceLastOccurrence(current, latestSolution, explained);
+      await replaceDocument(active, next);
+      plainSolutionBackupByFile.set(fileKey, latestSolution);
+      trackHelpUsage();
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'evaluateCode') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to evaluate code.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const fileKey = getFileKey(active);
+      const current = active.document.getText();
+      const existingEvaluationBlock = evaluationBlockByFile.get(fileKey);
+      const visibleSolution = latestSolutionByFile.get(fileKey);
+
+      if (existingEvaluationBlock && current.includes(existingEvaluationBlock)) {
+        const next = removeLastOccurrence(current, existingEvaluationBlock);
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        evaluationBlockByFile.delete(fileKey);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      if (!visibleSolution || !current.includes(visibleSolution)) {
+        vscode.window.showWarningMessage('Generate and keep a visible solution first, then evaluate code.');
+        return;
+      }
+
+      if (hasMarkerBlock(current, 'CODE_EVALUATION')) {
+        const next = removeMarkerBlock(current, language, 'CODE_EVALUATION');
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const latestSolution = visibleSolution;
+      const question = getCurrentQuestion(active);
+      const evaluation = await withGenerationNotification('Generating code evaluation', async () => getSimpleAssistantText(
+        active,
+        `Evaluate this solution in simple language: correctness, readability, edge cases, and one improvement. Question: ${question}\nSolution:\n${latestSolution}`,
+        'The code follows a valid structure and is easy to read. Check edge cases (empty input, small values) and add one or two extra tests to improve confidence.'
+      ));
+
+      const prefix = commentPrefixForLanguage(language);
+      const block = stripCodeFences(evaluation)
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => `${prefix}${line}`)
+        .join('\n');
+      const next = appendSection(current, block);
+      await replaceDocument(active, next);
+      evaluationBlockByFile.set(fileKey, block);
+      trackHelpUsage();
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'saveQuestion') {
+      const state = preecodeStore.getState();
+      const active = vscode.window.activeTextEditor;
+      const language = active?.document.languageId || state.editor.language || 'plaintext';
+      const sourceCode = active?.document.getText() || '';
+      const question = state.practice.question || (active ? getCurrentQuestion(active) : 'Practice Question');
+      const timeTaken = state.compactTimer || formatElapsedToClock(state.practice.timeSpentSeconds || 0);
+      const topic = normalizeTopicToOneWord(
+        (state.practice.topic || (active ? inferTopicFromPath(active.document.fileName, language, active.document.getText()) : 'General')).trim(),
+        'General'
+      );
+      const hintsUsed = Math.max(0, state.practice.hintsUsed || 0);
+      const helpUsagePercent = Math.max(0, Math.min(100, Math.round((hintsUsed / 6) * 100)));
+
+      let aiRating = 7;
+      try {
+        const ratingRaw = await requestAssistantChatText([
+          'Rate this coding approach from 0 to 10.',
+          'Return only one number between 0 and 10.',
+          `Question: ${question}`,
+          `Difficulty: ${state.practice.difficulty}`,
+          `Hint/help usage percent: ${helpUsagePercent}%`,
+          `Code:\n${sourceCode || '(no code provided)'}`
+        ].join('\n\n'));
+        aiRating = parseAiRating(ratingRaw);
+      } catch {
+        aiRating = 7;
+      }
+
+      const saved = await sendPracticeData(context, {
+        question,
+        timeTaken,
+        topic,
+        hintsUsed,
+        solutionViewed: state.practice.solutionViewed,
+        language,
+        date: new Date().toISOString(),
+        difficulty: state.practice.difficulty,
+        hintUsagePercent: helpUsagePercent,
+        aiRating
+      });
+
+      const submissionSaved = await sendSubmission(context, {
+        problemName: question,
+        difficulty: state.practice.difficulty,
+        status: state.practice.runStatus === 'success' || state.practice.success ? 'Accepted' : 'Wrong Answer',
+        topic,
+        timeTaken,
+        date: new Date().toISOString()
+      });
+
+      if (saved) {
+        void vscode.window.showInformationMessage(
+          submissionSaved
+            ? 'preecode: Question saved to Practice and Submissions.'
+            : 'preecode: Question saved to Practice. Submissions save failed.'
+        );
+        await backendSyncService.sync('major-event');
+      }
+      return;
+    }
+
+    if (action === 'differentApproach') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to generate a different approach.');
+        return;
+      }
+
+      const language = active.document.languageId || 'plaintext';
+      const fileKey = getFileKey(active);
+      const question = getCurrentQuestion(active);
+      if (!question) {
+        vscode.window.showWarningMessage('No detected question found. Generate or detect a question first.');
+        return;
+      }
+
+      const current = active.document.getText();
+      let prepared = commentOutSolutionBlocks(current, language);
+      const previousSolution = latestSolutionByFile.get(fileKey) || getLatestMarkerContent(prepared, language, 'SOLUTION');
+      if (previousSolution && prepared.includes(previousSolution)) {
+        const prefix = commentPrefixForLanguage(language);
+        const commentedPrevious = previousSolution
+          .split('\n')
+          .map((line) => (line.trim() ? `${prefix}${line}` : line))
+          .join('\n');
+        prepared = replaceLastOccurrence(prepared, previousSolution, commentedPrevious);
+      }
+
+      const alternative = await withGenerationNotification(
+        'Generating different approach',
+        async () => generateAlternativeRunnableSolution(active, question, previousSolution || '')
+      );
+      const cleanAlternative = stripCodeFences(alternative);
+      const next = appendSection(prepared, cleanAlternative);
+      await replaceDocument(active, next);
+      latestSolutionByFile.set(fileKey, cleanAlternative);
+      plainSolutionBackupByFile.delete(fileKey);
+      trackHelpUsage();
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'fix') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to fix code.');
+        return;
+      }
+
+      const initialDiagnostics = getSortedDiagnostics(active);
+      if (!initialDiagnostics.length) {
+        vscode.window.showInformationMessage('No diagnostics found. Your file has no detected issue to fix.');
+        return;
+      }
+
+      const fileUri = active.document.uri.toString();
+      await withGenerationNotification('Fixing all code errors', async () => {
+        for (let pass = 0; pass < 3; pass++) {
+          const diagnostics = getSortedDiagnostics(active);
+          if (!diagnostics.length) {
+            break;
+          }
+
+          const fixedFile = await generateFixedFileCode(active);
+          if (!fixedFile || fixedFile.trim() === active.document.getText().trim()) {
+            break;
+          }
+
+          await replaceDocument(active, `${fixedFile.trimEnd()}\n`);
+          await sleep(220);
+        }
+      });
+
+      for (const key of Array.from(issueFixPreviewCache.keys())) {
+        if (key.startsWith(`${fileUri}|`)) {
+          issueFixPreviewCache.delete(key);
+        }
+      }
+
+      updateEditorState(active);
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'debug') {
+      controlCenter.postMessage({ type: 'debugState', payload: { lines: [], currentIndex: 0, currentLine: 0, endLine: 0, explanation: '-', answer: '' } });
+      return;
+    }
+
+    if (action === 'explain') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showWarningMessage('Select code first, then click Explain Selection.');
+        return;
+      }
+
+      const fileKey = getFileKey(active);
+      const current = active.document.getText();
+      if (active.selection.isEmpty) {
+        const trackedBlocks = selectionExplanationBlocksByFile.get(fileKey) || [];
+        const presentBlocks = trackedBlocks.filter((block) => current.includes(block));
+        if (!presentBlocks.length) {
+          vscode.window.showWarningMessage('Select code first, then click Explain Selection.');
+          return;
+        }
+
+        let next = current;
+        for (const block of presentBlocks) {
+          next = removeAllOccurrences(next, block);
+        }
+        next = next.replace(/\n{3,}/g, '\n\n').trimEnd();
+        await replaceDocument(active, next ? `${next}\n` : '');
+        selectionExplanationBlocksByFile.delete(fileKey);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const selectedCode = active.document.getText(active.selection);
+      const explanationRaw = await withGenerationNotification('Generating selection explanation', async () => getSimpleAssistantText(
+        active,
+        [
+          'Explain this selected code for a beginner.',
+          'Use very easy and simple language.',
+          'Return only 1-2 short lines.',
+          'No bullet points. No long paragraph.',
+          `Code:\n${selectedCode}`
+        ].join('\n'),
+        'This code runs step by step and gives the final result.'
+      ));
+
+      const explanation = toShortSimpleExplanation(explanationRaw, 2);
+
+      const language = active.document.languageId || 'plaintext';
+      const prefix = commentPrefixForLanguage(language);
+      const explanationBlock = [
+        `${prefix}Explanation:`,
+        ...stripCodeFences(explanation)
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => `${prefix}${line}`)
+      ].join('\n');
+
+      await insertSelectionExplanationAsComments(active, explanation);
+      const existingBlocks = selectionExplanationBlocksByFile.get(fileKey) || [];
+      selectionExplanationBlocksByFile.set(fileKey, [...existingBlocks, explanationBlock]);
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
+    if (action === 'review') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Open a file to review code.');
+        return;
+      }
+
+      const fileKey = getFileKey(active);
+      const current = active.document.getText();
+      const existingReviewBlock = reviewBlockByFile.get(fileKey);
+      if (existingReviewBlock && current.includes(existingReviewBlock)) {
+        const next = removeLastOccurrence(current, existingReviewBlock);
+        await replaceDocument(active, next ? `${next}\n` : '');
+        reviewBlockByFile.delete(fileKey);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
+      const analysis = await withGenerationNotification('Reviewing code', async () => runAiAction('review'));
+      const reviewText = [
+        'Code Review Summary',
+        '',
+        `1. Logic clarity\n${analysis.sections.problemSummary || '-'}`,
+        '',
+        `2. Possible bug risks\n${analysis.sections.rootCause || '-'}`,
+        '',
+        `3. Performance suggestions\n${analysis.sections.fixExplanation || '-'}`,
+        '',
+        `4. Readability improvements\n${analysis.sections.improvedCode ? 'Consider naming/style cleanup based on improved version.' : '-'}`
+      ].join('\n');
+
+      const block = blockCommentForLanguage(active.document.languageId, 'Code Review Summary', reviewText.replace(/^Code Review Summary\n\n/, ''));
+      const next = appendSection(active.document.getText(), block);
+      await replaceDocument(active, next);
+      reviewBlockByFile.set(fileKey, block);
+      await backendSyncService.sync('major-event');
+      return;
+    }
+  };
+
+  const askChat = async (text: string): Promise<void> => {
+    preecodeStore.setState((state) => ({
+      ...state,
+      chat: {
+        ...state.chat,
+        isLoading: true,
+        messages: [
+          ...state.chat.messages,
+          {
+            role: 'user',
+            text,
+            timestamp: Date.now()
+          }
+        ]
+      }
+    }));
+
+    const editor = vscode.window.activeTextEditor;
+    const source = editor?.document.getText() || '';
+    const language = editor?.document.languageId || 'plaintext';
+    const selectedText = editor?.document.getText(editor.selection) || '';
+    const fileName = editor?.document.fileName || 'unknown';
+    const state = preecodeStore.getState();
+    const userName = getChatDisplayName();
+    const practiceQuestion = state.practice.question || 'none';
+    const diagnosticsHint = state.editor.topIssue || 'none';
+    const editorFixHint = state.editor.expectedFix || 'none';
+    const recentHistory = state.chat.messages
+      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+      .slice(-12)
+      .map((msg) => ({ role: msg.role, text: msg.text }));
+
+    const editorContext = [
+      `You are Preecode AI, a friendly expert coding mentor.`,
+      `Address the user naturally by name (${userName}) where it fits.`,
+      `Give practical, accurate help for code, debugging, concepts, or general questions.`,
+      `Prefer concise, clear guidance and actionable next steps.`,
+      `Current file: ${fileName}`,
+      `Language: ${language}`,
+      `Current detected issue: ${diagnosticsHint}`,
+      `Current expected fix hint: ${editorFixHint}`,
+      `Current practice question: ${practiceQuestion}`,
+      selectedText.trim() ? `Current selection:\n${selectedText}` : 'Current selection: none'
+    ].join('\n');
+
+    const fallbackPrompt = [
+      editorContext,
+      `Recent chat:\n${recentHistory.map((msg) => `${msg.role}: ${msg.text}`).join('\n') || 'none'}`,
+      `User message: ${text}`
+    ].join('\n\n');
+
+    let assistantText = '';
+    try {
+      assistantText = await sendAIChatMessage(context, text, `${editorContext}\n\nCode:\n${source}`, recentHistory);
+    } catch {
+      try {
+        assistantText = await requestAssistantChatText(`${fallbackPrompt}\n\nCode:\n${source}`);
+      } catch {
+        const chatHistory = preecodeStore.getState().chat.messages.map((m) => ({ role: m.role, text: m.text }));
+        assistantText = localChatReply(text, language, source, chatHistory);
+      }
+    }
+
+    preecodeStore.setState((state) => ({
+      ...state,
+      chat: {
+        ...state.chat,
+        isLoading: false,
+        messages: [
+          ...state.chat.messages,
+          {
+            role: 'assistant',
+            text: assistantText || 'I could not generate a response right now. Please try again.',
+            timestamp: Date.now()
+          }
+        ]
+      }
+    }));
+
+    const persistedHistory = preecodeStore
+      .getState()
+      .chat.messages
+      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+      .slice(-50)
+      .map((msg) => ({ role: msg.role, text: msg.text, timestamp: msg.timestamp }));
+    await context.workspaceState.update(CHAT_HISTORY_KEY, persistedHistory);
+  };
+
+  const controlCenter = new ControlCenterViewProvider(context.extensionUri, {
+    onQuickAction: async (action) => {
+      await runQuickAction(action);
+    },
+    onTimerMenu: async () => {
+      const choice = await vscode.window.showQuickPick(
+        ['Start', 'Pause', 'Resume', 'Stop'],
+        { placeHolder: 'Practice Timer Controls' }
+      );
+      if (!choice) {
+        return;
+      }
+
+      if (choice === 'Start') {
+        timerService.startNow();
+      } else if (choice === 'Pause') {
+        timerService.pause();
+      } else if (choice === 'Resume') {
+        timerService.resume();
+      } else if (choice === 'Stop') {
+        timerService.stop();
+      }
+    },
+    onPanelNarrowHint: async () => {
+      const key = 'preecode.narrowPanelHintShown';
+      const alreadyShown = context.globalState.get<boolean>(key);
+      if (alreadyShown) {
+        return;
+      }
+      await context.globalState.update(key, true);
+      void vscode.window.showInformationMessage('Preecode tip: Drag the VS Code sidebar border to make this panel wider. VS Code will remember your preferred width.');
+    },
+    onLogout: async () => {
+      await authManager.logout();
+    },
+    onAskChat: askChat,
+    onNewChat: async () => {
+      await resetChat();
+    },
+    onDebugStart: async (startLine, endLine) => {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        return;
+      }
+
+      const totalLines = active.document.lineCount;
+      const normalizedStart = Math.max(1, Math.min(totalLines, startLine));
+      const normalizedEnd = Math.max(normalizedStart, Math.min(totalLines, endLine));
+      const lines: string[] = [];
+      const lineNumbers: number[] = [];
+      const sourceLines: DebugSourceLine[] = [];
+
+      let minIndent = Number.MAX_SAFE_INTEGER;
+      for (let index = normalizedStart - 1; index <= normalizedEnd - 1; index++) {
+        const raw = active.document.lineAt(index).text;
+        lines.push(raw);
+        lineNumbers.push(index + 1);
+        const trimmed = raw.trim();
+        if (trimmed.length) {
+          const leadingSpaces = raw.match(/^\s*/)?.[0].replace(/\t/g, '    ').length ?? 0;
+          minIndent = Math.min(minIndent, leadingSpaces);
+        }
+      }
+
+      if (!lines.length) {
+        return;
+      }
+
+      const baseIndent = minIndent === Number.MAX_SAFE_INTEGER ? 0 : minIndent;
+      for (let index = 0; index < lines.length; index++) {
+        const code = lines[index];
+        const trimmed = code.trim();
+        const leadingSpaces = code.match(/^\s*/)?.[0].replace(/\t/g, '    ').length ?? 0;
+        const normalizedSpaces = Math.max(0, leadingSpaces - baseIndent);
+        const indentLevel = Math.floor(normalizedSpaces / 4);
+        sourceLines.push({
+          lineNumber: lineNumbers[index],
+          code,
+          trimmed,
+          indent: indentLevel
+        });
+      }
+
+      const executionSteps = buildExecutionSteps(sourceLines);
+      if (!executionSteps.length) {
+        return;
+      }
+
+      debugSession = {
+        fileUri: active.document.uri.toString(),
+        lines,
+        lineNumbers,
+        startLine: normalizedStart,
+        endLine: normalizedEnd,
+        currentIndex: 0,
+        executionSteps,
+        lastAnswer: ''
+      };
+      postDebugState();
+    },
+    onDebugNavigate: async (direction) => {
+      if (!debugSession) {
+        return;
+      }
+
+      if (direction === 'prev') {
+        debugSession.currentIndex = Math.max(0, debugSession.currentIndex - 1);
+      } else {
+        debugSession.currentIndex = Math.min(debugSession.executionSteps.length - 1, debugSession.currentIndex + 1);
+      }
+
+      postDebugState();
+    },
+    onDebugAsk: async (text) => {
+      if (!debugSession) {
+        return;
+      }
+      const session = debugSession;
+
+      const active = vscode.window.activeTextEditor;
+      const currentStep = session.executionSteps[session.currentIndex];
+      if (!currentStep) {
+        return;
+      }
+      const currentLine = currentStep.lineNumber;
+      const lineText = currentStep.codeLine || '';
+
+      if (!active || active.document.uri.toString() !== session.fileUri) {
+        session.lastAnswer = 'Open the same file to continue this debug session.';
+        postDebugState();
+        return;
+      }
+
+      const answer = await withGenerationNotification('Getting debug answer', async () => getSimpleAssistantText(
+        active,
+        [
+          `Debug question: ${text}`,
+          `Current line number: ${currentLine}`,
+          `Current line code: ${lineText}`,
+          `Debug range: ${session.startLine}-${session.endLine}`,
+          'Answer briefly in simple language.'
+        ].join('\n'),
+        'This line updates state based on the current condition in your loop.'
+      ));
+
+      session.lastAnswer = answer;
+      postDebugState();
+    },
+    onLogin: async () => {
+      await authManager.login();
+    }
+  });
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(ControlCenterViewProvider.viewId, controlCenter)
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('preecode.login', async () => {
+      await authManager.login();
+    }),
+    vscode.commands.registerCommand('preecode.logout', async () => {
+      await authManager.logout();
+    }),
+    vscode.commands.registerCommand('preecode.quickPractice', async () => {
+      await runQuickAction('practice');
+    }),
+    vscode.commands.registerCommand('preecode.debugSelection', async () => {
+      await runQuickAction('debug');
+    }),
+    vscode.commands.registerCommand('preecode.explainSelection', async () => {
+      await runQuickAction('explain');
+    }),
+    vscode.commands.registerCommand('preecode.reviewCode', async () => {
+      await runQuickAction('review');
+    }),
+    vscode.commands.registerCommand('preecode.openControlCenter', async () => {
+      await vscode.commands.executeCommand('workbench.view.extension.preecode');
+    })
+  );
+
+  let lastRunStatus = preecodeStore.getState().practice.runStatus;
+  const unsubscribe = preecodeStore.subscribe((state) => {
+    if (state.practice.runStatus !== lastRunStatus) {
+      lastRunStatus = state.practice.runStatus;
+      void backendSyncService.sync('major-event');
+    }
+  });
+
+  context.subscriptions.push({
+    dispose: () => unsubscribe()
+  });
+
+  updateEditorState(vscode.window.activeTextEditor);
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      updateEditorState(editor);
+    }),
+    vscode.window.onDidChangeTextEditorSelection((event) => {
+      updateEditorState(event.textEditor);
+    }),
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      const activeEditor = vscode.window.activeTextEditor;
+      if (!activeEditor) return;
+      if (event.document.uri.toString() !== activeEditor.document.uri.toString()) return;
+      updateEditorState(activeEditor);
+    }),
+    vscode.languages.onDidChangeDiagnostics(() => {
+      updateEditorState(vscode.window.activeTextEditor);
+    })
+  );
+}
+
+export function deactivate(): void {}

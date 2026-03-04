@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
+function getOpenAIApiKey(): string {
+	return process.env.OPENAI_API_KEY || '';
+}
+
 export async function generateQuestionExplanation(question: string, code: string, language: string): Promise<string> {
+	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
 		vscode.window.showErrorMessage('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
 		return '';
@@ -49,6 +53,7 @@ export async function generateQuestionExplanation(question: string, code: string
 }
 
 export async function detectTopic(question: string, code: string): Promise<string> {
+	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
 		return 'General';
 	}
@@ -91,6 +96,7 @@ export async function detectTopic(question: string, code: string): Promise<strin
 }
 
 export async function generateHint(question: string, language: string): Promise<string> {
+	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
 		return 'No hint available. Configure OpenAI API key.';
 	}
@@ -149,6 +155,7 @@ export interface AssistantRequest {
 	selectedLine?: number;
 	selectedText?: string;
 	fileName?: string;
+	chatPrompt?: string;
 }
 
 export interface AssistantResponse {
@@ -158,6 +165,41 @@ export interface AssistantResponse {
 	line_execution: string[] | string;
 	fixed_code: string;
 	suggestions: string[] | string;
+}
+
+export async function requestAssistantChatText(prompt: string): Promise<string> {
+	const OPENAI_API_KEY = getOpenAIApiKey();
+	if (!OPENAI_API_KEY) {
+		throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY.');
+	}
+
+	const response = await fetchWithFallback(`${OPENAI_BASE_URL}/chat/completions`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization': `Bearer ${OPENAI_API_KEY}`
+		},
+		body: JSON.stringify({
+			model: 'gpt-4o-mini',
+			messages: [
+				{
+					role: 'system',
+					content: 'You are Preecode AI. Answer directly, accurately, and concisely. If asked for code output, compute it from the provided code.'
+				},
+				{ role: 'user', content: prompt }
+			],
+			temperature: 0.4,
+			max_tokens: 700
+		})
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({}));
+		throw new Error(errorData.error?.message || 'OpenAI request failed.');
+	}
+
+	const data: any = await response.json();
+	return String(data.choices?.[0]?.message?.content || '').trim();
 }
 
 async function fetchWithFallback(url: string, options: any): Promise<any> {
@@ -183,12 +225,14 @@ function buildAssistantPrompt(request: AssistantRequest): string {
 		`Language: ${request.language}`,
 		selectedLine,
 		selectedBlock,
+		`User question: ${request.chatPrompt || '(none)'}`,
 		`Diagnostics:\n${request.diagnostics}`,
 		`Code:\n${request.code}`
 	].join('\n\n');
 }
 
 export async function requestAssistantAnalysis(request: AssistantRequest): Promise<AssistantResponse> {
+	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
 		throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY.');
 	}

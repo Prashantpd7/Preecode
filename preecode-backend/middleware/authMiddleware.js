@@ -14,6 +14,11 @@ module.exports = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authorized, user not found.' });
     }
+    const decodedVersion = Number(decoded.tokenVersion || 0);
+    const currentVersion = Number(req.user.tokenVersion || 0);
+    if (decodedVersion !== currentVersion) {
+      return res.status(401).json({ message: 'Not authorized, token expired.' });
+    }
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Not authorized, token invalid.' });

@@ -23,9 +23,30 @@
     requestAnimationFrame(step);
   }
 
+  function setProfileAvatarImage(url, fallbackName) {
+    var av = document.getElementById('profileAvatar');
+    if (!av) return;
+    var safeName = String(fallbackName || 'User').trim();
+    var initial = safeName.charAt(0).toUpperCase() || 'U';
+    if (!url) {
+      av.innerHTML = '';
+      av.textContent = initial;
+      return;
+    }
+    av.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = safeName + ' avatar';
+    img.className = 'w-full h-full object-cover rounded-full';
+    img.onerror = function () {
+      av.innerHTML = '';
+      av.textContent = initial;
+    };
+    av.appendChild(img);
+  }
+
   // Avatar initial
-  var avatar = document.getElementById('profileAvatar');
-  if (avatar) avatar.textContent = displayName.charAt(0);
+  setProfileAvatarImage(localStorage.getItem('preecode_avatar') || '', displayName);
 
   // Name placeholder
   setText('profileName', displayName);
@@ -35,10 +56,8 @@
     .then(function (user) {
       if (user.username) setText('profileName', cap(user.username));
       if (user.email)    setText('profileEmail', user.email);
-      if (user.username) {
-        var av = document.getElementById('profileAvatar');
-        if (av) av.textContent = user.username.charAt(0).toUpperCase();
-      }
+      if (user.avatar) localStorage.setItem('preecode_avatar', user.avatar);
+      setProfileAvatarImage(user.avatar || localStorage.getItem('preecode_avatar') || '', user.username || displayName);
 
       // Founding badge
       var badgeEl = document.getElementById('foundingBadge');
@@ -212,8 +231,7 @@
 
         // Update UI
         setText('profileName', cap(result.user.username));
-        var av = document.getElementById('profileAvatar');
-        if (av) av.textContent = result.user.username.charAt(0).toUpperCase();
+        setProfileAvatarImage(result.user.avatar || localStorage.getItem('preecode_avatar') || '', result.user.username);
 
         alert('Profile updated successfully');
         closeEditModal();

@@ -7,9 +7,15 @@
   "main": "./out/extension.js",
 
   "activationEvents": [
-  "onStartupFinished",
-  "onUri"
-],
+    "onStartupFinished",
+    "onUri",
+    "onView:preecode.controlCenter",
+    "onCommand:preecode.openControlCenter",
+    "onCommand:preecode.quickPractice",
+    "onCommand:preecode.debugSelection",
+    "onCommand:preecode.explainSelection",
+    "onCommand:preecode.reviewCode"
+  ],
 
   "engines": {
     "vscode": "^1.109.0"
@@ -21,121 +27,52 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "preecodeAssistant",
+          "id": "preecode",
           "title": "Preecode",
           "icon": "resources/hubot-view.svg"
         }
       ]
     },
     "views": {
-      "preecodeAssistant": [
+      "preecode": [
         {
-          "id": "preecode.assistantView",
-          "name": "Preecode AI",
+          "id": "preecode.controlCenter",
+          "name": "Control Center",
           "type": "webview"
         }
       ]
     },
     "commands": [
       {
-      "command": "preecode.login",
-      "title": "Preecode: Login"
-    },
-    {
-      "command": "preecode.loginGoogle",
-      "title": "Preecode: Login with Google"
-    },
-    {
-      "command": "preecode.showAccount",
-      "title": "Preecode: Account"
-    },
-    {
-      "command": "preecode.submitSolution",
-      "title": "Preecode: Submit Solution"
-    },
-    {
-      "command": "preecode.openDashboard",
-      "title": "Preecode: Open Dashboard"
-    },
-    {
-      "command": "preecode.openAssistantPanel",
-      "title": "Preecode: Open AI Panel"
-    },
-      {
-  "command": "preecode.checkToken",
-  "title": "preecode: Check Stored Token"
-},
-      {
-        "command": "preecode.startPractice",
-        "title": "Start Practice",
-        "icon": {
-          "dark": "resources/play-dark.svg",
-          "light": "resources/play-light.svg"
-        }
+        "command": "preecode.openControlCenter",
+        "title": "Preecode: Open Control Center"
       },
       {
-        "command": "preecode.run",
-        "title": "Run Code",
-        "icon": {
-          "light": "resources/run-light.svg",
-          "dark": "resources/run-dark.svg"
-        }
+        "command": "preecode.login",
+        "title": "Preecode: Login"
       },
       {
-        "command": "preecode.showHint",
-        "title": "Show Hint"
+        "command": "preecode.logout",
+        "title": "Preecode: Logout"
       },
       {
-        "command": "preecode.removeHint",
-        "title": "Remove Hint"
+        "command": "preecode.quickPractice",
+        "title": "Preecode: Practice"
       },
       {
-        "command": "preecode.showSolution",
-        "title": "Show Solution"
-      },
-      {
-        "command": "preecode.evaluateSolution",
-        "title": "Evaluate Code"
-      },
-      {
-        "command": "preecode.removeEvaluation",
-        "title": "Remove Evaluation"
-      },
-      {
-        "command": "preecode.explainCode",
-        "title": "Explain Code"
-      },
-      {
-        "command": "preecode.removeExplanation",
-        "title": "Remove Explanation"
-      },
-      {
-        "command": "preecode.timerControls",
-        "title": "Timer Controls"
+        "command": "preecode.debugSelection",
+        "title": "Preecode: Debug Selection"
       },
       {
         "command": "preecode.explainSelection",
-        "title": "Explain Selection"
+        "title": "Preecode: Explain Selection"
       },
       {
-        "command": "preecode.removeSelectionExplanation",
-        "title": "Remove Selection Explanation"
+        "command": "preecode.reviewCode",
+        "title": "Preecode: Review Code"
       }
     ],
-    "menus": {
-      "editor/title": [
-        {
-          "command": "preecode.run",
-          "when": "editorTextFocus",
-          "group": "navigation"
-        },
-        {
-          "command": "preecode.startPractice",
-          "when": "editorTextFocus",
-          "group": "navigation"
-        }
-      ]
-    }
+    "menus": {}
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -158,6 +95,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "dotenv": "^17.3.1",
+    "monaco-editor": "^0.52.2",
     "node-fetch": "^3.3.2",
     "openai": "^6.22.0"
   }

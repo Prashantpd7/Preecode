@@ -165,19 +165,49 @@
   <script>
     // Navbar auth state: swap Login/Register to Dashboard/Logout when token exists
     document.addEventListener('DOMContentLoaded', function () {
+      function invalidateServerToken() {
+        try {
+          var token = localStorage.getItem('token');
+          if (!token) return;
+          fetch('https://preecode.onrender.com/api/users/logout', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token },
+            credentials: 'include',
+            keepalive: true
+          }).catch(function () { /* ignore */ });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function notifyExtensionLogout() {
+        try {
+          var deep = 'vscode://prashant.preecode/auth?action=logout';
+          var frame = document.createElement('iframe');
+          frame.style.display = 'none';
+          frame.src = deep;
+          document.body.appendChild(frame);
+          setTimeout(function () {
+            try { document.body.removeChild(frame); } catch (e) { /* ignore */ }
+          }, 1200);
+        } catch (e) {
+          // ignore
+        }
+      }
+
       var token = localStorage.getItem('token');
       if (!token) return;
       // Desktop
       var desktopLogin = document.querySelector('nav a[href="login.html"]');
       var desktopRegister = document.querySelector('nav a[href="register.html"]');
       if (desktopLogin) { desktopLogin.href = '/pages/dashboard.html'; desktopLogin.textContent = 'Dashboard'; }
-      if (desktopRegister) { desktopRegister.textContent = 'Logout'; desktopRegister.href = '#'; desktopRegister.addEventListener('click', function (e) { e.preventDefault(); localStorage.clear(); window.location.href = '/'; }); }
+      if (desktopRegister) { desktopRegister.textContent = 'Logout'; desktopRegister.href = '#'; desktopRegister.addEventListener('click', function (e) { e.preventDefault(); invalidateServerToken(); localStorage.clear(); notifyExtensionLogout(); setTimeout(function () { window.location.href = '/auth/logout.html'; }, 220); }); }
 
       // Mobile
       var mobileLogin = document.querySelector('#mobile-menu a[href="login.html"]');
       var mobileRegister = document.querySelector('#mobile-menu a[href="register.html"]');
       if (mobileLogin) { mobileLogin.href = '/pages/dashboard.html'; mobileLogin.textContent = 'Dashboard'; }
-      if (mobileRegister) { mobileRegister.textContent = 'Logout'; mobileRegister.href = '#'; mobileRegister.addEventListener('click', function (e) { e.preventDefault(); localStorage.clear(); window.location.href = '/'; }); }
+      if (mobileRegister) { mobileRegister.textContent = 'Logout'; mobileRegister.href = '#'; mobileRegister.addEventListener('click', function (e) { e.preventDefault(); invalidateServerToken(); localStorage.clear(); notifyExtensionLogout(); setTimeout(function () { window.location.href = '/auth/logout.html'; }, 220); }); }
     });
   </script>
 

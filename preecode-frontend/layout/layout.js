@@ -1,6 +1,38 @@
 /* layout.js – Injects sidebar + topbar into .app-shell pages */
 
 (function () {
+  var API_BASE = 'https://preecode.onrender.com/api';
+
+  function invalidateServerToken() {
+    try {
+      var token = localStorage.getItem('token');
+      if (!token) return;
+      fetch(API_BASE + '/users/logout', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        credentials: 'include',
+        keepalive: true
+      }).catch(function () { /* ignore */ });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function notifyExtensionLogout() {
+    try {
+      var deep = 'vscode://prashant.preecode/auth?action=logout';
+      var frame = document.createElement('iframe');
+      frame.style.display = 'none';
+      frame.src = deep;
+      document.body.appendChild(frame);
+      setTimeout(function () {
+        try { document.body.removeChild(frame); } catch (e) { /* ignore */ }
+      }, 1200);
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // Auth guard
   if (!localStorage.getItem('token')) {
     window.location.href = '/index.html';
@@ -86,6 +118,7 @@
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function (e) {
       e.preventDefault();
+      invalidateServerToken();
       localStorage.removeItem('token');
       localStorage.removeItem('preecode_uid');
       localStorage.removeItem('preecode_name');
@@ -93,7 +126,10 @@
       localStorage.removeItem('preecode_badge');
       localStorage.removeItem('preecode_shared');
       localStorage.removeItem('preecode_new');
-      window.location.href = '/index.html';
+      notifyExtensionLogout();
+      setTimeout(function () {
+        window.location.href = '/auth/logout.html';
+      }, 220);
     });
   }
 

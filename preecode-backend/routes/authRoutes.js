@@ -41,7 +41,7 @@ router.get(
   (req, res) => {
     console.log('[auth] Google callback hit for user:', req.user && req.user._id);
     const token = jwt.sign(
-      { id: req.user._id },
+      { id: req.user._id, tokenVersion: req.user.tokenVersion || 0 },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -90,7 +90,7 @@ router.get('/dev-login', async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: user._id },
+    { id: user._id, tokenVersion: user.tokenVersion || 0 },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );

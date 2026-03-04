@@ -16,8 +16,13 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         let user = await User.findOne({ providerId: profile.id });
+        const providerAvatar = profile.photos[0]?.value || '';
 
         if (user) {
+          if (providerAvatar && user.avatar !== providerAvatar) {
+            user.avatar = providerAvatar;
+            await user.save();
+          }
           return done(null, user);
         }
 
@@ -36,7 +41,7 @@ passport.use(
           email: profile.emails[0].value,
           provider: 'google',
           providerId: profile.id,
-          avatar: profile.photos[0]?.value || '',
+          avatar: providerAvatar,
         });
 
         return done(null, user);

@@ -235,12 +235,29 @@
         tbody.innerHTML = '';
         practices.forEach(function (p) {
           var dateStr = p.date ? new Date(p.date).toLocaleDateString() : '';
+          var topic = p.topic || 'General';
+          var difficulty = p.difficulty || 'medium';
+          var helpPercent = typeof p.hintUsagePercent === 'number' ? Math.max(0, Math.min(100, Math.round(p.hintUsagePercent))) : null;
+          var aiRating = typeof p.aiRating === 'number' ? Math.max(0, Math.min(10, Math.round(p.aiRating))) : null;
+          var hintsSummary = String(p.hintsUsed || 0) + (p.solutionViewed ? ' + solution' : '');
+          if (helpPercent !== null) {
+            hintsSummary += ' · ' + helpPercent + '% help';
+          }
+          if (aiRating !== null) {
+            hintsSummary += ' · AI ' + aiRating + '/10';
+          }
           var tr = document.createElement('tr');
           tr.innerHTML =
-            '<td class="max-w-[260px] truncate">' + escHtml(p.question) + '</td>' +
-            '<td><span class="diff-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa">' + escHtml(p.language) + '</span></td>' +
+            '<td class="max-w-[260px]">' +
+              '<div class="truncate">' + escHtml(p.question) + '</div>' +
+              '<div class="text-[11px] text-zinc-400 mt-1">Topic: ' + escHtml(topic) + '</div>' +
+            '</td>' +
+            '<td>' +
+              '<span class="diff-badge" style="background:rgba(59,130,246,0.12);color:#60a5fa">' + escHtml(p.language) + '</span>' +
+              '<div class="text-[11px] text-zinc-400 mt-1">' + escHtml(difficulty) + '</div>' +
+            '</td>' +
             '<td>' + escHtml(p.timeTaken) + '</td>' +
-            '<td>' + (p.hintsUsed || 0) + (p.solutionViewed ? ' + solution' : '') + '</td>' +
+            '<td>' + escHtml(hintsSummary) + '</td>' +
             '<td>' + dateStr + '</td>';
           tbody.appendChild(tr);
         });

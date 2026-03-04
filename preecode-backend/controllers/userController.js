@@ -1,9 +1,47 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Submission = require('../models/Submission');
+const crypto = require('crypto');
 
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const generateToken = (userId, tokenVersion = 0) => {
+  return jwt.sign({ id: userId, tokenVersion }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+const avatarFromEmail = (email) => {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) {
+    return '';
+  }
+  return `https://unavatar.io/google/${encodeURIComponent(normalized)}`;
+};
+
+const isGeneratedFallbackAvatar = (url) => {
+  const value = String(url || '').toLowerCase();
+  if (!value) return true;
+  return (
+    value.includes('gravatar.com/avatar/') ||
+    value.includes('ui-avatars.com') ||
+    value.includes('unavatar.io/google/')
+  );
+};
+
+const ensureAvatar = async (userDoc) => {
+  if (!userDoc) {
+    return userDoc;
+  }
+  const fallbackAvatar = avatarFromEmail(userDoc.email);
+  if (!fallbackAvatar) {
+    return userDoc;
+  }
+  if (userDoc.avatar && !isGeneratedFallbackAvatar(userDoc.avatar)) {
+    return userDoc;
+  }
+  if (userDoc.avatar === fallbackAvatar) {
+    return userDoc;
+  }
+  userDoc.avatar = fallbackAvatar;
+  await userDoc.save();
+  return userDoc;
 };
 
 // Login user by email + password
@@ -17,10 +55,17 @@ exports.loginUser = async (req, res, next) => {
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
+
+    if (!user.avatar || isGeneratedFallbackAvatar(user.avatar)) {
+      user.avatar = avatarFromEmail(user.email);
+      await user.save();
+    }
+
     res.json({
       _id: user._id,
       username: user.username,
       email: user.email,
+      avatar: user.avatar || '',
       plan: user.plan,
       subscriptionStatus: user.subscriptionStatus,
       foundingBadgeLevel: user.foundingBadgeLevel,
@@ -28,7 +73,7 @@ exports.loginUser = async (req, res, next) => {
       earlyAccessEndDate: user.earlyAccessEndDate,
       earlyAccessMonthsGranted: user.earlyAccessMonthsGranted,
       certificateId: user.certificateId,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.tokenVersion || 0),
     });
   } catch (error) {
     next(error);
@@ -46,11 +91,17 @@ exports.createUser = async (req, res, next) => {
     if (userExists) {
       return res.status(409).json({ message: 'User already exists.' });
     }
-    const user = await User.create({ username, email, password });
+    const user = await User.create({
+      username,
+      email,
+      password,
+      avatar: avatarFromEmail(email)
+    });
     res.status(201).json({
       _id: user._id,
       username: user.username,
       email: user.email,
+      avatar: user.avatar || '',
       plan: user.plan,
       subscriptionStatus: user.subscriptionStatus,
       foundingBadgeLevel: user.foundingBadgeLevel,
@@ -59,7 +110,7 @@ exports.createUser = async (req, res, next) => {
       earlyAccessMonthsGranted: user.earlyAccessMonthsGranted,
       certificateId: user.certificateId,
       isNewUser: true,
-      token: generateToken(user._id),
+      token: generateToken(user._id, user.tokenVersion || 0),
     });
   } catch (error) {
     next(error);
@@ -73,6 +124,7 @@ exports.getUser = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
+    await ensureAvatar(user);
     res.json(user);
   } catch (error) {
     next(error);
@@ -85,8 +137,12 @@ exports.getMe = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated.' });
     }
-    // req.user is already populated by auth middleware (without password)
-    res.json(req.user);
+    const user = await User.findById(req.user._id).select('-password -__v');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+    await ensureAvatar(user);
+    res.json(user);
   } catch (error) {
     next(error);
   }
@@ -153,6 +209,20 @@ exports.updateProfile = async (req, res, next) => {
       message: 'Profile updated successfully.',
       user: updatedUser,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Logout current user (invalidate existing JWTs by bumping tokenVersion)
+exports.logoutUser = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated.' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, { $inc: { tokenVersion: 1 } });
+    res.json({ message: 'Logged out successfully.' });
   } catch (error) {
     next(error);
   }

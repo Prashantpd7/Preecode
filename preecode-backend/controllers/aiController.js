@@ -3,11 +3,11 @@ const { chat, getHint, reviewCode } = require('../services/aiService');
 // POST /api/ai/chat
 exports.chatWithAI = async (req, res, next) => {
   try {
-    const { message, context } = req.body;
+    const { message, context, history } = req.body;
     if (!message) {
       return res.status(400).json({ message: 'message is required.' });
     }
-    const response = await chat(message, context);
+    const response = await chat(message, context, history);
     res.json({ response });
   } catch (error) {
     next(error);

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createUser, getUser, getStats, loginUser, updateProfile } = require('../controllers/userController');
+const { createUser, getUser, getStats, loginUser, updateProfile, logoutUser } = require('../controllers/userController');
 const validateObjectId = require('../middleware/validateObjectId');
 const auth = require('../middleware/authMiddleware');
 const checkEarlyAccess = require('../middleware/checkEarlyAccess');
@@ -25,6 +25,8 @@ router.put('/profile/update', auth, (req, res, next) => {
 	console.log('[users] PUT /api/users/profile/update from', req.ip, 'bodyKeys=', Object.keys(req.body));
 	return updateProfile(req, res, next);
 });
+
+router.post('/logout', auth, logoutUser);
 
 router.get('/stats/:id', auth, checkEarlyAccess, validateObjectId, getStats);
 router.get('/:id', auth, checkEarlyAccess, validateObjectId, getUser);

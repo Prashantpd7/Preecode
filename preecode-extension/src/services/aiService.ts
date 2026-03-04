@@ -1,20 +1,23 @@
 import OpenAI from "openai";
 
-const apiKey = process.env.OPENAI_API_KEY;
-
-if (!apiKey) {
-    throw new Error("OPENAI_API_KEY not configured.");
+function createOpenAIClient(): OpenAI | null {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+        return null;
+    }
+    return new OpenAI({ apiKey });
 }
-
-const openai = new OpenAI({
-    apiKey: apiKey,
-});
 
 export async function generatePracticeQuestion(
     topic: string,
     language: string,
     difficulty: string
 ): Promise<string> {
+
+    const openai = createOpenAIClient();
+    if (!openai) {
+        return "OpenAI API Error: OPENAI_API_KEY not configured. Please set it in your .env and reload VS Code.";
+    }
 
     try {
 
