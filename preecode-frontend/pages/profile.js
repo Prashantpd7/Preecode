@@ -1,13 +1,25 @@
-/* profile.js – Profile page (Premium V2) */
+/* profile.js – Profile page (Apple-style minimal V3) */
 
 (function () {
+  'use strict';
+
   var userId = localStorage.getItem('preecode_uid');
   var userName = localStorage.getItem('preecode_name') || 'User';
   if (!userId) return;
 
   var displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
 
-  // ── Animate numbers ──
+  // ── Utilities ──
+
+  function $(id) { return document.getElementById(id); }
+
+  function setText(id, val) {
+    var el = $(id);
+    if (el) el.textContent = val;
+  }
+
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
   function animateNumber(el, target, duration) {
     if (!el) return;
     duration = duration || 800;
@@ -24,91 +36,59 @@
     requestAnimationFrame(step);
   }
 
-  // ── Avatar initial ──
-  var avatar = document.getElementById('profileAvatar');
+  function setBar(id, value, max) {
+    var el = $(id);
+    if (el && max > 0) {
+      setTimeout(function () {
+        el.style.width = ((value / max) * 100).toFixed(1) + '%';
+      }, 150);
+    }
+  }
+
+  // ── Scroll Reveal (IntersectionObserver) ──
+
+  var revealElements = document.querySelectorAll('.prof-reveal');
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    revealElements.forEach(function (el) { observer.observe(el); });
+  } else {
+    revealElements.forEach(function (el) { el.classList.add('visible'); });
+  }
+
+  // ── Avatar + Name ──
+
+  var avatar = $('profileAvatar');
   if (avatar) avatar.textContent = displayName.charAt(0);
   setText('profileName', displayName);
 
-  // ── Shared state for profile completion ──
-  var profileState = { user: null, stats: { total: 0, streak: 0 } };
+  // ── Fetch User Profile ──
 
-  // ── Fetch user profile ──
   Api.getUser(userId)
     .then(function (user) {
-      profileState.user = user;
-      if (user.username) setText('profileName', cap(user.username));
-      if (user.email) setText('profileEmail', user.email);
       if (user.username) {
-        var av = document.getElementById('profileAvatar');
+        setText('profileName', cap(user.username));
+        var av = $('profileAvatar');
         if (av) av.textContent = user.username.charAt(0).toUpperCase();
       }
 
-      // Member since
+      // Subtitle: "Member since Jan 2024"
       if (user.createdAt) {
         var d = new Date(user.createdAt);
         var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        setText('memberSince', 'Member since ' + months[d.getMonth()] + ' ' + d.getFullYear());
-      }
-
-      // Founding badge
-      var badgeEl = document.getElementById('foundingBadge');
-      if (badgeEl && user.plan === 'pro') {
-        badgeEl.style.display = '';
-        var level = user.foundingBadgeLevel || localStorage.getItem('preecode_badge') || 'basic';
-        badgeEl.className = 'founding-badge ' + level;
-        var badgeTextEl = document.getElementById('foundingBadgeText');
-        if (badgeTextEl) {
-          badgeTextEl.textContent = level === 'elite' ? 'Founding Member' : 'Early Access';
-        }
-      }
-
-      updateProfileCompletion();
-    })
-    .catch(function () {
-      setText('profileEmail', '\u2014');
-    });
-
-  // ── Fetch early access status ──
-  Api.getEarlyAccessStatus()
-    .then(function (data) {
-      var card = document.getElementById('eaStatusCard');
-      if (!card) return;
-      card.style.display = '';
-
-      var label = document.getElementById('eaPlanLabel');
-      if (label) label.textContent = data.subscriptionStatus === 'active' ? 'Active' : 'Expired';
-
-      var days = document.getElementById('eaDaysLeft');
-      var dr = data.daysRemaining || 0;
-      if (days) {
-        days.textContent = dr > 0 ? dr + ' days remaining' : 'Expired';
-      }
-
-      // Progress bar (dynamic period based on earlyAccessMonthsGranted)
-      var totalDays = (data.earlyAccessMonthsGranted || 3) * 30;
-      var elapsed = totalDays - dr;
-      var progressBar = document.getElementById('eaProgressBar');
-      if (progressBar && dr > 0) {
-        var pct = Math.min((elapsed / totalDays) * 100, 100);
-        setTimeout(function () {
-          progressBar.style.width = pct.toFixed(1) + '%';
-        }, 300);
-      }
-
-      // Update progress labels dynamically
-      var leftLabel = card.querySelector('.ea-progress-left');
-      var rightLabel = card.querySelector('.ea-progress-right');
-      if (leftLabel) leftLabel.textContent = elapsed + ' days used';
-      if (rightLabel) rightLabel.textContent = totalDays + ' days total';
-
-      var certLink = document.getElementById('viewCertLink');
-      if (certLink && data.foundingBadgeLevel === 'elite') {
-        certLink.style.display = '';
+        setText('profileSubtitle', 'Member since ' + months[d.getMonth()] + ' ' + d.getFullYear());
       }
     })
     .catch(function () {});
 
-  // ── Fetch stats ──
+  // ── Fetch Stats ──
+
   Api.getStats(userId)
     .then(function (data) {
       var total = data.totalSolved || 0;
@@ -117,43 +97,53 @@
       var hard = data.hardSolved || 0;
       var points = data.points || (easy * 1 + medium * 3 + hard * 5);
       var streak = data.streak || 0;
+      var subs = data.recentSubmissions || [];
 
-      profileState.stats = { total: total, streak: streak };
+      // Accuracy from recent submissions
+      var accepted = subs.filter(function (s) { return s.status === 'accepted'; }).length;
+      var accuracy = subs.length ? Math.round((accepted / subs.length) * 100) : 0;
 
-      // Main stats
-      animateNumber(document.getElementById('profileTotal'), total);
-      animateNumber(document.getElementById('profilePoints'), points);
-      animateNumber(document.getElementById('profileStreak'), streak);
+      // Primary metrics
+      animateNumber($('profileTotal'), total);
+      var accEl = $('profileAccuracy');
+      if (accEl) {
+        animateNumber(accEl, accuracy);
+        // Append % after animation completes
+        setTimeout(function () {
+          accEl.textContent = accuracy + '%';
+        }, 850);
+      }
+      animateNumber($('profileStreak'), streak);
 
-      // Micro stats
-      animateNumber(document.getElementById('microSolved'), total);
-      animateNumber(document.getElementById('microStreak'), streak);
-      animateNumber(document.getElementById('microPoints'), points);
-
-      // Difficulty breakdown with percentages
-      animateNumber(document.getElementById('pEasyCount'), easy);
-      animateNumber(document.getElementById('pMedCount'), medium);
-      animateNumber(document.getElementById('pHardCount'), hard);
+      // Difficulty breakdown
+      animateNumber($('pEasyCount'), easy);
+      animateNumber($('pMedCount'), medium);
+      animateNumber($('pHardCount'), hard);
       setBar('pEasyBar', easy, total || 1);
       setBar('pMedBar', medium, total || 1);
       setBar('pHardBar', hard, total || 1);
 
-      var ePct = total > 0 ? Math.round((easy / total) * 100) : 0;
-      var mPct = total > 0 ? Math.round((medium / total) * 100) : 0;
-      var hPct = total > 0 ? Math.round((hard / total) * 100) : 0;
-      setText('pEasyPct', ePct + '%');
-      setText('pMedPct', mPct + '%');
-      setText('pHardPct', hPct + '%');
-
-      // Streak badge in topbar
-      var streakBadge = document.getElementById('streakBadge');
-      if (streakBadge) streakBadge.textContent = streak + ' day streak';
+      // Weekly overview
+      var weekCount = 0;
+      var weekPoints = 0;
+      var now = Date.now();
+      subs.forEach(function (s) {
+        if (!s.submittedAt) return;
+        var diff = Math.floor((now - new Date(s.submittedAt).getTime()) / 86400000);
+        if (diff >= 0 && diff < 7) {
+          weekCount++;
+          var d = (s.difficulty || '').toLowerCase();
+          weekPoints += d === 'hard' ? 5 : d === 'medium' ? 3 : 1;
+        }
+      });
+      animateNumber($('weekSolved'), weekCount);
+      animateNumber($('weekPoints'), weekPoints);
 
       // Badge progress
-      updateBadge('badgeFirstBar', 'badgeFirstText', total, 1, ' solved');
-      updateBadge('badge7day', 'badge7dayText', streak, 7, ' days');
-      updateBadge('badge50', 'badge50Text', total, 50, ' solved');
-      updateBadge('badgeHard', 'badgeHardText', hard, 10, ' hard');
+      updateBadgeBar('badgeFirstBar', total, 1);
+      updateBadgeBar('badge7day', streak, 7);
+      updateBadgeBar('badge50', total, 50);
+      updateBadgeBar('badgeHard', hard, 10);
 
       // Unlock badges
       unlockBadge('firstSolve', total >= 1);
@@ -161,42 +151,26 @@
       unlockBadge('50problems', total >= 50);
       unlockBadge('hardMaster', hard >= 10);
 
+      // Show "View All" button if any extra badges have progress
+      if (total > 0) {
+        var viewAllBtn = $('viewAllBadges');
+        if (viewAllBtn) viewAllBtn.style.display = '';
+      }
+
       // Rank / Level
       updateRank(points);
-
-      // Profile completion (update with stats)
-      updateProfileCompletion();
     })
     .catch(function (err) {
       console.error('Profile stats load failed:', err);
     });
 
-  // ── Activity heatmap (last 7 days) ──
-  buildActivityHeatmap();
+  // ── Badge Helpers ──
 
-  // ── Helpers ──
-  function setText(id, val) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = val;
-  }
-
-  function setBar(id, value, max) {
-    var el = document.getElementById(id);
-    if (el && max > 0) {
-      setTimeout(function () {
-        el.style.width = ((value / max) * 100).toFixed(1) + '%';
-      }, 150);
-    }
-  }
-
-  function updateBadge(barId, textId, current, goal, suffix) {
-    var bar = document.getElementById(barId);
-    var text = document.getElementById(textId);
+  function updateBadgeBar(barId, current, goal) {
+    var bar = $(barId);
+    if (!bar) return;
     var pct = Math.min((current / goal) * 100, 100);
-    if (bar) {
-      setTimeout(function () { bar.style.width = pct.toFixed(1) + '%'; }, 200);
-    }
-    if (text) text.textContent = Math.min(current, goal) + '/' + goal + suffix;
+    setTimeout(function () { bar.style.width = pct.toFixed(1) + '%'; }, 200);
   }
 
   function unlockBadge(badgeName, earned) {
@@ -205,15 +179,26 @@
     if (earned) {
       card.classList.remove('locked');
       card.classList.add('unlocked');
-    } else {
-      card.classList.add('locked');
-      card.classList.remove('unlocked');
     }
   }
 
-  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // ── View All Badges Toggle ──
+
+  var viewAllBtn = $('viewAllBadges');
+  if (viewAllBtn) {
+    var expanded = false;
+    viewAllBtn.addEventListener('click', function () {
+      expanded = !expanded;
+      var extras = document.querySelectorAll('.prof-badge-extra');
+      extras.forEach(function (el) {
+        el.style.display = expanded ? '' : 'none';
+      });
+      viewAllBtn.textContent = expanded ? 'Show Less' : 'View All';
+    });
+  }
 
   // ── Rank System ──
+
   function updateRank(points) {
     var ranks = [
       { name: 'Beginner',     min: 0,    max: 49,       level: 1 },
@@ -234,10 +219,10 @@
     var progress = ((points - rank.min) / (nextMax - rank.min)) * 100;
     setText('rankXP', points + ' / ' + nextMax + ' XP');
 
-    var rankIcon = document.getElementById('rankIcon');
-    if (rankIcon) rankIcon.textContent = rank.level;
+    var rankLevel = $('rankLevel');
+    if (rankLevel) rankLevel.textContent = rank.level;
 
-    var rankBar = document.getElementById('rankBar');
+    var rankBar = $('rankBar');
     if (rankBar) {
       setTimeout(function () {
         rankBar.style.width = Math.min(progress, 100).toFixed(1) + '%';
@@ -245,52 +230,12 @@
     }
   }
 
-  // ── Profile Completion ──
-  function updateProfileCompletion() {
-    var user = profileState.user;
-    if (!user) return;
-    var stats = profileState.stats;
+  // ── Activity Heatmap (Last 7 Days) ──
 
-    var checks = [
-      { label: 'Username set', done: !!(user.username && user.username !== 'User') },
-      { label: 'Email verified', done: !!user.email },
-      { label: 'Avatar uploaded', done: !!(user.avatar || localStorage.getItem('preecode_avatar')) },
-      { label: 'First problem solved', done: stats.total > 0 },
-      { label: 'Streak started', done: stats.streak > 0 }
-    ];
+  buildActivityHeatmap();
 
-    var doneCount = 0;
-    var html = '';
-    for (var i = 0; i < checks.length; i++) {
-      if (checks[i].done) doneCount++;
-      html += '<div class="completion-item ' + (checks[i].done ? 'done' : '') + '">' +
-        '<span class="completion-check ' + (checks[i].done ? 'done' : 'pending') + '">' +
-        (checks[i].done ? '&#10003;' : '') +
-        '</span>' +
-        '<span>' + checks[i].label + '</span></div>';
-    }
-
-    var checklist = document.getElementById('completionChecklist');
-    if (checklist) checklist.innerHTML = html;
-
-    var pct = Math.round((doneCount / checks.length) * 100);
-    setText('completionPct', pct + '%');
-
-    // Animate SVG circle
-    var circle = document.getElementById('completionCircle');
-    if (circle) {
-      var circumference = 2 * Math.PI * 34;
-      var offset = circumference - (pct / 100) * circumference;
-      setTimeout(function () {
-        circle.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)';
-        circle.setAttribute('stroke-dashoffset', offset);
-      }, 400);
-    }
-  }
-
-  // ── Activity Heatmap ──
   function buildActivityHeatmap() {
-    var container = document.getElementById('activityHeatmap');
+    var container = $('activityHeatmap');
     if (!container) return;
 
     var today = new Date();
@@ -335,121 +280,67 @@
   }
 
   // ── Edit Profile Modal ──
-  var editModal = document.getElementById('editProfileModal');
-  var editBtn = document.getElementById('editProfileBtn');
-  var closeBtn = document.getElementById('closeEditModal');
-  var cancelBtn = document.getElementById('cancelEditModal');
-  var editForm = document.getElementById('editProfileForm');
-  var usernameInput = document.getElementById('editUsername');
-  var avatarInput = document.getElementById('editAvatar');
+
+  var editModal = $('editProfileModal');
+  var editBtn = $('editProfileBtn');
+  var closeBtn = $('closeEditModal');
+  var cancelBtn = $('cancelEditModal');
+  var editForm = $('editProfileForm');
+  var usernameInput = $('editUsername');
+  var avatarInput = $('editAvatar');
 
   function openEditModal() {
-    usernameInput.value = userName;
-    avatarInput.value = localStorage.getItem('preecode_avatar') || '';
-    editModal.classList.remove('hidden');
+    if (usernameInput) usernameInput.value = userName;
+    if (avatarInput) avatarInput.value = localStorage.getItem('preecode_avatar') || '';
+    if (editModal) editModal.classList.remove('hidden');
   }
 
   function closeEditModalFn() {
-    editModal.classList.add('hidden');
+    if (editModal) editModal.classList.add('hidden');
   }
 
-  editBtn.addEventListener('click', openEditModal);
-  closeBtn.addEventListener('click', closeEditModalFn);
-  cancelBtn.addEventListener('click', closeEditModalFn);
+  if (editBtn) editBtn.addEventListener('click', openEditModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeEditModalFn);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeEditModalFn);
 
-  editForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    var newUsername = usernameInput.value.trim();
-    var newAvatar = avatarInput.value.trim();
-
-    if (!newUsername) {
-      alert('Username cannot be empty');
-      return;
-    }
-
-    try {
-      var result = await Api.updateProfile({
-        username: newUsername,
-        avatar: newAvatar || undefined
-      });
-
-      if (result && result.user) {
-        localStorage.setItem('preecode_name', result.user.username);
-        if (result.user.avatar) {
-          localStorage.setItem('preecode_avatar', result.user.avatar);
-        }
-        setText('profileName', cap(result.user.username));
-        var av = document.getElementById('profileAvatar');
-        if (av) av.textContent = result.user.username.charAt(0).toUpperCase();
-        closeEditModalFn();
-        location.reload();
-      }
-    } catch (err) {
-      alert('Failed to update profile: ' + (err.message || 'Unknown error'));
-    }
-  });
-
-  editModal.addEventListener('click', function (e) {
-    if (e.target === editModal) closeEditModalFn();
-  });
-
-  // ── Theme Selector (with System support) ──
-  var themeSelector = document.getElementById('themeSelector');
-  if (themeSelector && window.PreeCodeTheme) {
-    var themeOptions = themeSelector.querySelectorAll('.theme-option');
-
-    function syncThemeUI() {
-      var current = PreeCodeTheme.get();
-      themeOptions.forEach(function (btn) {
-        if (btn.getAttribute('data-theme-value') === current) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-    }
-
-    syncThemeUI();
-
-    themeOptions.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var value = btn.getAttribute('data-theme-value');
-        PreeCodeTheme.set(value);
-        syncThemeUI();
-      });
-    });
-  }
-
-  // ── Logout with confirmation modal ──
-  var logoutBtn = document.getElementById('profileLogoutBtn');
-  var logoutModal = document.getElementById('logoutModal');
-  var cancelLogoutBtn = document.getElementById('cancelLogout');
-  var confirmLogoutBtn = document.getElementById('confirmLogout');
-
-  if (logoutBtn && logoutModal) {
-    logoutBtn.addEventListener('click', function (e) {
+  if (editForm) {
+    editForm.addEventListener('submit', async function (e) {
       e.preventDefault();
-      logoutModal.classList.remove('hidden');
-    });
+      var newUsername = usernameInput ? usernameInput.value.trim() : '';
+      var newAvatar = avatarInput ? avatarInput.value.trim() : '';
 
-    cancelLogoutBtn.addEventListener('click', function () {
-      logoutModal.classList.add('hidden');
-    });
+      if (!newUsername) {
+        alert('Username cannot be empty');
+        return;
+      }
 
-    logoutModal.addEventListener('click', function (e) {
-      if (e.target === logoutModal) logoutModal.classList.add('hidden');
-    });
+      try {
+        var result = await Api.updateProfile({
+          username: newUsername,
+          avatar: newAvatar || undefined
+        });
 
-    confirmLogoutBtn.addEventListener('click', function () {
-      localStorage.removeItem('token');
-      localStorage.removeItem('preecode_uid');
-      localStorage.removeItem('preecode_name');
-      localStorage.removeItem('preecode_plan');
-      localStorage.removeItem('preecode_badge');
-      localStorage.removeItem('preecode_shared');
-      localStorage.removeItem('preecode_new');
-      localStorage.removeItem('preecode_avatar');
-      window.location.href = '/index.html';
+        if (result && result.user) {
+          localStorage.setItem('preecode_name', result.user.username);
+          if (result.user.avatar) {
+            localStorage.setItem('preecode_avatar', result.user.avatar);
+          }
+          setText('profileName', cap(result.user.username));
+          var av = $('profileAvatar');
+          if (av) av.textContent = result.user.username.charAt(0).toUpperCase();
+          closeEditModalFn();
+          location.reload();
+        }
+      } catch (err) {
+        alert('Failed to update profile: ' + (err.message || 'Unknown error'));
+      }
     });
   }
+
+  if (editModal) {
+    editModal.addEventListener('click', function (e) {
+      if (e.target === editModal) closeEditModalFn();
+    });
+  }
+
 })();
