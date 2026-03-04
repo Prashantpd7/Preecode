@@ -12,6 +12,10 @@
     '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>' +
     '<span class="ai-fab-ripple"></span>';
 
+  // ── Backdrop Overlay ──
+  var backdrop = document.createElement('div');
+  backdrop.className = 'ai-chat-backdrop';
+
   // ── Chat Panel ──
   var panel = document.createElement('div');
   panel.className = 'ai-chat-panel';
@@ -28,8 +32,9 @@
         '</div>' +
       '</div>' +
       '<div class="ai-chat-header-actions">' +
-        '<button id="aiChatMinimize" class="ai-header-btn" title="Minimize" aria-label="Minimize chat">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>' +
+        '<button id="aiChatExpand" class="ai-header-btn" title="Expand" aria-label="Expand chat">' +
+          '<svg class="ai-expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>' +
+          '<svg class="ai-collapse-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>' +
         '</button>' +
         '<button id="aiChatClose" class="ai-header-btn" aria-label="Close chat">' +
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
@@ -71,6 +76,7 @@
     '</div>';
 
   document.body.appendChild(fab);
+  document.body.appendChild(backdrop);
   document.body.appendChild(panel);
 
   // ── Helpers ──
@@ -108,8 +114,40 @@
     type();
   }
 
-  // ── Close panel (used by minimize, close, ESC, click-outside) ──
+  // ── Expand / Collapse helpers ──
+  var expandBtn = document.getElementById('aiChatExpand');
+  var expandIcon = expandBtn.querySelector('.ai-expand-icon');
+  var collapseIcon = expandBtn.querySelector('.ai-collapse-icon');
+
+  function expandPanel() {
+    backdrop.appendChild(panel);
+    panel.classList.add('expanded');
+    backdrop.classList.add('visible');
+    expandIcon.style.display = 'none';
+    collapseIcon.style.display = '';
+    expandBtn.title = 'Collapse';
+    expandBtn.setAttribute('aria-label', 'Collapse chat');
+    document.getElementById('aiChatInput').focus();
+    scrollToBottom(document.getElementById('aiChatMessages'));
+  }
+
+  function collapsePanel() {
+    panel.classList.remove('expanded');
+    backdrop.classList.remove('visible');
+    document.body.appendChild(panel);
+    expandIcon.style.display = '';
+    collapseIcon.style.display = 'none';
+    expandBtn.title = 'Expand';
+    expandBtn.setAttribute('aria-label', 'Expand chat');
+    document.getElementById('aiChatInput').focus();
+    scrollToBottom(document.getElementById('aiChatMessages'));
+  }
+
+  // ── Close panel (fully hide with animation) ──
   function closePanel() {
+    if (panel.classList.contains('expanded')) {
+      collapsePanel();
+    }
     panel.classList.add('closing');
     panel.classList.remove('open');
     setTimeout(function () {
@@ -133,28 +171,45 @@
     }
   });
 
-  // ── Minimize button ──
-  document.getElementById('aiChatMinimize').addEventListener('click', function (e) {
+  // ── Expand / Collapse button ──
+  expandBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (panel.classList.contains('expanded')) {
+      collapsePanel();
+    } else {
+      expandPanel();
+    }
+  });
+
+  // ── Close button ──
+  document.getElementById('aiChatClose').addEventListener('click', function (e) {
     e.stopPropagation();
     closePanel();
   });
 
-  // ── Close button ──
-  document.getElementById('aiChatClose').addEventListener('click', function () {
-    closePanel();
+  // ── Backdrop click to collapse ──
+  backdrop.addEventListener('click', function (e) {
+    if (e.target === backdrop && panel.classList.contains('expanded')) {
+      collapsePanel();
+    }
   });
 
-  // ── Click outside to close ──
+  // ── Click outside to close (only in default mode) ──
   document.addEventListener('click', function (e) {
     if (!panel.classList.contains('open')) return;
+    if (panel.classList.contains('expanded')) return;
     if (panel.contains(e.target) || fab.contains(e.target)) return;
     closePanel();
   });
 
-  // ── ESC key to close ──
+  // ── ESC key ──
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && panel.classList.contains('open')) {
-      closePanel();
+      if (panel.classList.contains('expanded')) {
+        collapsePanel();
+      } else {
+        closePanel();
+      }
     }
   });
 

@@ -56,30 +56,46 @@
   <!-- ════════════════════════════════════
        1. HERO SECTION
   ════════════════════════════════════ -->
-  <section class="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
+  <section class="hero-v5">
+    <div class="hero-v5__glow"></div>
     <div class="max-w-6xl mx-auto px-6">
       <div class="grid md:grid-cols-2 gap-16 items-center">
         <!-- Left: Copy -->
         <div class="opacity-0 animate-fade-in">
-          <h1 class="text-4xl sm:text-5xl md:text-[3.25rem] font-extrabold tracking-tight leading-[1.1] text-txt mb-6 max-w-[640px]">
-            Track What You Practice. Prove What You Build.
+          <div class="hero-v5__pill">
+            <span class="hero-v5__pill-dot"></span>
+            Free during early access
+          </div>
+          <h1 class="hero-v5__heading">
+            Track What You Practice.<br>
+            <span class="hero-v5__gradient">Prove What You Build.</span>
           </h1>
-          <p class="hero-credibility">Built for developers who take practice seriously.</p>
-          <p class="text-lg text-txt-sec leading-relaxed max-w-xl mb-8">
-            Automatic session tracking and consistency analytics — inside VS Code.
+          <p class="hero-v5__sub">
+            Automatic session tracking and consistency analytics — inside VS Code. Built for developers who take practice seriously.
           </p>
 
-          <div class="flex flex-wrap gap-4">
-            <a href="register.html" class="btn btn-primary">Start Free</a>
+          <div class="hero-v5__ctas">
+            <a href="register.html" class="btn btn-primary hero-v5__btn-primary">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+              Start Free
+            </a>
             <a href="#extension" class="btn btn-secondary">Install VS Code Extension</a>
           </div>
-          <p class="text-xs text-txt-faint mt-4">Free during early access &middot; Built for serious developers</p>
+
+          <div class="hero-v5__trust">
+            <div class="hero-v5__trust-avatars">
+              <div class="hero-v5__trust-avatar" style="background:#3b82f6">S</div>
+              <div class="hero-v5__trust-avatar" style="background:#8b5cf6">A</div>
+              <div class="hero-v5__trust-avatar" style="background:#ec4899">P</div>
+              <div class="hero-v5__trust-avatar" style="background:#f97316">R</div>
+            </div>
+            <span class="hero-v5__trust-text">Trusted by 2,500+ developers</span>
+          </div>
         </div>
 
         <!-- Right: Dashboard Mockup -->
         <div class="opacity-0 animate-fade-in-2 mockup-card">
           <div class="bg-th-surface backdrop-blur-xl border border-bdr rounded-2xl p-6 shadow-[0_16px_64px_rgba(0,0,0,0.4)]">
-            <!-- Mockup Header -->
             <div class="flex items-center justify-between mb-6">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-accent-soft flex items-center justify-center">
@@ -92,18 +108,17 @@
                   <p class="text-xs text-txt-muted">Last 30 days</p>
                 </div>
               </div>
-              <span class="text-[10px] text-txt-faint font-mono">Preecode.dev</span>
+              <div class="hero-v5__live-dot"><span></span> Live</div>
             </div>
 
-            <!-- KPI Grid -->
             <div class="grid grid-cols-2 gap-3 mb-5">
               <div class="bg-th-hover rounded-xl p-4">
                 <p class="text-[10px] text-txt-muted font-medium uppercase tracking-wider mb-1.5">Total Sessions</p>
-                <p class="text-xl font-bold text-txt">142</p>
+                <p class="text-xl font-bold text-txt" data-count="142">0</p>
               </div>
               <div class="bg-th-hover rounded-xl p-4">
                 <p class="text-[10px] text-txt-muted font-medium uppercase tracking-wider mb-1.5">Active Days</p>
-                <p class="text-xl font-bold text-txt">27<span class="text-xs text-txt-muted font-normal ml-1">/ 30</span></p>
+                <p class="text-xl font-bold text-txt"><span data-count="27">0</span><span class="text-xs text-txt-muted font-normal ml-1">/ 30</span></p>
               </div>
               <div class="bg-th-hover rounded-xl p-4">
                 <p class="text-[10px] text-txt-muted font-medium uppercase tracking-wider mb-1.5">Difficulty Split</p>
@@ -115,11 +130,10 @@
               </div>
               <div class="bg-th-hover rounded-xl p-4">
                 <p class="text-[10px] text-txt-muted font-medium uppercase tracking-wider mb-1.5">Consistency Score</p>
-                <p class="text-xl font-bold text-accent">92%</p>
+                <p class="text-xl font-bold text-accent"><span data-count="92">0</span>%</p>
               </div>
             </div>
 
-            <!-- Weekly Chart -->
             <div class="mb-5">
               <p class="text-[10px] text-txt-muted mb-2 font-semibold uppercase tracking-widest">Weekly Performance</p>
               <div class="flex items-end gap-1.5 h-16">
@@ -132,17 +146,10 @@
                 <div class="flex-1 chart-bar" style="height:70%"></div>
               </div>
               <div class="flex justify-between mt-1.5">
-                <span class="text-[10px] text-txt-faint">Mon</span>
-                <span class="text-[10px] text-txt-faint">Tue</span>
-                <span class="text-[10px] text-txt-faint">Wed</span>
-                <span class="text-[10px] text-txt-faint">Thu</span>
-                <span class="text-[10px] text-txt-faint">Fri</span>
-                <span class="text-[10px] text-txt-faint">Sat</span>
-                <span class="text-[10px] text-txt-faint">Sun</span>
+                <span class="text-[10px] text-txt-faint">Mon</span><span class="text-[10px] text-txt-faint">Tue</span><span class="text-[10px] text-txt-faint">Wed</span><span class="text-[10px] text-txt-faint">Thu</span><span class="text-[10px] text-txt-faint">Fri</span><span class="text-[10px] text-txt-faint">Sat</span><span class="text-[10px] text-txt-faint">Sun</span>
               </div>
             </div>
 
-            <!-- Heatmap -->
             <div>
               <p class="text-[10px] text-txt-muted mb-2 font-semibold uppercase tracking-widest">Activity</p>
               <div class="heatmap-grid" id="heatmap"></div>
@@ -154,17 +161,13 @@
   </section>
 
   <script>
-    // Navbar auth state: swap Login/Register to Dashboard when token exists
     document.addEventListener('DOMContentLoaded', function () {
       var token = localStorage.getItem('token');
       if (!token) return;
-      // Desktop
       var desktopLogin = document.querySelector('nav a[href="login.html"]');
       var desktopRegister = document.querySelector('nav a[href="register.html"]');
       if (desktopLogin) { desktopLogin.href = '/pages/dashboard.html'; desktopLogin.textContent = 'Dashboard'; }
       if (desktopRegister) { desktopRegister.href = '/pages/dashboard.html'; desktopRegister.textContent = 'Dashboard'; }
-
-      // Mobile
       var mobileLogin = document.querySelector('#mobile-menu a[href="login.html"]');
       var mobileRegister = document.querySelector('#mobile-menu a[href="register.html"]');
       if (mobileLogin) { mobileLogin.href = '/pages/dashboard.html'; mobileLogin.textContent = 'Dashboard'; }
@@ -174,53 +177,209 @@
 
 
   <!-- ════════════════════════════════════
-       2. VS CODE EXTENSION (moved up)
+       2. LANGUAGE BAR
+  ════════════════════════════════════ -->
+  <section class="logos-bar reveal">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="logos-bar__inner">
+        <span class="logos-bar__item">VS Code</span>
+        <span class="logos-bar__sep"></span>
+        <span class="logos-bar__item">JavaScript</span>
+        <span class="logos-bar__sep"></span>
+        <span class="logos-bar__item">Python</span>
+        <span class="logos-bar__sep"></span>
+        <span class="logos-bar__item">Java</span>
+        <span class="logos-bar__sep"></span>
+        <span class="logos-bar__item">C++</span>
+        <span class="logos-bar__sep"></span>
+        <span class="logos-bar__item">C</span>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       3. THE PROBLEM
+  ════════════════════════════════════ -->
+  <section class="section" id="problem">
+    <div class="max-w-4xl mx-auto px-6 reveal">
+      <div class="section-header">
+        <p class="section-label">The Problem</p>
+        <h2 class="section-title">Most Developers Train Blind.</h2>
+        <p class="section-desc">You solve hundreds of problems but have no structured data — no visibility into difficulty balance, consistency gaps, or actual growth.</p>
+      </div>
+      <div class="text-center">
+        <div class="landing-highlight-v5">
+          <p>Preecode turns your daily coding into <span class="landing-highlight-v5__accent">measurable performance data</span>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       4. HOW IT WORKS
+  ════════════════════════════════════ -->
+  <section id="how-it-works" class="section">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="section-header reveal">
+        <p class="section-label">How It Works</p>
+        <h2 class="section-title">Four steps. Zero manual input.</h2>
+        <p class="section-desc">Install once, then forget about it. Preecode captures everything in the background.</p>
+      </div>
+
+      <div class="steps-v5 reveal">
+        <div class="step-v5">
+          <div class="step-v5__num">01</div>
+          <div class="step-v5__icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          </div>
+          <h3>Install Extension</h3>
+          <p>Add Preecode to VS Code in seconds.</p>
+        </div>
+        <div class="step-v5__connector"><div class="step-v5__line"></div></div>
+        <div class="step-v5">
+          <div class="step-v5__num">02</div>
+          <div class="step-v5__icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+          </div>
+          <h3>Code Normally</h3>
+          <p>No toggles. No manual input. Just code.</p>
+        </div>
+        <div class="step-v5__connector"><div class="step-v5__line"></div></div>
+        <div class="step-v5">
+          <div class="step-v5__num">03</div>
+          <div class="step-v5__icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
+          </div>
+          <h3>Auto Capture</h3>
+          <p>Sessions, time, difficulty — tracked automatically.</p>
+        </div>
+        <div class="step-v5__connector"><div class="step-v5__line"></div></div>
+        <div class="step-v5">
+          <div class="step-v5__num">04</div>
+          <div class="step-v5__icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
+          </div>
+          <h3>Review Insights</h3>
+          <p>Streaks, weak zones, and growth patterns.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       5. FEATURES
+  ════════════════════════════════════ -->
+  <section id="features" class="section section-alt">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="section-header reveal">
+        <p class="section-label">Capabilities</p>
+        <h2 class="section-title">Built for Structured Growth</h2>
+        <p class="section-desc">Every feature is designed to surface patterns, not just display numbers.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-16 items-start reveal">
+        <div class="space-y-8">
+          <div class="feature-item-v5">
+            <div class="feature-item-v5__icon tint-blue">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div>
+              <h3>Session-Level Tracking</h3>
+              <p>Each coding session is captured with start time, duration, language, and problem metadata. No manual entry required.</p>
+            </div>
+          </div>
+          <div class="feature-item-v5">
+            <div class="feature-item-v5__icon tint-green">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+            </div>
+            <div>
+              <h3>Difficulty Distribution Analytics</h3>
+              <p>Visualize your Easy/Medium/Hard solve ratios over time. Surface imbalances before they become blind spots.</p>
+            </div>
+          </div>
+          <div class="feature-item-v5">
+            <div class="feature-item-v5__icon tint-purple">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+            </div>
+            <div>
+              <h3>Weekly Performance Reports</h3>
+              <p>Automated summaries of problems solved, session frequency, and progress trends delivered to your dashboard.</p>
+            </div>
+          </div>
+          <div class="feature-item-v5">
+            <div class="feature-item-v5__icon tint-orange">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/></svg>
+            </div>
+            <div>
+              <h3>Streak Recovery Logic</h3>
+              <p>Intelligent gap detection that identifies when streaks break and what patterns lead to recovery or dropout.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-th-surface backdrop-blur-xl border border-bdr rounded-2xl p-6 mockup-card" style="box-shadow:var(--shadow-lg)">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-sm font-medium text-txt">Performance Summary</p>
+            <span class="text-[10px] text-txt-muted font-mono">This week</span>
+          </div>
+          <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="bg-th-hover rounded-xl p-3.5 text-center"><p class="text-xl font-bold text-txt">247</p><p class="text-[10px] text-txt-muted mt-1">Total Solved</p></div>
+            <div class="bg-th-hover rounded-xl p-3.5 text-center"><p class="text-xl font-bold text-accent">17</p><p class="text-[10px] text-txt-muted mt-1">Day Streak</p></div>
+            <div class="bg-th-hover rounded-xl p-3.5 text-center"><p class="text-xl font-bold text-txt">89%</p><p class="text-[10px] text-txt-muted mt-1">Accuracy</p></div>
+          </div>
+          <div class="mb-6">
+            <p class="text-[10px] text-txt-muted mb-3 font-semibold uppercase tracking-widest">Difficulty Breakdown</p>
+            <div class="space-y-2.5">
+              <div class="flex items-center gap-3"><span class="text-xs text-txt-sec w-14">Easy</span><div class="flex-1 h-2 rounded-full overflow-hidden" style="background:var(--border-subtle)"><div class="h-full rounded-full bg-emerald-500" style="width:72%"></div></div><span class="text-xs text-txt-muted w-12 text-right">124</span></div>
+              <div class="flex items-center gap-3"><span class="text-xs text-txt-sec w-14">Medium</span><div class="flex-1 h-2 rounded-full overflow-hidden" style="background:var(--border-subtle)"><div class="h-full rounded-full bg-amber-500" style="width:48%"></div></div><span class="text-xs text-txt-muted w-12 text-right">89</span></div>
+              <div class="flex items-center gap-3"><span class="text-xs text-txt-sec w-14">Hard</span><div class="flex-1 h-2 rounded-full overflow-hidden" style="background:var(--border-subtle)"><div class="h-full rounded-full bg-rose-500" style="width:21%"></div></div><span class="text-xs text-txt-muted w-12 text-right">34</span></div>
+            </div>
+          </div>
+          <p class="text-[10px] text-txt-muted font-semibold uppercase tracking-widest mb-3">Weekly Trend</p>
+          <div class="relative h-16">
+            <svg class="w-full h-full" viewBox="0 0 280 60" fill="none">
+              <polyline points="0,45 40,38 80,42 120,30 160,25 200,18 240,12 280,8" stroke="rgba(255,161,22,0.5)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="0,45 40,38 80,42 120,30 160,25 200,18 240,12 280,8" stroke="none" fill="url(#chartGrad)"/>
+              <defs><linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,161,22,0.12)"/><stop offset="100%" stop-color="rgba(255,161,22,0)"/></linearGradient></defs>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════════
+       6. VS CODE EXTENSION
   ════════════════════════════════════ -->
   <section id="extension" class="section">
     <div class="max-w-6xl mx-auto px-6">
       <div class="grid md:grid-cols-2 gap-12 items-center reveal">
-
-        <!-- Left: Copy -->
         <div>
           <p class="section-label" style="margin-bottom:12px">VS Code</p>
           <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-txt mb-3">Native VS Code Integration</h2>
-          <p class="text-sm text-txt-sec leading-relaxed max-w-sm mb-6">
-            Solve problems, track sessions, and review insights without leaving your editor.
-          </p>
-
+          <p class="text-sm text-txt-sec leading-relaxed max-w-sm mb-6">Solve problems, track sessions, and review insights without leaving your editor.</p>
           <ul class="space-y-2.5 mb-6 list-none p-0 m-0">
-            <li class="check-item">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Real-time session tracking</span>
-            </li>
-            <li class="check-item">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Zero browser switching</span>
-            </li>
-            <li class="check-item">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Lightweight background capture</span>
-            </li>
-            <li class="check-item">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Built for DSA & daily training</span>
-            </li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Real-time session tracking</span></li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Zero browser switching</span></li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Lightweight background capture</span></li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Built for DSA & daily training</span></li>
           </ul>
-
           <a href="#" class="btn btn-primary btn-sm">Install Extension</a>
         </div>
 
-        <!-- Right: Code Editor Mockup -->
         <div class="editor-mockup">
           <div class="editor-titlebar">
             <div class="editor-dots">
-              <div class="editor-dot"></div>
-              <div class="editor-dot"></div>
-              <div class="editor-dot"></div>
+              <div class="editor-dot" style="background:#ff5f57"></div>
+              <div class="editor-dot" style="background:#febc2e"></div>
+              <div class="editor-dot" style="background:#28c840"></div>
             </div>
             <span class="editor-filename">solution.js</span>
           </div>
-
           <div class="editor-code">
             <div class="text-gray-500">// Two Sum — Easy</div>
             <div class="text-gray-500 mb-2">// Find two numbers that add up to target</div>
@@ -233,98 +392,55 @@
             <div class="ml-8"><span class="text-gray-300">map.set(nums[i], i);</span></div>
             <div class="ml-4"><span class="text-gray-300">}</span></div>
             <div><span class="text-gray-300">}</span></div>
-            <div class="mt-2 flex items-center gap-1.5">
-              <div class="editor-status-dot"></div>
-              <span class="text-emerald-400 text-[11px]">All test cases passed</span>
-            </div>
+            <div class="mt-2 flex items-center gap-1.5"><div class="editor-status-dot"></div><span class="text-emerald-400 text-[11px]">All test cases passed</span></div>
           </div>
-
           <div class="editor-statusbar">
-            <div class="flex items-center gap-1.5">
-              <div class="editor-status-dot"></div>
-              <span class="editor-status-text">Session: 04:32</span>
-            </div>
+            <div class="flex items-center gap-1.5"><div class="editor-status-dot"></div><span class="editor-status-text">Session: 04:32</span></div>
             <span class="editor-status-text">Auto-synced</span>
           </div>
         </div>
-
       </div>
     </div>
   </section>
 
 
   <!-- ════════════════════════════════════
-       3. SOCIAL PROOF
+       7. SOCIAL PROOF
   ════════════════════════════════════ -->
   <section class="proof-section">
     <div class="max-w-6xl mx-auto px-6">
-
-      <!-- Metrics Strip -->
-      <div class="metrics-strip reveal">
-        <div class="metric-item">
-          <p class="metric-value">2,500+</p>
-          <p class="metric-label">Developers</p>
-        </div>
-        <div class="metric-divider"></div>
-        <div class="metric-item">
-          <p class="metric-value">VS Code</p>
-          <p class="metric-label">Native Integration</p>
-        </div>
-        <div class="metric-divider"></div>
-        <div class="metric-item">
-          <p class="metric-value">5 Languages</p>
-          <p class="metric-label">JS, Python, Java, C++, C</p>
-        </div>
-        <div class="metric-divider"></div>
-        <div class="metric-item">
-          <p class="metric-value metric-accent">100%</p>
-          <p class="metric-label">Free for Individuals</p>
-        </div>
+      <div class="metrics-strip-v5 reveal">
+        <div class="metric-v5"><p class="metric-v5__value" data-count="2500">0</p><p class="metric-v5__label">Developers</p></div>
+        <div class="metric-v5__divider"></div>
+        <div class="metric-v5"><p class="metric-v5__value">VS Code</p><p class="metric-v5__label">Native Integration</p></div>
+        <div class="metric-v5__divider"></div>
+        <div class="metric-v5"><p class="metric-v5__value">5 Languages</p><p class="metric-v5__label">JS, Python, Java, C++, C</p></div>
+        <div class="metric-v5__divider"></div>
+        <div class="metric-v5"><p class="metric-v5__value metric-v5__accent">100%</p><p class="metric-v5__label">Free for Individuals</p></div>
       </div>
 
-      <!-- Testimonials (2 cards) -->
       <div class="testimonials-grid reveal">
         <div class="testimonial-card">
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
           <p class="testimonial-body">"Finally, a tool that tracks what I actually do instead of making me fill out spreadsheets. The difficulty analytics changed how I plan my practice."</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar">R</div>
-            <div>
-              <p class="testimonial-name">Rahul M.</p>
-              <p class="testimonial-role">DSA Student, IIT Delhi</p>
-            </div>
-          </div>
+          <div class="testimonial-author"><div class="testimonial-avatar">R</div><div><p class="testimonial-name">Rahul M.</p><p class="testimonial-role">DSA Student, IIT Delhi</p></div></div>
         </div>
-
         <div class="testimonial-card">
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
           <p class="testimonial-body">"Zero context switching. I open VS Code, solve problems, and the data just appears on my dashboard. That's how dev tools should work."</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar">A</div>
-            <div>
-              <p class="testimonial-name">Arjun D.</p>
-              <p class="testimonial-role">Competitive Programmer</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-
-  <!-- ════════════════════════════════════
-       4. PROBLEM SECTION (compressed)
-  ════════════════════════════════════ -->
-  <section class="section">
-    <div class="max-w-4xl mx-auto px-6 reveal">
-      <div class="section-header">
-        <p class="section-label">The Problem</p>
-        <h2 class="section-title">Most Developers Train Blind.</h2>
-        <p class="section-desc">You solve hundreds of problems but have no structured data — no visibility into difficulty balance, consistency gaps, or actual growth.</p>
-      </div>
-
-      <div class="text-center">
-        <div class="landing-highlight">
-          <p>Preecode turns your daily coding into <span style="color:var(--accent)">measurable performance data</span>.</p>
+          <div class="testimonial-author"><div class="testimonial-avatar">A</div><div><p class="testimonial-name">Arjun D.</p><p class="testimonial-role">Competitive Programmer</p></div></div>
         </div>
       </div>
     </div>
@@ -332,336 +448,52 @@
 
 
   <!-- ════════════════════════════════════
-       5. HOW IT WORKS
-  ════════════════════════════════════ -->
-  <section id="how-it-works" class="section">
-    <div class="max-w-6xl mx-auto px-6">
-      <div class="section-header reveal">
-        <p class="section-label">How It Works</p>
-        <h2 class="section-title">Four steps. Zero manual input.</h2>
-        <p class="section-desc">Install once, then forget about it. Preecode captures everything in the background.</p>
-      </div>
-
-      <div class="landing-grid-4 reveal">
-        <!-- Step 1 -->
-        <div class="landing-card">
-          <p class="step-label">Step 01</p>
-          <div class="icon-box mb-4">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
-            </svg>
-          </div>
-          <h3>Install Extension</h3>
-          <p>Add Preecode to VS Code in seconds.</p>
-        </div>
-
-        <!-- Step 2 -->
-        <div class="landing-card">
-          <p class="step-label">Step 02</p>
-          <div class="icon-box mb-4">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/>
-            </svg>
-          </div>
-          <h3>Code Normally</h3>
-          <p>No toggles. No manual input. Just write code.</p>
-        </div>
-
-        <!-- Step 3 -->
-        <div class="landing-card">
-          <p class="step-label">Step 03</p>
-          <div class="icon-box mb-4">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
-            </svg>
-          </div>
-          <h3>Auto Capture</h3>
-          <p>Sessions, time, difficulty — tracked automatically.</p>
-        </div>
-
-        <!-- Step 4 -->
-        <div class="landing-card">
-          <p class="step-label">Step 04</p>
-          <div class="icon-box mb-4">
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
-            </svg>
-          </div>
-          <h3>Review Insights</h3>
-          <p>Identify streaks, weak zones, and growth patterns.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ════════════════════════════════════
-       6. FEATURES (4 items, no AI Review)
-  ════════════════════════════════════ -->
-  <section id="features" class="section section-alt">
-    <div class="max-w-6xl mx-auto px-6">
-      <div class="section-header reveal">
-        <p class="section-label">Capabilities</p>
-        <h2 class="section-title">Built for Structured Growth</h2>
-        <p class="section-desc">Every feature is designed to surface patterns, not just display numbers.</p>
-      </div>
-
-      <div class="grid md:grid-cols-2 gap-16 items-start reveal">
-        <!-- Left: Feature list -->
-        <div class="space-y-8">
-          <div class="feature-item">
-            <div class="icon-box">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <div>
-              <h3>Session-Level Tracking</h3>
-              <p>Each coding session is captured with start time, duration, language, and problem metadata. No manual entry required.</p>
-            </div>
-          </div>
-
-          <div class="feature-item">
-            <div class="icon-box">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
-              </svg>
-            </div>
-            <div>
-              <h3>Difficulty Distribution Analytics</h3>
-              <p>Visualize your Easy/Medium/Hard solve ratios over time. Surface imbalances before they become blind spots.</p>
-            </div>
-          </div>
-
-          <div class="feature-item">
-            <div class="icon-box">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-              </svg>
-            </div>
-            <div>
-              <h3>Weekly Performance Reports</h3>
-              <p>Automated summaries of problems solved, session frequency, and progress trends delivered to your dashboard.</p>
-            </div>
-          </div>
-
-          <div class="feature-item">
-            <div class="icon-box">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z"/>
-              </svg>
-            </div>
-            <div>
-              <h3>Streak Recovery Logic</h3>
-              <p>Intelligent gap detection that identifies when streaks break and what patterns lead to recovery or dropout.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Data Visualization Card -->
-        <div class="bg-th-surface backdrop-blur-xl border border-bdr rounded-2xl p-6 mockup-card" style="box-shadow:var(--shadow-lg)">
-          <div class="flex items-center justify-between mb-5">
-            <p class="text-sm font-medium text-txt">Performance Summary</p>
-            <span class="text-[10px] text-txt-muted font-mono">This week</span>
-          </div>
-
-          <!-- Metric Row -->
-          <div class="grid grid-cols-3 gap-3 mb-6">
-            <div class="bg-th-hover rounded-xl p-3.5 text-center">
-              <p class="text-xl font-bold text-txt">247</p>
-              <p class="text-[10px] text-txt-muted mt-1">Total Solved</p>
-            </div>
-            <div class="bg-th-hover rounded-xl p-3.5 text-center">
-              <p class="text-xl font-bold text-accent">17</p>
-              <p class="text-[10px] text-txt-muted mt-1">Day Streak</p>
-            </div>
-            <div class="bg-th-hover rounded-xl p-3.5 text-center">
-              <p class="text-xl font-bold text-txt">89%</p>
-              <p class="text-[10px] text-txt-muted mt-1">Accuracy</p>
-            </div>
-          </div>
-
-          <!-- Difficulty Breakdown -->
-          <div class="mb-6">
-            <p class="text-[10px] text-txt-muted mb-3 font-semibold uppercase tracking-widest">Difficulty Breakdown</p>
-            <div class="space-y-2.5">
-              <div class="flex items-center gap-3">
-                <span class="text-xs text-txt-sec w-14">Easy</span>
-                <div class="flex-1 h-2 rounded-full overflow-hidden" style="background:var(--border-subtle)"><div class="h-full rounded-full bg-emerald-500" style="width:72%"></div></div>
-                <span class="text-xs text-txt-muted w-12 text-right">124</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-xs text-txt-sec w-14">Medium</span>
-                <div class="flex-1 h-2 rounded-full overflow-hidden" style="background:var(--border-subtle)"><div class="h-full rounded-full bg-amber-500" style="width:48%"></div></div>
-                <span class="text-xs text-txt-muted w-12 text-right">89</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="text-xs text-txt-sec w-14">Hard</span>
-                <div class="flex-1 h-2 rounded-full overflow-hidden" style="background:var(--border-subtle)"><div class="h-full rounded-full bg-rose-500" style="width:21%"></div></div>
-                <span class="text-xs text-txt-muted w-12 text-right">34</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Weekly Trend -->
-          <p class="text-[10px] text-txt-muted font-semibold uppercase tracking-widest mb-3">Weekly Trend</p>
-          <div class="relative h-16">
-            <svg class="w-full h-full" viewBox="0 0 280 60" fill="none">
-              <polyline points="0,45 40,38 80,42 120,30 160,25 200,18 240,12 280,8" stroke="rgba(255,161,22,0.5)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-              <polyline points="0,45 40,38 80,42 120,30 160,25 200,18 240,12 280,8" stroke="none" fill="url(#chartGrad)"/>
-              <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="rgba(255,161,22,0.12)"/>
-                  <stop offset="100%" stop-color="rgba(255,161,22,0)"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ════════════════════════════════════
-       7. SECURITY (compact badge row)
+       8. SECURITY
   ════════════════════════════════════ -->
   <section class="section">
     <div class="max-w-4xl mx-auto px-6">
-      <div class="section-header reveal">
-        <p class="section-label">Security</p>
-        <h2 class="section-title">Security & Data Ownership</h2>
-      </div>
-
+      <div class="section-header reveal"><p class="section-label">Security</p><h2 class="section-title">Security & Data Ownership</h2></div>
       <div class="security-badges reveal">
-        <div class="security-badge">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>
-          </svg>
-          <div>
-            <p class="security-badge-title">No Source Code Access</p>
-            <p class="security-badge-desc">We never read, store, or transmit your actual code.</p>
-          </div>
-        </div>
-
-        <div class="security-badge">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
-          </svg>
-          <div>
-            <p class="security-badge-title">Metadata Only</p>
-            <p class="security-badge-desc">Only session timestamps, difficulty, and language are stored.</p>
-          </div>
-        </div>
-
-        <div class="security-badge">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-          </svg>
-          <div>
-            <p class="security-badge-title">JWT Authentication</p>
-            <p class="security-badge-desc">Token-based auth on every API request. No session cookies.</p>
-          </div>
-        </div>
-
-        <div class="security-badge">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-          </svg>
-          <div>
-            <p class="security-badge-title">Encrypted Storage</p>
-            <p class="security-badge-desc">AES-256 encryption at rest. Full data export and deletion.</p>
-          </div>
-        </div>
+        <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg><div><p class="security-badge-title">No Source Code Access</p><p class="security-badge-desc">We never read, store, or transmit your actual code.</p></div></div>
+        <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg><div><p class="security-badge-title">Metadata Only</p><p class="security-badge-desc">Only session timestamps, difficulty, and language are stored.</p></div></div>
+        <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg><div><p class="security-badge-title">JWT Authentication</p><p class="security-badge-desc">Token-based auth on every API request. No session cookies.</p></div></div>
+        <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg><div><p class="security-badge-title">Encrypted Storage</p><p class="security-badge-desc">AES-256 encryption at rest. Full data export and deletion.</p></div></div>
       </div>
     </div>
   </section>
 
 
   <!-- ════════════════════════════════════
-       8. FAQ
+       9. FAQ
   ════════════════════════════════════ -->
   <section id="faq" class="section">
     <div class="max-w-3xl mx-auto px-6">
-      <div class="section-header reveal">
-        <p class="section-label">FAQ</p>
-        <h2 class="section-title">Frequently Asked Questions</h2>
-      </div>
-
+      <div class="section-header reveal"><p class="section-label">FAQ</p><h2 class="section-title">Frequently Asked Questions</h2></div>
       <div class="faq-container reveal" id="faqList">
-        <div class="faq-item">
-          <button class="faq-question" type="button" aria-expanded="false">
-            <span>Is Preecode free?</span>
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-answer">
-            <p>Yes. Preecode is free for individual developers. All core features — session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review — are included at no cost. Team plans will be available in the future.</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" type="button" aria-expanded="false">
-            <span>Does Preecode access my source code?</span>
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-answer">
-            <p>No. Preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" type="button" aria-expanded="false">
-            <span>Can teams use Preecode?</span>
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-answer">
-            <p>Preecode is currently designed for individual developers. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap. If you're interested in team access, reach out and we'll notify you when it's available.</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" type="button" aria-expanded="false">
-            <span>What languages are supported?</span>
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-answer">
-            <p>The VS Code extension supports JavaScript, Python, Java, C++, and C. You can practice problems and track sessions in any of these languages. Additional language support is planned.</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" type="button" aria-expanded="false">
-            <span>How does automatic tracking work?</span>
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-answer">
-            <p>When you solve a problem using the Preecode VS Code extension, the submission metadata — question name, language, time taken, and difficulty — is automatically captured and synced to your dashboard. No manual entry is required at any point.</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" type="button" aria-expanded="false">
-            <span>Can I use Preecode without the extension?</span>
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-answer">
-            <p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking and the built-in problem environment require the VS Code extension to be installed.</p>
-          </div>
-        </div>
+        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Is Preecode free?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>Yes. Preecode is free for individual developers. All core features — session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review — are included at no cost. Team plans will be available in the future.</p></div></div>
+        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Does Preecode access my source code?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>No. Preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p></div></div>
+        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Can teams use Preecode?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>Preecode is currently designed for individual developers. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap.</p></div></div>
+        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>What languages are supported?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>The VS Code extension supports JavaScript, Python, Java, C++, and C. Additional language support is planned.</p></div></div>
+        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>How does automatic tracking work?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>When you solve a problem using the Preecode VS Code extension, the submission metadata — question name, language, time taken, and difficulty — is automatically captured and synced to your dashboard. No manual entry is required.</p></div></div>
+        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Can I use Preecode without the extension?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking and the built-in problem environment require the VS Code extension.</p></div></div>
       </div>
     </div>
   </section>
 
 
   <!-- ════════════════════════════════════
-       9. FINAL CTA
+       10. FINAL CTA
   ════════════════════════════════════ -->
-  <section class="section" style="padding:128px 0">
-    <div class="max-w-6xl mx-auto px-6 text-center reveal">
-      <h2 class="section-title">Start tracking your development data.</h2>
-      <p class="section-desc mb-10">Free during early access. Setup in under a minute.</p>
+  <section class="cta-v5">
+    <div class="cta-v5__glow"></div>
+    <div class="max-w-6xl mx-auto px-6 text-center reveal" style="position:relative;z-index:1">
+      <h2 class="cta-v5__title">Start tracking your development data.</h2>
+      <p class="cta-v5__desc">Free during early access. Setup in under a minute.</p>
       <div class="flex flex-wrap items-center justify-center gap-4">
-        <a href="register.html" class="btn btn-primary">Start Free</a>
+        <a href="register.html" class="btn btn-primary hero-v5__btn-primary">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+          Start Free
+        </a>
         <a href="#extension" class="btn btn-secondary">Install VS Code Extension</a>
       </div>
     </div>
@@ -674,65 +506,19 @@
   <footer class="footer-main">
     <div class="max-w-6xl mx-auto px-6">
       <div class="footer-grid">
-
-        <!-- Brand -->
-        <div class="footer-brand">
-          <div class="preecode-logo logo-footer mb-3">
-            <img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark">
-            <img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light">
-          </div>
-          <p class="footer-desc">Developer activity analytics built into VS Code. Track sessions, measure growth, and prepare for placements.</p>
-        </div>
-
-        <!-- Product -->
-        <div class="footer-col">
-          <p class="footer-heading">Product</p>
-          <ul class="footer-links">
-            <li><a href="#features">Features</a></li>
-            <li><a href="#extension">Extension</a></li>
-            <li><a href="#faq">FAQ</a></li>
-          </ul>
-        </div>
-
-        <!-- Company -->
-        <div class="footer-col">
-          <p class="footer-heading">Company</p>
-          <ul class="footer-links">
-            <li><a href="#">About</a></li>
-            <li><a href="#">Contact</a></li>
-          </ul>
-        </div>
-
-        <!-- Legal + Social -->
-        <div class="footer-col">
-          <p class="footer-heading">Legal</p>
-          <ul class="footer-links">
-            <li><a href="#">Privacy</a></li>
-            <li><a href="#">Terms</a></li>
-          </ul>
+        <div class="footer-brand"><div class="preecode-logo logo-footer mb-3"><img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark"><img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light"></div><p class="footer-desc">Developer activity analytics built into VS Code. Track sessions, measure growth, and prepare for placements.</p></div>
+        <div class="footer-col"><p class="footer-heading">Product</p><ul class="footer-links"><li><a href="#features">Features</a></li><li><a href="#extension">Extension</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+        <div class="footer-col"><p class="footer-heading">Company</p><ul class="footer-links"><li><a href="#">About</a></li><li><a href="#">Contact</a></li></ul></div>
+        <div class="footer-col"><p class="footer-heading">Legal</p><ul class="footer-links"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li></ul>
           <div class="footer-social">
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-            </a>
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-            </a>
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            </a>
-            <a href="mailto:hello@preecode.dev" aria-label="Email">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
-            </a>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+            <a href="mailto:hello@preecode.dev" aria-label="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></a>
           </div>
         </div>
-
       </div>
-
-      <!-- Bottom bar -->
-      <div class="footer-bottom">
-        <p>&copy; 2026 Preecode. All rights reserved.</p>
-        <p class="footer-tagline">Built for developers.</p>
-      </div>
+      <div class="footer-bottom"><p>&copy; 2026 Preecode. All rights reserved.</p><p class="footer-tagline">Built for developers.</p></div>
     </div>
   </footer>
 
@@ -741,69 +527,57 @@
        SCRIPTS
   ════════════════════════════════════ -->
   <script>
-    // Auth guard: logged-in users go straight to dashboard
-    if (localStorage.getItem('token')) {
-      window.location.href = '/pages/dashboard.html';
-    }
+    if (localStorage.getItem('token')) { window.location.href = '/pages/dashboard.html'; }
 
-    // Mobile menu toggle
     var menuBtn = document.getElementById('mobile-menu-btn');
     var mobileMenu = document.getElementById('mobile-menu');
-    if (menuBtn && mobileMenu) {
-      menuBtn.addEventListener('click', function () {
-        mobileMenu.classList.toggle('hidden');
-      });
-    }
+    if (menuBtn && mobileMenu) { menuBtn.addEventListener('click', function () { mobileMenu.classList.toggle('hidden'); }); }
 
-    // Scroll reveal
     var revealElements = document.querySelectorAll('.reveal');
     var revealObserver = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
+      entries.forEach(function (entry) { if (entry.isIntersecting) entry.target.classList.add('visible'); });
     }, { threshold: 0.1 });
     revealElements.forEach(function (el) { revealObserver.observe(el); });
 
-    // Generate heatmap
     var heatmap = document.getElementById('heatmap');
     if (heatmap) {
       var levels = ['', 'l1', 'l2', 'l3', 'l4'];
-      for (var i = 0; i < 35; i++) {
-        var cell = document.createElement('div');
-        cell.className = 'heatmap-cell ' + levels[Math.floor(Math.random() * 5)];
-        heatmap.appendChild(cell);
-      }
+      for (var i = 0; i < 35; i++) { var cell = document.createElement('div'); cell.className = 'heatmap-cell ' + levels[Math.floor(Math.random() * 5)]; heatmap.appendChild(cell); }
     }
 
-    // FAQ accordion
     document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('.faq-item').forEach(function (item) {
-        var btn = item.querySelector('.faq-question');
-        var answer = item.querySelector('.faq-answer');
+        var btn = item.querySelector('.faq-question'), answer = item.querySelector('.faq-answer');
         if (!btn || !answer) return;
-
         btn.addEventListener('click', function () {
           var isOpen = item.classList.contains('open');
-
-          // Close all items
-          document.querySelectorAll('.faq-item').forEach(function (el) {
-            el.classList.remove('open');
-            var a = el.querySelector('.faq-answer');
-            if (a) a.style.height = '0';
-            var b = el.querySelector('.faq-question');
-            if (b) b.setAttribute('aria-expanded', 'false');
-          });
-
-          // Open clicked item if it was closed
-          if (!isOpen) {
-            item.classList.add('open');
-            answer.style.height = answer.scrollHeight + 'px';
-            btn.setAttribute('aria-expanded', 'true');
-          }
+          document.querySelectorAll('.faq-item').forEach(function (el) { el.classList.remove('open'); var a = el.querySelector('.faq-answer'); if (a) a.style.height = '0'; var b = el.querySelector('.faq-question'); if (b) b.setAttribute('aria-expanded', 'false'); });
+          if (!isOpen) { item.classList.add('open'); answer.style.height = answer.scrollHeight + 'px'; btn.setAttribute('aria-expanded', 'true'); }
         });
       });
+
+      // Animated counters on scroll
+      var counters = document.querySelectorAll('[data-count]');
+      var counterObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          var target = parseInt(el.getAttribute('data-count'), 10);
+          if (!target || el.dataset.animated) return;
+          el.dataset.animated = '1';
+          var start = null, duration = 1200;
+          function ease(t) { return 1 - Math.pow(1 - t, 3); }
+          function step(ts) {
+            if (!start) start = ts;
+            var p = Math.min((ts - start) / duration, 1);
+            var val = Math.round(ease(p) * target);
+            el.textContent = target >= 1000 ? val.toLocaleString() + '+' : val;
+            if (p < 1) requestAnimationFrame(step);
+          }
+          requestAnimationFrame(step);
+        });
+      }, { threshold: 0.3 });
+      counters.forEach(function (c) { counterObserver.observe(c); });
     });
   </script>
 

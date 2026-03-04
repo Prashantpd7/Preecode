@@ -45,24 +45,38 @@
   topbar.innerHTML =
     // Left: Logo + Nav links
     '<div class="topbar-left">' +
-      '<a class="preecode-logo logo-nav" href="/pages/dashboard.html">' +
-        '<img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark">' +
-        '<img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light">' +
-      '</a>' +
+      '<a class="brand-logo logo-nav" href="/pages/dashboard.html"><span class="brand-dark">Preec</span><span class="brand-accent">ode</span></a>' +
       '<nav class="topbar-nav" id="topbarNav">' +
         '<a href="/pages/dashboard.html" class="' + navCls('dashboard') + '">Dashboard</a>' +
         '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
         '<a href="/pages/submissions.html" class="' + navCls('submissions') + '">Submissions</a>' +
       '</nav>' +
     '</div>' +
-    // Right: Badges + Profile
+    // Right: Notifications + Streak + Profile
     '<div class="topbar-right">' +
-      '<span class="topbar-plan-badge" id="navPlanBadge">' + planIcon + planText + '</span>' +
+      // Notifications
+      '<div class="notif-container" id="notifContainer">' +
+        '<button class="topbar-notif-btn" id="notifBtn" title="Notifications" aria-expanded="false" aria-haspopup="true">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>' +
+        '</button>' +
+        '<div class="notif-dropdown hidden" id="notifDropdown" role="menu">' +
+          '<div class="notif-dropdown-header">' +
+            '<span class="notif-dropdown-title">Notifications</span>' +
+          '</div>' +
+          '<div class="notif-dropdown-body">' +
+            '<div class="notif-empty">' +
+              '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>' +
+              '<p>No new notifications</p>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      // Streak badge
       '<span class="topbar-streak-badge" id="streakBadge">' +
         '<svg class="topbar-badge-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12.832 3.56c.131-.19.334-.378.534-.358.178.018.42.261.482.452.236.719.237 1.5-.066 2.339a9.147 9.147 0 01-.397.85c-.122.226-.216.399-.238.442.032-.014.085-.021.151-.02.34.008.885.274 1.272.786a11.36 11.36 0 011.567 2.925c.46 1.267.555 2.626.076 3.86a5.85 5.85 0 01-2.234 2.817 5.847 5.847 0 01-3.242 1.198c-1.27.065-2.57-.235-3.645-.904a5.158 5.158 0 01-2.208-2.987c-.34-1.233-.205-2.523.174-3.678a10.56 10.56 0 011.454-2.83c.248-.346.513-.67.784-.975a.757.757 0 01.626-.274c.274.015.507.24.572.49.138.536.08 1.055-.018 1.442.482-.57.918-1.196 1.213-1.89.457-1.07.627-2.273.443-3.462-.092-.598-.162-.855-.324-1.223z"/></svg>' +
         '<span id="streakText">0</span>' +
       '</span>' +
-      // Profile avatar trigger (avatar-only, no username text)
+      // Profile avatar trigger
       '<div class="topbar-profile" id="profileDropdownTrigger">' +
         '<div class="topbar-avatar" id="navAvatar">' + initial + '</div>' +
       '</div>' +
@@ -79,6 +93,10 @@
         '<a href="/pages/profile.html" class="topbar-dropdown-item">' +
           '<svg class="topbar-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
           'Profile' +
+        '</a>' +
+        '<a href="#" class="topbar-dropdown-item" id="navFoundingMember">' +
+          '<svg class="topbar-dropdown-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"/></svg>' +
+          'Founding Member' +
         '</a>' +
         '<a href="/pages/settings.html" class="topbar-dropdown-item">' +
           '<svg class="topbar-dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><circle cx="12" cy="12" r="3"/></svg>' +
@@ -149,16 +167,62 @@
     }, 200);
   }
 
+  // ── Notification Dropdown Logic ──
+  var notifBtn = document.getElementById('notifBtn');
+  var notifDropdown = document.getElementById('notifDropdown');
+  var notifContainer = document.getElementById('notifContainer');
+
+  function openNotifDropdown() {
+    // Close profile dropdown if open
+    if (dropdown && !dropdown.classList.contains('hidden')) closeProfileDropdown();
+    notifDropdown.classList.remove('hidden');
+    requestAnimationFrame(function () {
+      notifDropdown.classList.add('open');
+    });
+    notifBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeNotifDropdown() {
+    notifDropdown.classList.remove('open');
+    notifBtn.setAttribute('aria-expanded', 'false');
+    setTimeout(function () {
+      notifDropdown.classList.add('hidden');
+    }, 150);
+  }
+
+  if (notifBtn && notifDropdown) {
+    notifBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var isOpen = !notifDropdown.classList.contains('hidden');
+      if (isOpen) {
+        closeNotifDropdown();
+      } else {
+        openNotifDropdown();
+      }
+    });
+  }
+
   // ── Profile Dropdown Logic ──
   var trigger = document.getElementById('profileDropdownTrigger');
   var dropdown = document.getElementById('profileDropdown');
 
+  function closeProfileDropdown() {
+    if (!dropdown) return;
+    dropdown.classList.remove('open');
+    trigger.classList.remove('active');
+    setTimeout(function () {
+      dropdown.classList.add('hidden');
+    }, 150);
+  }
+
   if (trigger && dropdown) {
     trigger.addEventListener('click', function (e) {
       e.stopPropagation();
+      // Close notification dropdown if open
+      if (notifDropdown && !notifDropdown.classList.contains('hidden')) closeNotifDropdown();
       var isOpen = !dropdown.classList.contains('hidden');
       if (isOpen) {
-        closeDropdown();
+        closeProfileDropdown();
       } else {
         dropdown.classList.remove('hidden');
         requestAnimationFrame(function () {
@@ -167,34 +231,33 @@
         trigger.classList.add('active');
       }
     });
-
-    document.addEventListener('click', function (e) {
-      if (!dropdown.classList.contains('hidden') && !dropdown.contains(e.target)) {
-        closeDropdown();
-      }
-      // Also close mobile menu on outside click
-      if (mobileMenuEl && !mobileMenuEl.classList.contains('hidden') &&
-          !mobileMenuEl.contains(e.target) && e.target !== hamburgerBtn &&
-          !hamburgerBtn.contains(e.target)) {
-        closeMobileMenu();
-      }
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        if (!dropdown.classList.contains('hidden')) closeDropdown();
-        if (mobileMenuEl && !mobileMenuEl.classList.contains('hidden')) closeMobileMenu();
-      }
-    });
-
-    function closeDropdown() {
-      dropdown.classList.remove('open');
-      trigger.classList.remove('active');
-      setTimeout(function () {
-        dropdown.classList.add('hidden');
-      }, 150);
-    }
   }
+
+  // ── Global: outside click + ESC for all dropdowns ──
+  document.addEventListener('click', function (e) {
+    // Close profile dropdown on outside click
+    if (dropdown && !dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+      closeProfileDropdown();
+    }
+    // Close notification dropdown on outside click
+    if (notifDropdown && !notifDropdown.classList.contains('hidden') && !notifContainer.contains(e.target)) {
+      closeNotifDropdown();
+    }
+    // Close mobile menu on outside click
+    if (mobileMenuEl && !mobileMenuEl.classList.contains('hidden') &&
+        !mobileMenuEl.contains(e.target) && e.target !== hamburgerBtn &&
+        !hamburgerBtn.contains(e.target)) {
+      closeMobileMenu();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (dropdown && !dropdown.classList.contains('hidden')) closeProfileDropdown();
+      if (notifDropdown && !notifDropdown.classList.contains('hidden')) closeNotifDropdown();
+      if (mobileMenuEl && !mobileMenuEl.classList.contains('hidden')) closeMobileMenu();
+    }
+  });
 
   // ── Logout ──
   var logoutBtn = document.getElementById('navLogout');
@@ -220,7 +283,7 @@
       var cachedName = localStorage.getItem('preecode_name') || '';
       if (cachedName && cachedName.toLowerCase() !== 'user') return;
 
-      var res = await fetch('https://preecode.onrender.com/api/users/me', {
+      var res = await fetch(API_BASE + '/users/me', {
         headers: { Authorization: 'Bearer ' + token },
         credentials: 'include'
       });
