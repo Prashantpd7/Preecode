@@ -21,15 +21,11 @@
   ════════════════════════════════════ -->
   <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-th-bg/80 border-b border-bdr">
     <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-      <a href="/" class="preecode-logo logo-nav">
-        <img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark">
-        <img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light">
-      </a>
+      <a href="/" class="brand-logo logo-nav"><span class="brand-dark">Preec</span><span class="brand-accent">ode</span></a>
 
       <div class="hidden md:flex items-center gap-8">
-        <a href="#features" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Features</a>
-        <a href="#how-it-works" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">How It Works</a>
-        <a href="#extension" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Extension</a>
+        <a href="#problem" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">About</a>
+        <a href="#testimonials" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Testimonials</a>
         <a href="#faq" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">FAQ</a>
         <a href="login.html" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Login</a>
         <a href="register.html" class="btn btn-primary btn-sm">Start Free</a>
@@ -43,9 +39,8 @@
     </div>
 
     <div id="mobile-menu" class="hidden md:hidden border-t border-bdr px-6 py-4 space-y-3 bg-th-bg/95 backdrop-blur-xl">
-      <a href="#features" class="block text-sm text-txt-sec hover:text-txt no-underline">Features</a>
-      <a href="#how-it-works" class="block text-sm text-txt-sec hover:text-txt no-underline">How It Works</a>
-      <a href="#extension" class="block text-sm text-txt-sec hover:text-txt no-underline">Extension</a>
+      <a href="#problem" class="block text-sm text-txt-sec hover:text-txt no-underline">About</a>
+      <a href="#testimonials" class="block text-sm text-txt-sec hover:text-txt no-underline">Testimonials</a>
       <a href="#faq" class="block text-sm text-txt-sec hover:text-txt no-underline">FAQ</a>
       <a href="login.html" class="block text-sm text-txt-sec hover:text-txt no-underline">Login</a>
       <a href="register.html" class="btn btn-primary btn-sm block w-full text-center">Start Free</a>
@@ -70,16 +65,16 @@
             Track What You Practice.<br>
             <span class="hero-v5__gradient">Prove What You Build.</span>
           </h1>
-          <p class="hero-v5__sub">
+          <!-- <p class="hero-v5__sub">
             Automatic session tracking and consistency analytics — inside VS Code. Built for developers who take practice seriously.
-          </p>
+          </p> -->
 
           <div class="hero-v5__ctas">
             <a href="register.html" class="btn btn-primary hero-v5__btn-primary">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
               Start Free
             </a>
-            <a href="#extension" class="btn btn-secondary">Install VS Code Extension</a>
+            <a href="#faq" class="btn btn-secondary">Learn More</a>
           </div>
 
           <div class="hero-v5__trust">
@@ -181,27 +176,112 @@
   ════════════════════════════════════ -->
   <section class="logos-bar reveal">
     <div class="max-w-6xl mx-auto px-6">
+      <p class="logos-bar__label">Works with your favorite languages</p>
       <div class="logos-bar__inner">
-        <span class="logos-bar__item">VS Code</span>
-        <span class="logos-bar__sep"></span>
-        <span class="logos-bar__item">JavaScript</span>
-        <span class="logos-bar__sep"></span>
-        <span class="logos-bar__item">Python</span>
-        <span class="logos-bar__sep"></span>
-        <span class="logos-bar__item">Java</span>
-        <span class="logos-bar__sep"></span>
-        <span class="logos-bar__item">C++</span>
-        <span class="logos-bar__sep"></span>
-        <span class="logos-bar__item">C</span>
+        <!-- <div class="logos-bar__item" style="--lang-color: #007ACC">
+          <div class="logos-bar__icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>
+          </div>
+          <span>VS Code</span>
+        </div> -->
+        <div class="logos-bar__item" style="--lang-color: #F7DF1E">
+          <div class="logos-bar__icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 0h24v24H0V0zm22.034 18.276c-.175-1.095-.888-2.015-3.003-2.873-.736-.345-1.554-.585-1.797-1.14-.091-.33-.105-.51-.046-.705.15-.646.915-.84 1.515-.66.39.12.75.42.976.9 1.034-.676 1.034-.676 1.755-1.125-.27-.42-.405-.6-.586-.78-.63-.705-1.469-1.065-2.834-1.034l-.705.089c-.676.165-1.32.525-1.71 1.005-1.14 1.291-.811 3.541.569 4.471 1.365 1.02 3.361 1.244 3.616 2.205.24 1.17-.87 1.545-1.966 1.41-.811-.18-1.26-.586-1.755-1.336l-1.83 1.051c.21.48.45.689.81 1.109 1.74 1.756 6.09 1.666 6.871-1.004.029-.09.24-.705.074-1.65l.046.067zm-8.983-7.245h-2.248c0 1.938-.009 3.864-.009 5.805 0 1.232.063 2.363-.138 2.711-.33.689-1.18.601-1.566.48-.396-.196-.597-.466-.83-.855-.063-.105-.11-.196-.127-.196l-1.825 1.125c.305.63.75 1.172 1.324 1.517.855.51 2.004.675 3.207.405.783-.226 1.458-.691 1.811-1.411.51-.93.402-2.07.397-3.346.012-2.054 0-4.109 0-6.179l.004-.056z"/></svg>
+          </div>
+          <span>JavaScript</span>
+        </div>
+        <div class="logos-bar__item" style="--lang-color: #3776AB">
+          <div class="logos-bar__icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></svg>
+          </div>
+          <span>Python</span>
+        </div>
+        <div class="logos-bar__item" style="--lang-color: #ED8B00">
+          <div class="logos-bar__icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.851 18.56s-.917.534.653.714c1.902.218 2.874.187 4.969-.211 0 0 .552.346 1.321.646-4.699 2.013-10.633-.118-6.943-1.149M8.276 15.933s-1.028.761.542.924c2.032.209 3.636.227 6.413-.308 0 0 .384.389.987.602-5.679 1.661-12.007.13-7.942-1.218M13.116 11.475c1.158 1.333-.304 2.533-.304 2.533s2.939-1.518 1.589-3.418c-1.261-1.772-2.228-2.652 3.007-5.688 0-.001-8.216 2.051-4.292 6.573M19.33 20.504s.679.559-.747.991c-2.712.822-11.288 1.069-13.669.033-.856-.373.75-.89 1.254-.998.527-.114.828-.093.828-.093-.953-.671-6.156 1.317-2.643 1.887 9.58 1.553 17.462-.7 14.977-1.82M9.292 13.21s-4.362 1.036-1.544 1.412c1.189.159 3.561.123 5.77-.062 1.806-.152 3.618-.477 3.618-.477s-.637.272-1.098.587c-4.429 1.165-12.986.623-10.522-.568 2.082-1.006 3.776-.892 3.776-.892M17.116 17.584c4.503-2.34 2.421-4.589.968-4.285-.355.074-.515.138-.515.138s.132-.207.385-.297c2.875-1.011 5.086 2.981-.928 4.562 0 0 .07-.062.09-.118M14.401 0s2.494 2.494-2.365 6.33c-3.896 3.077-.889 4.832 0 6.836-2.274-2.053-3.943-3.858-2.824-5.539 1.644-2.469 6.197-3.665 5.189-7.627M9.734 23.924c4.322.277 10.959-.154 11.116-2.198 0 0-.302.775-3.572 1.391-3.688.694-8.239.613-10.937.168 0-.001.553.457 3.393.639"/></svg>
+          </div>
+          <span>Java</span>
+        </div>
+        <div class="logos-bar__item" style="--lang-color: #00599C">
+          <div class="logos-bar__icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.394 6c-.167-.29-.398-.543-.652-.69L12.926.22c-.509-.294-1.34-.294-1.848 0L2.26 5.31c-.508.293-.923 1.013-.923 1.6v10.18c0 .294.104.62.271.91.167.29.398.543.652.69l8.816 5.09c.508.293 1.34.293 1.848 0l8.816-5.09c.254-.147.485-.4.652-.69.167-.29.27-.616.27-.91V6.91c.003-.294-.1-.62-.268-.91zM12 19.11c-3.92 0-7.109-3.19-7.109-7.11 0-3.92 3.19-7.11 7.11-7.11a7.133 7.133 0 016.156 3.553l-3.076 1.78a3.567 3.567 0 00-3.08-1.78A3.56 3.56 0 008.444 12 3.56 3.56 0 0012 15.555a3.57 3.57 0 003.08-1.778l3.078 1.78A7.135 7.135 0 0112 19.11zm7.11-6.715h-.79v.79h-.79v-.79h-.79v-.79h.79v-.79h.79v.79h.79zm2.962 0h-.79v.79h-.79v-.79h-.79v-.79h.79v-.79h.79v.79h.79z"/></svg>
+          </div>
+          <span>C++</span>
+        </div>
+        <div class="logos-bar__item" style="--lang-color: #A8B9CC">
+          <div class="logos-bar__icon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.394 6c-.167-.29-.398-.543-.652-.69L12.926.22c-.509-.294-1.34-.294-1.848 0L2.26 5.31c-.508.293-.923 1.013-.923 1.6v10.18c0 .294.104.62.271.91.167.29.398.543.652.69l8.816 5.09c.508.293 1.34.293 1.848 0l8.816-5.09c.254-.147.485-.4.652-.69.167-.29.27-.616.27-.91V6.91c.003-.294-.1-.62-.268-.91zM12 19.11c-3.92 0-7.109-3.19-7.109-7.11 0-3.92 3.19-7.11 7.11-7.11a7.133 7.133 0 016.156 3.553l-3.076 1.78a3.567 3.567 0 00-3.08-1.78A3.56 3.56 0 008.444 12 3.56 3.56 0 0012 15.555a3.57 3.57 0 003.08-1.778l3.078 1.78A7.135 7.135 0 0112 19.11z"/></svg>
+          </div>
+          <span>C</span>
+        </div>
       </div>
     </div>
   </section>
 
 
   <!-- ════════════════════════════════════
-       3. THE PROBLEM
+       PROBLEM → SOLUTION
   ════════════════════════════════════ -->
   <section class="section" id="problem">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="section-header reveal">
+        <p class="section-label">The Problem</p>
+        <h2 class="section-title">Most Developers Train Blind.</h2>
+      </div>
+
+      <div class="probsol-grid reveal">
+        <div class="probsol-col">
+          <h3 class="probsol-heading probsol-heading--problem">Without Preecode</h3>
+          <div class="probsol-list">
+            <div class="probsol-item probsol-item--problem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              <span>Manual tracking in spreadsheets and notes</span>
+            </div>
+            <div class="probsol-item probsol-item--problem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              <span>No idea which difficulty levels you're avoiding</span>
+            </div>
+            <div class="probsol-item probsol-item--problem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              <span>Streaks break with no accountability system</span>
+            </div>
+            <div class="probsol-item probsol-item--problem">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              <span>Constant context switching between browser and editor</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="probsol-col probsol-col--solution">
+          <h3 class="probsol-heading probsol-heading--solution">With Preecode</h3>
+          <div class="probsol-list">
+            <div class="probsol-item probsol-item--solution">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span>Automatic session capture inside VS Code</span>
+            </div>
+            <div class="probsol-item probsol-item--solution">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span>Difficulty breakdown — Easy, Medium, Hard analytics</span>
+            </div>
+            <div class="probsol-item probsol-item--solution">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span>Built-in streak and consistency tracking</span>
+            </div>
+            <div class="probsol-item probsol-item--solution">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+              <span>Everything stays in your editor — zero switching</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- <!-- ════════════════════════════════════
+       3. THE PROBLEM
+  ════════════════════════════════════ -->
+  <!-- <section class="section" id="problem">
     <div class="max-w-4xl mx-auto px-6 reveal">
       <div class="section-header">
         <p class="section-label">The Problem</p>
@@ -214,13 +294,13 @@
         </div>
       </div>
     </div>
-  </section>
+  </section> -->
 
 
   <!-- ════════════════════════════════════
        4. HOW IT WORKS
   ════════════════════════════════════ -->
-  <section id="how-it-works" class="section">
+  <!-- <section id="how-it-works" class="section">
     <div class="max-w-6xl mx-auto px-6">
       <div class="section-header reveal">
         <p class="section-label">How It Works</p>
@@ -228,51 +308,107 @@
         <p class="section-desc">Install once, then forget about it. Preecode captures everything in the background.</p>
       </div>
 
-      <div class="steps-v5 reveal">
-        <div class="step-v5">
-          <div class="step-v5__num">01</div>
-          <div class="step-v5__icon">
+      <div class="steps-v6 reveal">
+        <div class="step-v6">
+          <div class="step-v6__header">
+            <div class="step-v6__num">1</div>
+            <div class="step-v6__line-h"></div>
+          </div>
+          <div class="step-v6__icon" style="--step-color: #3b82f6">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
           </div>
           <h3>Install Extension</h3>
-          <p>Add Preecode to VS Code in seconds.</p>
+          <p>Add Preecode to VS Code in one click. No config, no setup files.</p>
         </div>
-        <div class="step-v5__connector"><div class="step-v5__line"></div></div>
-        <div class="step-v5">
-          <div class="step-v5__num">02</div>
-          <div class="step-v5__icon">
+        <div class="step-v6">
+          <div class="step-v6__header">
+            <div class="step-v6__num">2</div>
+            <div class="step-v6__line-h"></div>
+          </div>
+          <div class="step-v6__icon" style="--step-color: #8b5cf6">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
           </div>
           <h3>Code Normally</h3>
-          <p>No toggles. No manual input. Just code.</p>
+          <p>No toggles. No manual input. Just open VS Code and solve problems.</p>
         </div>
-        <div class="step-v5__connector"><div class="step-v5__line"></div></div>
-        <div class="step-v5">
-          <div class="step-v5__num">03</div>
-          <div class="step-v5__icon">
+        <div class="step-v6">
+          <div class="step-v6__header">
+            <div class="step-v6__num">3</div>
+            <div class="step-v6__line-h"></div>
+          </div>
+          <div class="step-v6__icon" style="--step-color: #f59e0b">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>
           </div>
           <h3>Auto Capture</h3>
-          <p>Sessions, time, difficulty — tracked automatically.</p>
+          <p>Sessions, time, and difficulty are tracked automatically in the background.</p>
         </div>
-        <div class="step-v5__connector"><div class="step-v5__line"></div></div>
-        <div class="step-v5">
-          <div class="step-v5__num">04</div>
-          <div class="step-v5__icon">
+        <div class="step-v6">
+          <div class="step-v6__header">
+            <div class="step-v6__num">4</div>
+          </div>
+          <div class="step-v6__icon" style="--step-color: #10b981">
             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
           </div>
           <h3>Review Insights</h3>
-          <p>Streaks, weak zones, and growth patterns.</p>
+          <p>Streaks, weak zones, and growth patterns — all on your dashboard.</p>
         </div>
       </div>
     </div>
-  </section>
+  </section>  -->
+<!-- ════════════════════════════════════
+       6. VS CODE EXTENSION
+  ════════════════════════════════════ -->
+  <!-- <section id="extension" class="section">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid md:grid-cols-2 gap-12 items-center reveal">
+        <div>
+          <p class="section-label" style="margin-bottom:12px">VS Code</p>
+          <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-txt mb-3">Native VS Code Integration</h2>
+          <p class="text-sm text-txt-sec leading-relaxed max-w-sm mb-6">Solve problems, track sessions, and review insights without leaving your editor.</p>
+          <ul class="space-y-2.5 mb-6 list-none p-0 m-0">
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Real-time session tracking</span></li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Zero browser switching</span></li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Lightweight background capture</span></li>
+            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Built for DSA & daily training</span></li>
+          </ul>
+          <a href="#" class="btn btn-primary btn-sm">Install Extension</a>
+        </div>
 
+        <div class="editor-mockup">
+          <div class="editor-titlebar">
+            <div class="editor-dots">
+              <div class="editor-dot" style="background:#ff5f57"></div>
+              <div class="editor-dot" style="background:#febc2e"></div>
+              <div class="editor-dot" style="background:#28c840"></div>
+            </div>
+            <span class="editor-filename">solution.js</span>
+          </div>
+          <div class="editor-code">
+            <div class="text-gray-500">// Two Sum — Easy</div>
+            <div class="text-gray-500 mb-2">// Find two numbers that add up to target</div>
+            <div><span class="text-purple-400">function</span> <span class="text-blue-400">twoSum</span><span class="text-gray-300">(nums, target) {</span></div>
+            <div class="ml-4"><span class="text-purple-400">const</span> <span class="text-gray-300">map = </span><span class="text-purple-400">new</span> <span class="text-blue-400">Map</span><span class="text-gray-300">();</span></div>
+            <div class="ml-4"><span class="text-purple-400">for</span> <span class="text-gray-300">(</span><span class="text-purple-400">let</span> <span class="text-gray-300">i = 0; i < nums.length; i++) {</span></div>
+            <div class="ml-8"><span class="text-purple-400">const</span> <span class="text-gray-300">diff = target - nums[i];</span></div>
+            <div class="ml-8"><span class="text-purple-400">if</span> <span class="text-gray-300">(map.has(diff))</span></div>
+            <div class="ml-12"><span class="text-purple-400">return</span> <span class="text-gray-300">[map.get(diff), i];</span></div>
+            <div class="ml-8"><span class="text-gray-300">map.set(nums[i], i);</span></div>
+            <div class="ml-4"><span class="text-gray-300">}</span></div>
+            <div><span class="text-gray-300">}</span></div>
+            <div class="mt-2 flex items-center gap-1.5"><div class="editor-status-dot"></div><span class="text-emerald-400 text-[11px]">All test cases passed</span></div>
+          </div>
+          <div class="editor-statusbar">
+            <div class="flex items-center gap-1.5"><div class="editor-status-dot"></div><span class="editor-status-text">Session: 04:32</span></div>
+            <span class="editor-status-text">Auto-synced</span>
+          </div>
+        </div>
+      </div>
+    </div> -->
 
   <!-- ════════════════════════════════════
        5. FEATURES
   ════════════════════════════════════ -->
-  <section id="features" class="section section-alt">
+  <!-- <section id="features" class="section section-alt">
     <div class="max-w-6xl mx-auto px-6">
       <div class="section-header reveal">
         <p class="section-label">Capabilities</p>
@@ -350,64 +486,13 @@
       </div>
     </div>
   </section>
-
-
-  <!-- ════════════════════════════════════
-       6. VS CODE EXTENSION
-  ════════════════════════════════════ -->
-  <section id="extension" class="section">
-    <div class="max-w-6xl mx-auto px-6">
-      <div class="grid md:grid-cols-2 gap-12 items-center reveal">
-        <div>
-          <p class="section-label" style="margin-bottom:12px">VS Code</p>
-          <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-txt mb-3">Native VS Code Integration</h2>
-          <p class="text-sm text-txt-sec leading-relaxed max-w-sm mb-6">Solve problems, track sessions, and review insights without leaving your editor.</p>
-          <ul class="space-y-2.5 mb-6 list-none p-0 m-0">
-            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Real-time session tracking</span></li>
-            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Zero browser switching</span></li>
-            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Lightweight background capture</span></li>
-            <li class="check-item"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>Built for DSA & daily training</span></li>
-          </ul>
-          <a href="#" class="btn btn-primary btn-sm">Install Extension</a>
-        </div>
-
-        <div class="editor-mockup">
-          <div class="editor-titlebar">
-            <div class="editor-dots">
-              <div class="editor-dot" style="background:#ff5f57"></div>
-              <div class="editor-dot" style="background:#febc2e"></div>
-              <div class="editor-dot" style="background:#28c840"></div>
-            </div>
-            <span class="editor-filename">solution.js</span>
-          </div>
-          <div class="editor-code">
-            <div class="text-gray-500">// Two Sum — Easy</div>
-            <div class="text-gray-500 mb-2">// Find two numbers that add up to target</div>
-            <div><span class="text-purple-400">function</span> <span class="text-blue-400">twoSum</span><span class="text-gray-300">(nums, target) {</span></div>
-            <div class="ml-4"><span class="text-purple-400">const</span> <span class="text-gray-300">map = </span><span class="text-purple-400">new</span> <span class="text-blue-400">Map</span><span class="text-gray-300">();</span></div>
-            <div class="ml-4"><span class="text-purple-400">for</span> <span class="text-gray-300">(</span><span class="text-purple-400">let</span> <span class="text-gray-300">i = 0; i < nums.length; i++) {</span></div>
-            <div class="ml-8"><span class="text-purple-400">const</span> <span class="text-gray-300">diff = target - nums[i];</span></div>
-            <div class="ml-8"><span class="text-purple-400">if</span> <span class="text-gray-300">(map.has(diff))</span></div>
-            <div class="ml-12"><span class="text-purple-400">return</span> <span class="text-gray-300">[map.get(diff), i];</span></div>
-            <div class="ml-8"><span class="text-gray-300">map.set(nums[i], i);</span></div>
-            <div class="ml-4"><span class="text-gray-300">}</span></div>
-            <div><span class="text-gray-300">}</span></div>
-            <div class="mt-2 flex items-center gap-1.5"><div class="editor-status-dot"></div><span class="text-emerald-400 text-[11px]">All test cases passed</span></div>
-          </div>
-          <div class="editor-statusbar">
-            <div class="flex items-center gap-1.5"><div class="editor-status-dot"></div><span class="editor-status-text">Session: 04:32</span></div>
-            <span class="editor-status-text">Auto-synced</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  </section> -->
 
 
   <!-- ════════════════════════════════════
        7. SOCIAL PROOF
   ════════════════════════════════════ -->
-  <section class="proof-section">
+  <!-- <section class="proof-section">
     <div class="max-w-6xl mx-auto px-6">
       <div class="metrics-strip-v5 reveal">
         <div class="metric-v5"><p class="metric-v5__value" data-count="2500">0</p><p class="metric-v5__label">Developers</p></div>
@@ -417,21 +502,19 @@
         <div class="metric-v5"><p class="metric-v5__value">5 Languages</p><p class="metric-v5__label">JS, Python, Java, C++, C</p></div>
         <div class="metric-v5__divider"></div>
         <div class="metric-v5"><p class="metric-v5__value metric-v5__accent">100%</p><p class="metric-v5__label">Free for Individuals</p></div>
+      </div> -->
+
+      <!-- <div class="section-header reveal">
+        <p class="section-label">What Developers Say</p>
+        <h2 class="section-title">Trusted by developers who take practice seriously.</h2>
       </div>
 
       <div class="testimonials-grid reveal">
         <div class="testimonial-card">
-          <div class="testimonial-stars">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          <div class="testimonial-quote-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10H14.017zM0 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151C7.546 6.068 5.983 8.789 5.983 11H10v10H0z"/></svg>
           </div>
           <p class="testimonial-body">"Finally, a tool that tracks what I actually do instead of making me fill out spreadsheets. The difficulty analytics changed how I plan my practice."</p>
-          <div class="testimonial-author"><div class="testimonial-avatar">R</div><div><p class="testimonial-name">Rahul M.</p><p class="testimonial-role">DSA Student, IIT Delhi</p></div></div>
-        </div>
-        <div class="testimonial-card">
           <div class="testimonial-stars">
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
@@ -439,18 +522,65 @@
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
             <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
           </div>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="--avatar-bg:#3b82f6">R</div>
+            <div>
+              <p class="testimonial-name">Rahul M.</p>
+              <p class="testimonial-role">DSA Student, IIT Delhi</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="testimonial-quote-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10H14.017zM0 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151C7.546 6.068 5.983 8.789 5.983 11H10v10H0z"/></svg>
+          </div>
           <p class="testimonial-body">"Zero context switching. I open VS Code, solve problems, and the data just appears on my dashboard. That's how dev tools should work."</p>
-          <div class="testimonial-author"><div class="testimonial-avatar">A</div><div><p class="testimonial-name">Arjun D.</p><p class="testimonial-role">Competitive Programmer</p></div></div>
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="--avatar-bg:#8b5cf6">A</div>
+            <div>
+              <p class="testimonial-name">Arjun D.</p>
+              <p class="testimonial-role">Competitive Programmer</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="testimonial-quote-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10H14.017zM0 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151C7.546 6.068 5.983 8.789 5.983 11H10v10H0z"/></svg>
+          </div>
+          <p class="testimonial-body">"The streak tracking keeps me accountable. I can see exactly when I slack off and what difficulty levels I'm avoiding. Super insightful."</p>
+          <div class="testimonial-stars">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="--avatar-bg:#10b981">P</div>
+            <div>
+              <p class="testimonial-name">Priya S.</p>
+              <p class="testimonial-role">Final Year, NIT Trichy</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
-
+ -->
 
   <!-- ════════════════════════════════════
        8. SECURITY
   ════════════════════════════════════ -->
-  <section class="section">
+  <!-- <section class="section">
     <div class="max-w-4xl mx-auto px-6">
       <div class="section-header reveal"><p class="section-label">Security</p><h2 class="section-title">Security & Data Ownership</h2></div>
       <div class="security-badges reveal">
@@ -458,6 +588,54 @@
         <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg><div><p class="security-badge-title">Metadata Only</p><p class="security-badge-desc">Only session timestamps, difficulty, and language are stored.</p></div></div>
         <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg><div><p class="security-badge-title">JWT Authentication</p><p class="security-badge-desc">Token-based auth on every API request. No session cookies.</p></div></div>
         <div class="security-badge"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/></svg><div><p class="security-badge-title">Encrypted Storage</p><p class="security-badge-desc">AES-256 encryption at rest. Full data export and deletion.</p></div></div>
+      </div>
+    </div>
+  </section> -->
+
+
+  <!-- ════════════════════════════════════
+       TESTIMONIALS
+  ════════════════════════════════════ -->
+  <section id="testimonials" class="section">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-16 reveal">
+        <p class="section-label">What Developers Say</p>
+        <h2 class="section-title">Loved by developers who ship.</h2>
+      </div>
+
+      <div class="testi-grid reveal">
+        <figure class="testi-item">
+          <blockquote class="testi-quote">"Finally something that tracks what I actually do instead of making me fill out spreadsheets. The difficulty analytics changed how I plan my practice."</blockquote>
+          <figcaption class="testi-meta">
+            <span class="testi-dot" style="--dot:#3b82f6">R</span>
+            <div>
+              <p class="testi-name">Rahul M.</p>
+              <p class="testi-role">DSA Student, IIT Delhi</p>
+            </div>
+          </figcaption>
+        </figure>
+
+        <figure class="testi-item">
+          <blockquote class="testi-quote">"Zero context switching. I open VS Code, solve problems, and data just appears on my dashboard. That's how dev tools should work."</blockquote>
+          <figcaption class="testi-meta">
+            <span class="testi-dot" style="--dot:#8b5cf6">A</span>
+            <div>
+              <p class="testi-name">Arjun D.</p>
+              <p class="testi-role">Competitive Programmer</p>
+            </div>
+          </figcaption>
+        </figure>
+
+        <figure class="testi-item">
+          <blockquote class="testi-quote">"Streak tracking keeps me accountable. I can see exactly when I slack off and what levels I'm avoiding. Super insightful."</blockquote>
+          <figcaption class="testi-meta">
+            <span class="testi-dot" style="--dot:#10b981">P</span>
+            <div>
+              <p class="testi-name">Priya S.</p>
+              <p class="testi-role">Final Year, NIT Trichy</p>
+            </div>
+          </figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -494,7 +672,7 @@
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
           Start Free
         </a>
-        <a href="#extension" class="btn btn-secondary">Install VS Code Extension</a>
+        <a href="#faq" class="btn btn-secondary">Learn More</a>
       </div>
     </div>
   </section>
@@ -506,8 +684,8 @@
   <footer class="footer-main">
     <div class="max-w-6xl mx-auto px-6">
       <div class="footer-grid">
-        <div class="footer-brand"><div class="preecode-logo logo-footer mb-3"><img src="/assets/darkthemenewlogo.png" alt="Preecode" class="logo-dark"><img src="/assets/whitethemenewlogo.png" alt="Preecode" class="logo-light"></div><p class="footer-desc">Developer activity analytics built into VS Code. Track sessions, measure growth, and prepare for placements.</p></div>
-        <div class="footer-col"><p class="footer-heading">Product</p><ul class="footer-links"><li><a href="#features">Features</a></li><li><a href="#extension">Extension</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+        <div class="footer-brand"><div class="brand-logo logo-footer mb-3"><span class="brand-dark">Preec</span><span class="brand-accent">ode</span></div><p class="footer-desc">Developer activity analytics built into VS Code. Track sessions, measure growth, and prepare for placements.</p></div>
+        <div class="footer-col"><p class="footer-heading">Product</p><ul class="footer-links"><li><a href="#problem">About</a></li><li><a href="#testimonials">Testimonials</a></li><li><a href="#faq">FAQ</a></li></ul></div>
         <div class="footer-col"><p class="footer-heading">Company</p><ul class="footer-links"><li><a href="#">About</a></li><li><a href="#">Contact</a></li></ul></div>
         <div class="footer-col"><p class="footer-heading">Legal</p><ul class="footer-links"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li></ul>
           <div class="footer-social">
