@@ -1,0 +1,14 @@
+{
+  "name": "preecode-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Preecode web dashboard frontend",
+  "scripts": {
+    "dev": "serve -l 5173 .",
+    "start": "serve -l 4173 .",
+    "build": "rm -rf dist && mkdir -p dist && rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '.git' ./ dist/"
+  },
+  "devDependencies": {
+    "serve": "^14.2.5"
+  }
+}

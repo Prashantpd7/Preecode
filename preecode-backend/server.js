@@ -1,6 +1,5 @@
 // Load environment variables first
 require('dotenv').config();
-console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 
 const express = require('express');
 const cors = require('cors');
@@ -26,12 +25,6 @@ process.on('uncaughtException', (err) => {
 
 const app = express();
 
-// Request logger for debugging in production
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip} origin=${req.headers.origin || 'none'}`);
-  next();
-});
-
 /* ================= SECURITY ================= */
 
 app.use(helmet());
@@ -51,11 +44,9 @@ app.use(limiter);
 // CORS: allow only configured frontend origins (echo back origin when matched)
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  process.env.FRONTEND_DEV_URL,
   process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
-  'http://localhost:3000',
-  'http://localhost:5001',
-  'http://127.0.0.1:5500',
-  'http://localhost:5500'
+  'http://localhost:5173'
 ].filter(Boolean);
 
 const corsOptions = {

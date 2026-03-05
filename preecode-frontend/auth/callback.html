@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Auth callback</title>
   <script src="/theme.js"></script>
+  <script src="/api.js"></script>
   <link rel="stylesheet" href="/styles.css" />
   <style>
     body {
@@ -69,7 +70,7 @@
           try { localStorage.setItem('token', token); } catch (e) { /* ignore */ }
 
           try {
-            var meRes = await fetch('https://preecode.onrender.com/api/users/me', {
+            var meRes = await fetch(API_BASE + '/users/me', {
               headers: { Authorization: 'Bearer ' + token },
               credentials: 'include'
             });

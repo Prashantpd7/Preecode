@@ -1,6 +1,24 @@
 /* api.js – Preecode API helper */
 
-var API_BASE = "http://localhost:5001/api";
+function resolveApiBase() {
+  // Runtime override for deployments that inject config before api.js
+  if (typeof window !== 'undefined' && window.PREECODE_CONFIG && window.PREECODE_CONFIG.BACKEND_URL) {
+    return String(window.PREECODE_CONFIG.BACKEND_URL).replace(/\/$/, '') + '/api';
+  }
+
+  // Local development default
+  if (typeof window !== 'undefined') {
+    var host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5001/api';
+    }
+  }
+
+  // Production default
+  return 'https://preecode-backend.onrender.com/api';
+}
+
+var API_BASE = resolveApiBase();
 
 var Api = {
   // Login user

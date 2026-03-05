@@ -5,7 +5,7 @@ import OpenAI from "openai";
 import { PracticeTimer } from './services/timerService';
 import { runActiveFile } from './services/runService';
 import { saveToken, getToken, deleteToken, isLoggedIn } from './services/authService';
-import { sendPracticeData, API_BASE, doFetch } from './services/apiService';
+import { sendPracticeData, doFetch, getApiBase, getFrontendUrl } from './services/apiService';
 
 
 
@@ -94,6 +94,7 @@ function detectManualQuestion(text: string): boolean {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+	const getAuthRedirectUri = () => `${vscode.env.uriScheme}://${context.extension.id}/auth`;
 	// Initialize context keys
 	vscode.commands.executeCommand('setContext', 'preecode.hasQuestion', false);
 	vscode.commands.executeCommand('setContext', 'preecode.solutionVisible', false);
@@ -121,26 +122,15 @@ export function activate(context: vscode.ExtensionContext) {
 const uriHandler = vscode.window.registerUriHandler({
 	handleUri: async (uri: vscode.Uri) => {
 
-		console.log("FULL URI:", uri.toString());
-		console.log("PATH:", uri.path);
-		console.log("QUERY:", uri.query);
-
 		const params = new URLSearchParams(uri.query);
 		const token = params.get('token');
 
 		if (token) {
-			console.log('[extension] URI handler: received token, saving...');
 			await saveToken(context, token);
-			console.log('[extension] URI handler: token saved, updating account status');
 			vscode.window.showInformationMessage('preecode: Login successful!');
 			// Refresh account status so the status bar shows the signed-in user
 			await new Promise(r => setTimeout(r, 500)); // brief delay to ensure token is persisted
-			try { 
-				await updateAccountStatus(); 
-				console.log('[extension] URI handler: account status updated');
-			} catch (e) { 
-				console.error('[extension] URI handler: failed to update account status', e);
-			}
+			try { await updateAccountStatus(); } catch (e) {}
 		} else {
 			vscode.window.showErrorMessage('No token received.');
 		}
@@ -156,8 +146,8 @@ const uriHandler = vscode.window.registerUriHandler({
 		async () => {
 				// Include a redirect param so the website can return the JWT
 				// back to the extension using the vscode URI handler.
-				const vscodeRedirect = encodeURIComponent('vscode://prashant.preecode/auth');
-				const loginUrl = vscode.Uri.parse(`https://preecode.vercel.app/login.html?redirect=${vscodeRedirect}`);
+				const vscodeRedirect = encodeURIComponent(getAuthRedirectUri());
+				const loginUrl = vscode.Uri.parse(`${getFrontendUrl()}/login.html?redirect=${vscodeRedirect}`);
 			await vscode.env.openExternal(loginUrl);
 			vscode.window.showInformationMessage(
 				'preecode: Opening login page. After login, you will be redirected back automatically.'
@@ -170,8 +160,8 @@ const uriHandler = vscode.window.registerUriHandler({
 		const googleLoginCommand = vscode.commands.registerCommand(
 			'preecode.loginGoogle',
 			async () => {
-				const redirect = encodeURIComponent('vscode://prashant.preecode/auth');
-				const url = `${API_BASE}/auth/google?redirect=${redirect}`;
+				const redirect = encodeURIComponent(getAuthRedirectUri());
+				const url = `${getApiBase()}/auth/google?redirect=${redirect}`;
 				await vscode.env.openExternal(vscode.Uri.parse(url));
 				vscode.window.showInformationMessage('preecode: Opening Google login in browser...');
 			}
@@ -212,10 +202,10 @@ const uriHandler = vscode.window.registerUriHandler({
 			if (choice === 'Open dashboard') {
 				const token = await getToken(context);
 				if (token) {
-					const url = `https://preecode.vercel.app/auth/callback.html?token=${encodeURIComponent(token)}`;
+					const url = `${getFrontendUrl()}/auth/callback.html?token=${encodeURIComponent(token)}`;
 					await vscode.env.openExternal(vscode.Uri.parse(url));
 				} else {
-					await vscode.env.openExternal(vscode.Uri.parse('https://preecode.vercel.app/pages/dashboard.html'));
+					await vscode.env.openExternal(vscode.Uri.parse(`${getFrontendUrl()}/pages/dashboard.html`));
 				}
 				return;
 			}
@@ -234,10 +224,10 @@ const uriHandler = vscode.window.registerUriHandler({
 		async () => {
 			const token = await getToken(context);
 			if (token) {
-				const url = `https://preecode.vercel.app/auth/callback.html?token=${encodeURIComponent(token)}`;
+				const url = `${getFrontendUrl()}/auth/callback.html?token=${encodeURIComponent(token)}`;
 				await vscode.env.openExternal(vscode.Uri.parse(url));
 			} else {
-				await vscode.env.openExternal(vscode.Uri.parse('https://preecode.vercel.app/pages/dashboard.html'));
+				await vscode.env.openExternal(vscode.Uri.parse(`${getFrontendUrl()}/pages/dashboard.html`));
 			}
 		}
 	);
@@ -391,87 +381,59 @@ const uriHandler = vscode.window.registerUriHandler({
 
 	async function fetchCurrentUser(): Promise<any | null> {
 		const token = await getToken(context);
-		console.log('[extension] fetchCurrentUser: token exists =', !!token);
 		if (!token) {
-			console.log('[extension] fetchCurrentUser: no token found');
 			return null;
 		}
 
 		try {
-			const url = `${API_BASE}/users/me`;
-			console.log('[extension] fetchCurrentUser: calling', url, 'with token:', token.substring(0, 20) + '...');
+			const url = `${getApiBase()}/users/me`;
 			const res: any = await doFetch(url, {
 				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			
-			console.log('[extension] fetchCurrentUser: response received, type:', typeof res);
-			console.log('[extension] fetchCurrentUser: response ok =', res && res.ok, 'status =', res && res.status);
-			console.log('[extension] fetchCurrentUser: response statusText =', res && res.statusText);
-			
 			if (!res) {
-				console.error('[extension] fetchCurrentUser: response is null/undefined');
 				return null;
 			}
 			
 			if (!res.ok) {
-				const errText = res.statusText || 'unknown error';
-				console.error('[extension] fetchCurrentUser: response not ok -', res.status, errText);
 				return null;
 			}
 			
 			let user: any;
 			try {
 				user = await res.json();
-				console.log('[extension] fetchCurrentUser: parsed JSON successfully, user =', user);
 			} catch (parseErr) {
-				console.error('[extension] fetchCurrentUser: failed to parse JSON response', parseErr);
-				// Try text fallback
-				const text = await res.text();
-				console.log('[extension] fetchCurrentUser: response text =', text);
 				return null;
 			}
-			
-			console.log('[extension] fetchCurrentUser: returning user =', user ? (user.email || user.username) : null);
 			return user;
 		} catch (e) {
-			console.error('[extension] fetchCurrentUser error:', e);
-			if (e instanceof Error) {
-				console.error('[extension] fetchCurrentUser error message:', e.message);
-				console.error('[extension] fetchCurrentUser error stack:', e.stack);
-			}
 			return null;
 		}
 	}
 
 	async function updateAccountStatus() {
-		console.log('[extension] updateAccountStatus: starting');
 		if (!accountStatusBar) {
-			console.log('[extension] updateAccountStatus: accountStatusBar is null');
 			return;
 		}
 		
 		const token = await getToken(context);
-		console.log('[extension] updateAccountStatus: token exists =', !!token);
 		
 		// If no token, show "Sign in"
 		if (!token) {
 			accountStatusBar.text = '$(account) Sign in';
 			accountStatusBar.tooltip = 'Not signed in — click to login';
 			accountStatusBar.color = '#9CA3AF';
-			console.log('[extension] updateAccountStatus: no token, showing sign in');
 			return;
 		}
 		
 		// Token exists — try to fetch user details
 		const user: any = await fetchCurrentUser();
-		console.log('[extension] updateAccountStatus: user =', user ? (user.email || user.username) : null);
 		
 		// If fetch succeeded, show user details
 		if (user) {
 			accountStatusBar.text = `$(account) ${user.username || user.email}`;
 			accountStatusBar.tooltip = `Signed in as ${user.email || user.username}`;
 			accountStatusBar.color = '#10B981';
-			console.log('[extension] updateAccountStatus: account status updated to', user.username || user.email);
 			return;
 		}
 		
@@ -479,7 +441,6 @@ const uriHandler = vscode.window.registerUriHandler({
 		accountStatusBar.text = '$(account) Logged in...';
 		accountStatusBar.tooltip = 'Token saved, user details loading...';
 		accountStatusBar.color = '#10B981'; // green (logged in)
-		console.log('[extension] updateAccountStatus: token exists but user fetch failed, showing fallback');
 	}
 
 	// Refresh account status on activation
@@ -490,7 +451,6 @@ const uriHandler = vscode.window.registerUriHandler({
 	setInterval(async () => {
 		const token = await getToken(context);
 		if (token && accountStatusBar && accountStatusBar.text.includes('loading')) {
-			console.log('[extension] periodic retry: attempting to fetch user details...');
 			updateAccountStatus().catch(() => {});
 		}
 	}, 3000);

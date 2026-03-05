@@ -18,6 +18,21 @@
     "Other"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Preecode",
+      "properties": {
+        "preecode.backendUrl": {
+          "type": "string",
+          "default": "https://preecode-backend.onrender.com",
+          "description": "Backend base URL used by the extension (without /api)."
+        },
+        "preecode.frontendUrl": {
+          "type": "string",
+          "default": "https://preecode.vercel.app",
+          "description": "Frontend base URL used for login and dashboard redirects."
+        }
+      }
+    },
     "commands": [
       {
       "command": "preecode.login",
