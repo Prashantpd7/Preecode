@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "serve -l 5173 .",
     "start": "serve -l 4173 .",
-    "build": "rm -rf dist && mkdir -p dist && rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '.git' ./ dist/"
+    "build": "rm -rf dist && mkdir -p dist && cp -R assets auth layout pages api.js app.js index.html login.html register.html styles.css tailwind-config.js theme.js dist/"
   },
   "devDependencies": {
     "serve": "^14.2.5"
