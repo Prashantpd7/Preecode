@@ -1,6 +1,5 @@
 // Load environment variables first
 require('dotenv').config();
-console.log("FRONTEND_URL:", process.env.FRONTEND_URL);
 
 const express = require('express');
 const cors = require('cors');
@@ -26,12 +25,6 @@ process.on('uncaughtException', (err) => {
 
 const app = express();
 
-// Request logger for debugging in production
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip} origin=${req.headers.origin || 'none'}`);
-  next();
-});
-
 /* ================= SECURITY ================= */
 
 app.use(helmet());
@@ -49,7 +42,12 @@ app.use(limiter);
 /* ================= CORS ================= */
 
 // CORS: allow only configured frontend origins (echo back origin when matched)
-const allowedOrigins = [process.env.FRONTEND_URL, process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`, 'http://localhost:3000', 'http://localhost:5001'].filter(Boolean);
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_DEV_URL,
+  process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+  'http://localhost:5173'
+].filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -62,6 +60,9 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-JSON-Response'],
 };
 
 // Enable CORS for all routes with the options and handle preflight

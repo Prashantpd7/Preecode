@@ -4,162 +4,198 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Preecode – Dashboard</title>
+  <script src="/theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-config.js"></script>
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body class="bg-[#0f0f0f] text-zinc-100 font-sans min-h-screen text-sm antialiased">
+<body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">
 
-  <div class="app-shell flex flex-col md:flex-row min-h-screen relative z-10">
-    <div class="app-main flex-1 md:ml-[230px] flex flex-col">
-      <div class="page-content flex-1 p-4 md:p-7 max-w-[1100px] w-full opacity-0 animate-fade-in">
+  <div class="app-shell min-h-screen relative z-10">
+    <div class="app-main flex-1 flex flex-col">
+      <div class="dash-v4">
 
-        <!-- ── KPI Cards ── -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 opacity-0 animate-fade-in-1" id="kpiGrid">
-
-          <!-- Total Problems Solved -->
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Total Solved</p>
-            <div class="flex items-baseline gap-2">
-              <span class="metric-value" id="statTotal">0</span>
-              <span class="metric-unit">problems</span>
+        <!-- ═══ PERFORMANCE METRICS ═══ -->
+        <section class="dash-v4-stats dash-v4-anim dash-v4-anim-1" id="statsGrid">
+          <!-- Total Solved (dominant) -->
+          <div class="dash-v4-stat dash-v4-stat--primary tint-blue">
+            <div class="dash-v4-stat__accent"></div>
+            <p class="dash-v4-stat__label">Total Solved</p>
+            <div class="dash-v4-stat__row">
+              <span class="dash-v4-stat__num dash-v4-stat__num--xl" id="statTotal">0</span>
+              <span class="dash-v4-stat__unit">problems</span>
             </div>
-            <div class="metric-trend up" id="totalTrend">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M7 17l4.2-4.2m0 0c.2-.2.5-.2.6 0l2.4 2.4m-3-2.4L17 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="dash-v4-stat__trend neutral" id="totalTrend">
               <span>+0 this week</span>
             </div>
-            <svg class="sparkline" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline id="spark1" points="0,35 15,30 30,32 45,25 60,20 75,15 90,10 100,8" fill="none" stroke="#ff6b00" stroke-width="2"/></svg>
+            <div class="dash-v4-stat__bar"><div class="dash-v4-stat__fill" id="totalProgress"></div></div>
           </div>
 
-          <!-- Accuracy -->
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Accuracy Rate</p>
-            <div class="flex items-baseline gap-1">
-              <span class="metric-value" id="accuracyRate">0</span>
-              <span class="metric-unit">%</span>
+          <!-- Accuracy Rate -->
+          <div class="dash-v4-stat tint-green">
+            <div class="dash-v4-stat__accent"></div>
+            <p class="dash-v4-stat__label">Accuracy Rate</p>
+            <div class="dash-v4-stat__row">
+              <span class="dash-v4-stat__num" id="statAccuracy">0</span>
+              <span class="dash-v4-stat__unit">%</span>
             </div>
-            <div class="metric-trend up" id="accuracyTrend">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M7 17l4.2-4.2m0 0c.2-.2.5-.2.6 0l2.4 2.4m-3-2.4L17 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>+0% this week</span>
+            <div class="dash-v4-stat__trend neutral" id="accuracyTrend">
+              <span>0 / 0 accepted</span>
             </div>
-            <svg class="sparkline" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="0,30 15,28 30,26 45,24 60,22 75,18 90,16 100,14" fill="none" stroke="#ff6b00" stroke-width="2"/></svg>
+            <div class="dash-v4-stat__bar"><div class="dash-v4-stat__fill" id="accuracyProgress"></div></div>
           </div>
 
           <!-- Average Solve Time -->
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Avg Solve Time</p>
-            <div class="flex items-baseline gap-1">
-              <span class="metric-value" id="solveTimeAvg">0</span>
-              <span class="metric-unit">min</span>
+          <div class="dash-v4-stat tint-purple">
+            <div class="dash-v4-stat__accent"></div>
+            <p class="dash-v4-stat__label">Avg Solve Time</p>
+            <div class="dash-v4-stat__row">
+              <span class="dash-v4-stat__num" id="statTime">0</span>
+              <span class="dash-v4-stat__unit">min</span>
             </div>
-            <div class="metric-trend up" id="timeTrend">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M7 17l4.2-4.2m0 0c.2-.2.5-.2.6 0l2.4 2.4m-3-2.4L17 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>-0 min this week</span>
+            <div class="dash-v4-stat__trend neutral" id="timeTrend">
+              <span>No sessions yet</span>
             </div>
-            <svg class="sparkline" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="0,10 15,14 30,12 45,18 60,22 75,26 90,30 100,32" fill="none" stroke="#ff6b00" stroke-width="2"/></svg>
+            <div class="dash-v4-stat__bar"><div class="dash-v4-stat__fill" id="timeProgress"></div></div>
           </div>
 
           <!-- Placement Readiness -->
-          <div class="metric-card">
-            <div class="accent-line"></div>
-            <p class="metric-label">Placement Readiness</p>
-            <div class="flex items-baseline gap-1">
-              <span class="metric-value" style="color:#ff6b00" id="readinessScore">0</span>
-              <span class="metric-unit">/100</span>
+          <div class="dash-v4-stat tint-orange">
+            <div class="dash-v4-stat__accent"></div>
+            <p class="dash-v4-stat__label">Placement Readiness</p>
+            <div class="dash-v4-stat__row">
+              <span class="dash-v4-stat__num" id="statReadiness" style="color:var(--accent)">0</span>
+              <span class="dash-v4-stat__unit">/100</span>
             </div>
-            <div class="mt-3 h-2 bg-white/[0.06] rounded-full overflow-hidden">
-              <div class="h-full bg-[#ff6b00] rounded-full transition-all duration-1000 ease-out" id="readinessBar" style="width:0%"></div>
+            <div class="dash-v4-stat__trend neutral" id="readinessTrend">
+              <span>Start solving to generate stats</span>
+            </div>
+            <div class="dash-v4-stat__bar"><div class="dash-v4-stat__fill" id="readinessProgress"></div></div>
+          </div>
+        </section>
+
+        <!-- ═══ YOUR RANK THIS WEEK ═══ -->
+        <section class="dash-v4-card dash-v4-anim dash-v4-anim-2" id="rankSection">
+          <div class="dash-v4-card__header">
+            <span class="dash-v4-card__title">Your Rank This Week</span>
+          </div>
+          <div id="rankContent">
+            <!-- JS populates -->
+          </div>
+        </section>
+
+        <!-- ═══ DEVELOPER PRACTICE (moved above submissions) ═══ -->
+        <section class="dash-v4-practice dash-v4-anim dash-v4-anim-2" id="practicePanel">
+          <div class="dash-v4-practice__glow"></div>
+          <div class="dash-v4-card__header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="dash-v4-card__title">Developer Practice Environment</span>
+              <span class="dash-v4-ext-badge">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+                VS Code Integration
+              </span>
+            </div>
+            <span class="dash-section-badge" id="practiceCount">0</span>
+          </div>
+          <div class="dash-v4-practice__stats" id="practiceStatsRow">
+            <div class="dash-v4-practice__stat">
+              <div class="dash-v4-practice__val" id="practiceTotalTime">0h</div>
+              <div class="dash-v4-practice__lbl">Total Practice Time</div>
+            </div>
+            <div class="dash-v4-practice__stat">
+              <div class="dash-v4-practice__val" id="practiceLastSession">--</div>
+              <div class="dash-v4-practice__lbl">Last Session</div>
+            </div>
+            <div class="dash-v4-practice__stat">
+              <div class="dash-v4-practice__val" id="practiceSessions">0</div>
+              <div class="dash-v4-practice__lbl">Sessions</div>
+            </div>
+          </div>
+          <div style="text-align:center">
+            <a href="/pages/problems.html" class="dash-v4-practice__cta">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+              Start Practice Session
+            </a>
+          </div>
+        </section>
+
+        <!-- ═══ SKILL HEATMAP + STREAK TRACKER ═══ -->
+        <div class="dash-v4-twocol dash-v4-anim dash-v4-anim-3">
+
+          <!-- Skill Heatmap -->
+          <div class="dash-v4-card">
+            <div class="dash-v4-card__header">
+              <span class="dash-v4-card__title">Skill Heatmap</span>
+            </div>
+            <div id="skillHeatmapContainer">
+              <!-- JS populates -->
+            </div>
+          </div>
+
+          <!-- Streak & Consistency -->
+          <div class="dash-v4-card dash-v4-streak-card">
+            <div class="dash-v4-card__header">
+              <span class="dash-v4-card__title">Consistency Tracker</span>
+            </div>
+            <!-- Circular streak ring -->
+            <div class="dash-v4-streak__ring-row">
+              <div class="dash-v4-streak__ring" id="streakRing">
+                <svg viewBox="0 0 120 120" class="dash-v4-streak__svg">
+                  <circle cx="60" cy="60" r="52" class="dash-v4-streak__track"/>
+                  <circle cx="60" cy="60" r="52" class="dash-v4-streak__progress" id="streakArc"/>
+                </svg>
+                <div class="dash-v4-streak__center">
+                  <span class="dash-v4-streak__flame" id="streakFlame">&#x1F525;</span>
+                  <span class="dash-v4-streak__val" id="currentStreak">0</span>
+                  <span class="dash-v4-streak__lbl">day streak</span>
+                </div>
+              </div>
+              <div class="dash-v4-streak__best">
+                <span class="dash-v4-streak__best-label">Best Streak</span>
+                <span class="dash-v4-streak__best-val" id="bestStreak">0</span>
+              </div>
+            </div>
+            <div class="dash-v4-streak__milestones" id="streakMilestones">
+              <div class="streak-milestone" data-target="7">
+                <span class="streak-milestone-icon">&#x1F525;</span>
+                <span class="streak-milestone-label">7 Days</span>
+              </div>
+              <div class="streak-milestone" data-target="30">
+                <span class="streak-milestone-icon">&#x1F31F;</span>
+                <span class="streak-milestone-label">30 Days</span>
+              </div>
+              <div class="streak-milestone" data-target="100">
+                <span class="streak-milestone-icon">&#x1F3C6;</span>
+                <span class="streak-milestone-label">100 Days</span>
+              </div>
             </div>
           </div>
 
         </div>
 
-        <!-- ── Middle: Weekly Performance + Weak Topics ── -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 opacity-0 animate-fade-in-2">
-
-          <!-- Weekly Performance -->
-          <div class="app-card p-6">
-            <div class="flex items-center justify-between mb-5">
-              <span class="section-header">Weekly Performance</span>
-              <span class="text-xs text-zinc-500" id="weekTotal">0 submissions</span>
-            </div>
-            <div class="flex items-end gap-2" style="height:140px" id="activityBars">
-              <!-- Skeleton bars while loading -->
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:40px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:65px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:35px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:80px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:50px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:70px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-              <div class="flex-1 flex flex-col items-center"><div class="skeleton skeleton-bar w-full max-w-[28px]" style="height:55px"></div><div class="skeleton mt-2" style="width:20px;height:8px"></div></div>
-            </div>
+        <!-- ═══ RECENT SUBMISSIONS ═══ -->
+        <section class="dash-v4-card dash-v4-anim dash-v4-anim-4">
+          <div class="dash-v4-card__header">
+            <span class="dash-v4-card__title">Recent Submissions</span>
+            <span class="dash-section-badge" id="subCount">0</span>
           </div>
-
-          <!-- Weak Topics -->
-          <div class="app-card p-6">
-            <div class="flex items-center justify-between mb-5">
-              <span class="section-header">Weak Topics</span>
-              <span class="section-header" id="weakTopicCount">0 topics flagged</span>
-            </div>
-            <div class="flex flex-col gap-3" id="weakList">
-              <div class="skeleton-row"><div class="skeleton skeleton-line" style="width:60%"></div><div class="skeleton" style="width:32px;height:12px"></div></div>
-              <div class="skeleton-row"><div class="skeleton skeleton-line" style="width:45%"></div><div class="skeleton" style="width:32px;height:12px"></div></div>
-              <div class="skeleton-row"><div class="skeleton skeleton-line" style="width:70%"></div><div class="skeleton" style="width:32px;height:12px"></div></div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- ── Recent Submissions ── -->
-        <div class="app-card p-6 opacity-0 animate-fade-in-3">
-          <div class="flex items-center justify-between mb-4">
-            <span class="section-header">Recent Submissions</span>
-            <span class="text-xs text-zinc-400 bg-white/[0.05] border border-white/[0.08] px-3 py-0.5 rounded-full" id="subCount">0</span>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="app-table min-w-[560px]">
+          <div style="overflow-x:auto">
+            <table class="dash-v4-table" style="min-width:640px">
               <thead>
                 <tr>
-                  <th>Problem</th>
-                  <th>Difficulty</th>
-                  <th>Status</th>
-                  <th>Time</th>
-                  <th>Date</th>
+                  <th data-sort="name">Problem <span class="sort-icon">&#x2195;</span></th>
+                  <th data-sort="difficulty">Difficulty <span class="sort-icon">&#x2195;</span></th>
+                  <th data-sort="status">Status <span class="sort-icon">&#x2195;</span></th>
+                  <th data-sort="time">Runtime <span class="sort-icon">&#x2195;</span></th>
+                  <th data-sort="date">Date <span class="sort-icon">&#x2195;</span></th>
                 </tr>
               </thead>
               <tbody id="submissionsBody">
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-line" style="width:40%"></div><div class="skeleton" style="width:50px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:60px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:40px;height:12px"></div><div class="skeleton" style="width:70px;height:12px"></div></div><div class="skeleton-row"><div class="skeleton skeleton-line" style="width:55%"></div><div class="skeleton" style="width:50px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:60px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:40px;height:12px"></div><div class="skeleton" style="width:70px;height:12px"></div></div><div class="skeleton-row"><div class="skeleton skeleton-line" style="width:35%"></div><div class="skeleton" style="width:50px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:60px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:40px;height:12px"></div><div class="skeleton" style="width:70px;height:12px"></div></div></td></tr>
+                <!-- JS populates or shows empty state -->
               </tbody>
             </table>
           </div>
-        </div>
-
-        <!-- ── Practice Sessions (from VS Code Extension) ── -->
-        <div class="app-card p-6 mt-6 opacity-0 animate-fade-in-3">
-          <div class="flex items-center justify-between mb-4">
-            <span class="section-header">Practice Sessions</span>
-            <span class="text-xs text-zinc-400 bg-white/[0.05] border border-white/[0.08] px-3 py-0.5 rounded-full" id="practiceCount">0</span>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="app-table min-w-[560px]">
-              <thead>
-                <tr>
-                  <th>Question</th>
-                  <th>Language</th>
-                  <th>Time Taken</th>
-                  <th>Hints</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody id="practiceBody">
-                <tr><td colspan="5"><div class="skeleton-row"><div class="skeleton skeleton-line" style="width:50%"></div><div class="skeleton" style="width:50px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:40px;height:12px"></div><div class="skeleton" style="width:20px;height:12px"></div><div class="skeleton" style="width:70px;height:12px"></div></div><div class="skeleton-row"><div class="skeleton skeleton-line" style="width:40%"></div><div class="skeleton" style="width:50px;height:20px;border-radius:6px"></div><div class="skeleton" style="width:40px;height:12px"></div><div class="skeleton" style="width:20px;height:12px"></div><div class="skeleton" style="width:70px;height:12px"></div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        </section>
 
       </div>
     </div>
@@ -174,15 +210,12 @@
         var t = params.get('token');
         if (t) {
           localStorage.setItem('token', t);
-          // remove token from URL
           params.delete('token');
           var newSearch = params.toString();
           var newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
           history.replaceState({}, document.title, newUrl);
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     })();
   </script>
   <script src="/layout/layout.js"></script>

@@ -1,11 +1,24 @@
-/* profile.js – Populates the Profile page */
+/* profile.js – Profile page (Apple-style minimal V3) */
 
 (function () {
-  var userId   = localStorage.getItem('preecode_uid');
+  'use strict';
+
+  var userId = localStorage.getItem('preecode_uid');
   var userName = localStorage.getItem('preecode_name') || 'User';
   if (!userId) return;
 
   var displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
+
+  // ── Utilities ──
+
+  function $(id) { return document.getElementById(id); }
+
+  function setText(id, val) {
+    var el = $(id);
+    if (el) el.textContent = val;
+  }
+
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
   function animateNumber(el, target, duration) {
     if (!el) return;
@@ -23,133 +36,8 @@
     requestAnimationFrame(step);
   }
 
-  function setProfileAvatarImage(url, fallbackName) {
-    var av = document.getElementById('profileAvatar');
-    if (!av) return;
-    var safeName = String(fallbackName || 'User').trim();
-    var initial = safeName.charAt(0).toUpperCase() || 'U';
-    if (!url) {
-      av.innerHTML = '';
-      av.textContent = initial;
-      return;
-    }
-    av.innerHTML = '';
-    var img = document.createElement('img');
-    img.src = url;
-    img.alt = safeName + ' avatar';
-    img.className = 'w-full h-full object-cover rounded-full';
-    img.onerror = function () {
-      av.innerHTML = '';
-      av.textContent = initial;
-    };
-    av.appendChild(img);
-  }
-
-  // Avatar initial
-  setProfileAvatarImage(localStorage.getItem('preecode_avatar') || '', displayName);
-
-  // Name placeholder
-  setText('profileName', displayName);
-
-  // Fetch user profile
-  Api.getUser(userId)
-    .then(function (user) {
-      if (user.username) setText('profileName', cap(user.username));
-      if (user.email)    setText('profileEmail', user.email);
-      if (user.avatar) localStorage.setItem('preecode_avatar', user.avatar);
-      setProfileAvatarImage(user.avatar || localStorage.getItem('preecode_avatar') || '', user.username || displayName);
-
-      // Founding badge
-      var badgeEl = document.getElementById('foundingBadge');
-      if (badgeEl && user.plan === 'pro') {
-        badgeEl.style.display = '';
-        var level = user.foundingBadgeLevel || localStorage.getItem('preecode_badge') || 'basic';
-        badgeEl.className = 'founding-badge ' + level;
-        var badgeTextEl = document.getElementById('foundingBadgeText');
-        if (badgeTextEl) {
-          badgeTextEl.textContent = level === 'elite' ? 'Elite Founding Member' : 'Founding Member';
-        }
-      }
-    })
-    .catch(function () {
-      setText('profileEmail', '—');
-    });
-
-  // Fetch early access status
-  Api.getEarlyAccessStatus()
-    .then(function (data) {
-      var card = document.getElementById('eaStatusCard');
-      if (!card) return;
-      card.style.display = '';
-
-      var label = document.getElementById('eaPlanLabel');
-      if (label) label.textContent = data.subscriptionStatus === 'active' ? 'Active' : 'Expired';
-
-      var days = document.getElementById('eaDaysLeft');
-      if (days) {
-        var dr = data.daysRemaining || 0;
-        days.textContent = dr > 0 ? dr + ' days remaining' : 'Expired';
-      }
-
-      var certLink = document.getElementById('viewCertLink');
-      if (certLink && data.foundingBadgeLevel === 'elite') {
-        certLink.style.display = '';
-      }
-    })
-    .catch(function () {
-      // Silently ignore - card stays hidden
-    });
-
-  // Fetch stats
-  Api.getStats(userId)
-    .then(function (data) {
-      var total  = data.totalSolved  || 0;
-      var easy   = data.easySolved   || 0;
-      var medium = data.mediumSolved || 0;
-      var hard   = data.hardSolved   || 0;
-      var points = data.points || (easy * 1 + medium * 3 + hard * 5);
-      var streak = data.streak || 0;
-
-      animateNumber(document.getElementById('profileTotal'),  total);
-      animateNumber(document.getElementById('profilePoints'), points);
-      animateNumber(document.getElementById('profileStreak'), streak);
-
-      // Difficulty breakdown bars
-      animateNumber(document.getElementById('pEasyCount'), easy);
-      animateNumber(document.getElementById('pMedCount'),  medium);
-      animateNumber(document.getElementById('pHardCount'), hard);
-      setBar('pEasyBar', easy, total || 1);
-      setBar('pMedBar',  medium, total || 1);
-      setBar('pHardBar', hard, total || 1);
-
-      // Streak badge in topbar
-      var streakBadge = document.getElementById('streakBadge');
-      if (streakBadge) streakBadge.textContent = streak + ' day streak';
-
-      // Badge progress indicators
-      updateBadge('badgeFirstBar', 'badgeFirstText', total, 1, ' solved');
-      updateBadge('badge7day', 'badge7dayText', streak, 7, ' days');
-      updateBadge('badge50', 'badge50Text', total, 50, ' solved');
-      updateBadge('badgeHard', 'badgeHardText', hard, 10, ' hard');
-
-      // Unlock badges (toggle locked/unlocked classes)
-      unlockBadge('firstSolve', total >= 1);
-      unlockBadge('7day', streak >= 7);
-      unlockBadge('50problems', total >= 50);
-      unlockBadge('hardMaster', hard >= 10);
-    })
-    .catch(function (err) {
-      console.error('Profile stats load failed:', err);
-    });
-
-  // Helpers
-  function setText(id, val) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = val;
-  }
-
   function setBar(id, value, max) {
-    var el = document.getElementById(id);
+    var el = $(id);
     if (el && max > 0) {
       setTimeout(function () {
         el.style.width = ((value / max) * 100).toFixed(1) + '%';
@@ -157,14 +45,106 @@
     }
   }
 
-  function updateBadge(barId, textId, current, goal, suffix) {
-    var bar  = document.getElementById(barId);
-    var text = document.getElementById(textId);
-    var pct  = Math.min((current / goal) * 100, 100);
-    if (bar) {
-      setTimeout(function () { bar.style.width = pct.toFixed(1) + '%'; }, 200);
-    }
-    if (text) text.textContent = Math.min(current, goal) + '/' + goal + suffix;
+  // ── Avatar + Name ──
+
+  var avatar = $('profileAvatar');
+  if (avatar) avatar.textContent = displayName.charAt(0);
+  setText('profileName', displayName);
+
+  // ── Fetch User Profile ──
+
+  Api.getUser(userId)
+    .then(function (user) {
+      if (user.username) {
+        setText('profileName', cap(user.username));
+        var av = $('profileAvatar');
+        if (av) av.textContent = user.username.charAt(0).toUpperCase();
+      }
+
+      // Subtitle: "Member since Jan 2024"
+      if (user.createdAt) {
+        var d = new Date(user.createdAt);
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        setText('profileSubtitle', 'Member since ' + months[d.getMonth()] + ' ' + d.getFullYear());
+      }
+    })
+    .catch(function () {});
+
+  // ── Fetch Stats ──
+
+  Api.getStats(userId)
+    .then(function (data) {
+      var total = data.totalSolved || 0;
+      var easy = data.easySolved || 0;
+      var medium = data.mediumSolved || 0;
+      var hard = data.hardSolved || 0;
+      var points = data.points || (easy * 1 + medium * 3 + hard * 5);
+      var streak = data.streak || 0;
+      var subs = data.recentSubmissions || [];
+
+      // Accuracy from recent submissions
+      var accepted = subs.filter(function (s) { return s.status === 'accepted'; }).length;
+      var accuracy = subs.length ? Math.round((accepted / subs.length) * 100) : 0;
+
+      // Primary metrics
+      animateNumber($('profileTotal'), total);
+      animateNumber($('profileAccuracy'), accuracy);
+      animateNumber($('profileStreak'), streak);
+
+      // Stat card progress bars
+      var totalBarEl = $('profileTotalBar');
+      if (totalBarEl) {
+        setTimeout(function () { totalBarEl.style.width = Math.min(100, total * 2).toFixed(1) + '%'; }, 200);
+      }
+      var accBarEl = $('profileAccuracyBar');
+      if (accBarEl) {
+        setTimeout(function () { accBarEl.style.width = accuracy + '%'; }, 200);
+      }
+      var streakBarEl = $('profileStreakBar');
+      if (streakBarEl) {
+        setTimeout(function () { streakBarEl.style.width = Math.min(100, streak * (100 / 30)).toFixed(1) + '%'; }, 200);
+      }
+
+      // Difficulty breakdown
+      animateNumber($('pEasyCount'), easy);
+      animateNumber($('pMedCount'), medium);
+      animateNumber($('pHardCount'), hard);
+      setBar('pEasyBar', easy, total || 1);
+      setBar('pMedBar', medium, total || 1);
+      setBar('pHardBar', hard, total || 1);
+
+      // Badge progress
+      updateBadgeBar('badgeFirstBar', total, 1);
+      updateBadgeBar('badge7day', streak, 7);
+      updateBadgeBar('badge50', total, 50);
+      updateBadgeBar('badgeHard', hard, 10);
+
+      // Unlock badges
+      unlockBadge('firstSolve', total >= 1);
+      unlockBadge('7day', streak >= 7);
+      unlockBadge('50problems', total >= 50);
+      unlockBadge('hardMaster', hard >= 10);
+
+      // Show "View All" button if any extra badges have progress
+      if (total > 0) {
+        var viewAllBtn = $('viewAllBadges');
+        if (viewAllBtn) viewAllBtn.style.display = '';
+      }
+
+      // Rank / Level
+      updateRank(points);
+    })
+    .catch(function (err) {
+      console.error('Profile stats load failed:', err);
+    });
+
+  // ── Badge Helpers ──
+
+  function updateBadgeBar(barId, current, goal) {
+    var bar = $(barId);
+    if (!bar) return;
+    var pct = Math.min((current / goal) * 100, 100);
+    setTimeout(function () { bar.style.width = pct.toFixed(1) + '%'; }, 200);
   }
 
   function unlockBadge(badgeName, earned) {
@@ -173,80 +153,119 @@
     if (earned) {
       card.classList.remove('locked');
       card.classList.add('unlocked');
-    } else {
-      card.classList.add('locked');
-      card.classList.remove('unlocked');
     }
   }
 
-  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  // ── View All Badges Toggle ──
 
-  // Edit Profile Modal handling
-  var editModal = document.getElementById('editProfileModal');
-  var editBtn = document.getElementById('editProfileBtn');
-  var closeBtn = document.getElementById('closeEditModal');
-  var cancelBtn = document.getElementById('cancelEditModal');
-  var editForm = document.getElementById('editProfileForm');
-  var usernameInput = document.getElementById('editUsername');
-  var avatarInput = document.getElementById('editAvatar');
+  var viewAllBtn = $('viewAllBadges');
+  if (viewAllBtn) {
+    var expanded = false;
+    viewAllBtn.addEventListener('click', function () {
+      expanded = !expanded;
+      var extras = document.querySelectorAll('.prof-badge-extra');
+      extras.forEach(function (el) {
+        el.style.display = expanded ? '' : 'none';
+      });
+      viewAllBtn.textContent = expanded ? 'Show Less' : 'View All';
+    });
+  }
+
+  // ── Rank System ──
+
+  function updateRank(points) {
+    var ranks = [
+      { name: 'Beginner',     min: 0,    max: 49,       level: 1 },
+      { name: 'Apprentice',   min: 50,   max: 149,      level: 2 },
+      { name: 'Intermediate', min: 150,  max: 299,      level: 3 },
+      { name: 'Advanced',     min: 300,  max: 499,      level: 4 },
+      { name: 'Expert',       min: 500,  max: 999,      level: 5 },
+      { name: 'Master',       min: 1000, max: Infinity,  level: 6 }
+    ];
+
+    var rank = ranks[0];
+    for (var i = 0; i < ranks.length; i++) {
+      if (points >= ranks[i].min) rank = ranks[i];
+    }
+
+    setText('rankName', 'Level ' + rank.level + ' \u2014 ' + rank.name);
+    var nextMax = rank.max === Infinity ? rank.min + 500 : rank.max + 1;
+    var progress = ((points - rank.min) / (nextMax - rank.min)) * 100;
+    setText('rankXP', points + ' / ' + nextMax + ' XP');
+
+    var rankLevel = $('rankLevel');
+    if (rankLevel) rankLevel.textContent = rank.level;
+
+    var rankBar = $('rankBar');
+    if (rankBar) {
+      setTimeout(function () {
+        rankBar.style.width = Math.min(progress, 100).toFixed(1) + '%';
+      }, 300);
+    }
+  }
+
+  // ── Edit Profile Modal ──
+
+  var editModal = $('editProfileModal');
+  var editBtn = $('editProfileBtn');
+  var closeBtn = $('closeEditModal');
+  var cancelBtn = $('cancelEditModal');
+  var editForm = $('editProfileForm');
+  var usernameInput = $('editUsername');
+  var avatarInput = $('editAvatar');
 
   function openEditModal() {
-    // Populate current values
-    usernameInput.value = userName;
-    avatarInput.value = localStorage.getItem('preecode_avatar') || '';
-    editModal.classList.remove('hidden');
+    if (usernameInput) usernameInput.value = userName;
+    if (avatarInput) avatarInput.value = localStorage.getItem('preecode_avatar') || '';
+    if (editModal) editModal.classList.remove('hidden');
   }
 
-  function closeEditModal() {
-    editModal.classList.add('hidden');
+  function closeEditModalFn() {
+    if (editModal) editModal.classList.add('hidden');
   }
 
-  editBtn.addEventListener('click', openEditModal);
-  closeBtn.addEventListener('click', closeEditModal);
-  cancelBtn.addEventListener('click', closeEditModal);
+  if (editBtn) editBtn.addEventListener('click', openEditModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeEditModalFn);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeEditModalFn);
 
-  editForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    
-    var newUsername = usernameInput.value.trim();
-    var newAvatar = avatarInput.value.trim();
+  if (editForm) {
+    editForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var newUsername = usernameInput ? usernameInput.value.trim() : '';
+      var newAvatar = avatarInput ? avatarInput.value.trim() : '';
 
-    if (!newUsername) {
-      alert('Username cannot be empty');
-      return;
-    }
-
-    try {
-      var result = await Api.updateProfile({
-        username: newUsername,
-        avatar: newAvatar || undefined
-      });
-
-      if (result && result.user) {
-        // Update local storage
-        localStorage.setItem('preecode_name', result.user.username);
-        if (result.user.avatar) {
-          localStorage.setItem('preecode_avatar', result.user.avatar);
-        }
-
-        // Update UI
-        setText('profileName', cap(result.user.username));
-        setProfileAvatarImage(result.user.avatar || localStorage.getItem('preecode_avatar') || '', result.user.username);
-
-        alert('Profile updated successfully');
-        closeEditModal();
-        location.reload(); // Reload to update all pages
+      if (!newUsername) {
+        alert('Username cannot be empty');
+        return;
       }
-    } catch (err) {
-      alert('Failed to update profile: ' + (err.message || 'Unknown error'));
-      console.error('Profile update error:', err);
-    }
-  });
 
-  // Close modal on outside click
-  editModal.addEventListener('click', function (e) {
-    if (e.target === editModal) {
-      closeEditModal();
-    }
-  });
+      try {
+        var result = await Api.updateProfile({
+          username: newUsername,
+          avatar: newAvatar || undefined
+        });
+
+        if (result && result.user) {
+          localStorage.setItem('preecode_name', result.user.username);
+          if (result.user.avatar) {
+            localStorage.setItem('preecode_avatar', result.user.avatar);
+          }
+          setText('profileName', cap(result.user.username));
+          var av = $('profileAvatar');
+          if (av) av.textContent = result.user.username.charAt(0).toUpperCase();
+          closeEditModalFn();
+          location.reload();
+        }
+      } catch (err) {
+        alert('Failed to update profile: ' + (err.message || 'Unknown error'));
+      }
+    });
+  }
+
+  if (editModal) {
+    editModal.addEventListener('click', function (e) {
+      if (e.target === editModal) closeEditModalFn();
+    });
+  }
+
 })();

@@ -2,16 +2,17 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
-// Use explicit backend URL from env in production. Render should set BACKEND_URL.
-// Fallback to the known Render hostname used for this project, and localhost for dev.
-const BACKEND_URL = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://preecode-backend.onrender.com' : 'http://localhost:5001');
+const BACKEND_URL = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production'
+  ? 'https://preecode-backend.onrender.com'
+  : 'http://localhost:5001');
+const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${BACKEND_URL}/api/auth/google/callback`;
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${BACKEND_URL}/api/auth/google/callback`,
+      callbackURL: GOOGLE_CALLBACK_URL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

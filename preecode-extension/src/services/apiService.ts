@@ -1,7 +1,27 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-export const API_BASE = 'https://preecode.onrender.com/api';
+const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
+
+function normalizeBaseUrl(url: string): string {
+    return String(url || '').trim().replace(/\/$/, '');
+}
+
+export function getBackendUrl(): string {
+    const configured = vscode.workspace.getConfiguration('preecode').get<string>('backendUrl');
+    return normalizeBaseUrl(configured || DEFAULT_BACKEND_URL);
+}
+
+export function getFrontendUrl(): string {
+    const configured = vscode.workspace.getConfiguration('preecode').get<string>('frontendUrl');
+    return normalizeBaseUrl(configured || 'https://preecode.vercel.app');
+}
+
+export function getApiBase(): string {
+    return `${getBackendUrl()}/api`;
+}
+
+export const API_BASE = getApiBase();
 
 // Helper to obtain a fetch implementation in Node + ESM environments.
 export async function doFetch(url: string, opts?: any): Promise<any> {
@@ -129,10 +149,6 @@ export async function sendPracticeData(
     context: vscode.ExtensionContext,
     data: PracticeData
 ): Promise<boolean> {
-    console.log("🔥 sendPracticeData CALLED");
-console.log("Data being sent:", data);
-
-
     // Get stored token — if missing, user is not logged in
     const token = await getToken(context);
 
