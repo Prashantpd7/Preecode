@@ -45,23 +45,6 @@
     }
   }
 
-  // ── Scroll Reveal (IntersectionObserver) ──
-
-  var revealElements = document.querySelectorAll('.prof-reveal');
-  if ('IntersectionObserver' in window) {
-    var observer = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.1 });
-    revealElements.forEach(function (el) { observer.observe(el); });
-  } else {
-    revealElements.forEach(function (el) { el.classList.add('visible'); });
-  }
-
   // ── Avatar + Name ──
 
   var avatar = $('profileAvatar');
@@ -105,15 +88,22 @@
 
       // Primary metrics
       animateNumber($('profileTotal'), total);
-      var accEl = $('profileAccuracy');
-      if (accEl) {
-        animateNumber(accEl, accuracy);
-        // Append % after animation completes
-        setTimeout(function () {
-          accEl.textContent = accuracy + '%';
-        }, 850);
-      }
+      animateNumber($('profileAccuracy'), accuracy);
       animateNumber($('profileStreak'), streak);
+
+      // Stat card progress bars
+      var totalBarEl = $('profileTotalBar');
+      if (totalBarEl) {
+        setTimeout(function () { totalBarEl.style.width = Math.min(100, total * 2).toFixed(1) + '%'; }, 200);
+      }
+      var accBarEl = $('profileAccuracyBar');
+      if (accBarEl) {
+        setTimeout(function () { accBarEl.style.width = accuracy + '%'; }, 200);
+      }
+      var streakBarEl = $('profileStreakBar');
+      if (streakBarEl) {
+        setTimeout(function () { streakBarEl.style.width = Math.min(100, streak * (100 / 30)).toFixed(1) + '%'; }, 200);
+      }
 
       // Difficulty breakdown
       animateNumber($('pEasyCount'), easy);
@@ -122,22 +112,6 @@
       setBar('pEasyBar', easy, total || 1);
       setBar('pMedBar', medium, total || 1);
       setBar('pHardBar', hard, total || 1);
-
-      // Weekly overview
-      var weekCount = 0;
-      var weekPoints = 0;
-      var now = Date.now();
-      subs.forEach(function (s) {
-        if (!s.submittedAt) return;
-        var diff = Math.floor((now - new Date(s.submittedAt).getTime()) / 86400000);
-        if (diff >= 0 && diff < 7) {
-          weekCount++;
-          var d = (s.difficulty || '').toLowerCase();
-          weekPoints += d === 'hard' ? 5 : d === 'medium' ? 3 : 1;
-        }
-      });
-      animateNumber($('weekSolved'), weekCount);
-      animateNumber($('weekPoints'), weekPoints);
 
       // Badge progress
       updateBadgeBar('badgeFirstBar', total, 1);
@@ -228,55 +202,6 @@
         rankBar.style.width = Math.min(progress, 100).toFixed(1) + '%';
       }, 300);
     }
-  }
-
-  // ── Activity Heatmap (Last 7 Days) ──
-
-  buildActivityHeatmap();
-
-  function buildActivityHeatmap() {
-    var container = $('activityHeatmap');
-    if (!container) return;
-
-    var today = new Date();
-    var dayOfWeek = today.getDay();
-    var adjusted = (dayOfWeek + 6) % 7;
-
-    if (Api.getSubmissions) {
-      Api.getSubmissions(userId)
-        .then(function (subs) {
-          var counts = [0, 0, 0, 0, 0, 0, 0];
-          var now = new Date();
-          for (var i = 0; i < subs.length; i++) {
-            var sd = new Date(subs[i].createdAt || subs[i].date);
-            var diff = Math.floor((now - sd) / (1000 * 60 * 60 * 24));
-            if (diff < 7 && diff >= 0) {
-              counts[6 - diff]++;
-            }
-          }
-          renderHeatmap(container, counts, adjusted);
-        })
-        .catch(function () {
-          renderHeatmap(container, [0, 0, 0, 0, 0, 0, 0], adjusted);
-        });
-    } else {
-      renderHeatmap(container, [0, 0, 0, 0, 0, 0, 0], adjusted);
-    }
-  }
-
-  function renderHeatmap(container, counts, todayIdx) {
-    var dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    var html = '';
-    for (var i = 0; i < 7; i++) {
-      var c = counts[i] || 0;
-      var level = c === 0 ? '' : c <= 1 ? 'l1' : c <= 2 ? 'l2' : c <= 3 ? 'l3' : 'l4';
-      var dayIndex = (todayIdx - 6 + i + 7) % 7;
-      html += '<div class="activity-heatmap-day">' +
-        '<div class="activity-heatmap-cell ' + level + '" title="' + c + ' submissions"></div>' +
-        '<span class="activity-heatmap-label">' + dayNames[dayIndex] + '</span>' +
-        '</div>';
-    }
-    container.innerHTML = html;
   }
 
   // ── Edit Profile Modal ──
