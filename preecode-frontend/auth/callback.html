@@ -19,6 +19,21 @@
   <script>
     (async function () {
       try {
+        var API_BASE = (function resolveApiBase() {
+          if (typeof window !== 'undefined' && window.PREECODE_CONFIG && window.PREECODE_CONFIG.BACKEND_URL) {
+            return String(window.PREECODE_CONFIG.BACKEND_URL).replace(/\/$/, '') + '/api';
+          }
+
+          if (typeof window !== 'undefined') {
+            var host = window.location.hostname;
+            if (host === 'localhost' || host === '127.0.0.1') {
+              return 'http://localhost:5001/api';
+            }
+          }
+
+          return 'https://preecode.onrender.com/api';
+        })();
+
         var params = new URLSearchParams(window.location.search);
         var token = params.get('token');
         var error = params.get('error');
@@ -41,7 +56,7 @@
 
           // Hydrate user profile for navbar/dashboard/submissions after OAuth login
           try {
-            var meRes = await fetch('https://preecode.onrender.com/api/users/me', {
+            var meRes = await fetch(API_BASE + '/users/me', {
               headers: { Authorization: 'Bearer ' + token },
               credentials: 'include'
             });

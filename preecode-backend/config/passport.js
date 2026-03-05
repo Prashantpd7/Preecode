@@ -3,7 +3,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
 const BACKEND_URL = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production'
-  ? 'https://preecode-backend.onrender.com'
+  ? 'https://preecode.onrender.com'
   : 'http://localhost:5001');
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${BACKEND_URL}/api/auth/google/callback`;
 

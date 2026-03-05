@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
+const DEFAULT_BACKEND_URL = 'https://preecode.onrender.com';
 
 function normalizeBaseUrl(url: string): string {
     return String(url || '').trim().replace(/\/$/, '');

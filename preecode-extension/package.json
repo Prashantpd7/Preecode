@@ -24,6 +24,21 @@
     "Other"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Preecode",
+      "properties": {
+        "preecode.backendUrl": {
+          "type": "string",
+          "default": "https://preecode.onrender.com",
+          "description": "Base URL of the Preecode backend service."
+        },
+        "preecode.frontendUrl": {
+          "type": "string",
+          "default": "https://preecode.vercel.app",
+          "description": "Base URL of the Preecode frontend website."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

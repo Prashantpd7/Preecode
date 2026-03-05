@@ -15,7 +15,7 @@ function resolveApiBase() {
   }
 
   // Production default
-  return 'https://preecode-backend.onrender.com/api';
+  return 'https://preecode.onrender.com/api';
 }
 
 var API_BASE = resolveApiBase();
