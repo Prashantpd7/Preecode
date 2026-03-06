@@ -2,8 +2,37 @@
 
 (function () {
   'use strict';
-  var userId = localStorage.getItem('preecode_uid');
-  if (!userId) return;
+
+  function isValidObjectId(value) {
+    return /^[a-f\d]{24}$/i.test(String(value || ''));
+  }
+
+  function setupOpenVsCodeButton() {
+    var btn = $('openVsCodeBtn');
+    if (!btn) return;
+
+    var token = localStorage.getItem('token') || '';
+    if (!token) {
+      btn.classList.add('is-disabled');
+      btn.setAttribute('aria-disabled', 'true');
+      btn.setAttribute('title', 'Login required to connect VS Code');
+      btn.href = '/login.html';
+      return;
+    }
+
+    var extensionUri = 'vscode://prashant.preecode/auth?token=' + encodeURIComponent(token) + '&source=dashboard';
+    btn.href = extensionUri;
+    btn.addEventListener('click', function () {
+      try {
+        btn.classList.add('is-launching');
+        setTimeout(function () {
+          btn.classList.remove('is-launching');
+        }, 1800);
+      } catch (e) {
+        // Ignore UI-only state errors
+      }
+    });
+  }
 
   // ── Utilities ──
 
@@ -473,23 +502,67 @@
 
   // ── Data Fetching & Orchestration ──
 
-  Api.getStats(userId)
+  function showDashboardErrorBanner() {
+    var layout = document.querySelector('.dash-v4');
+    if (!layout || layout.querySelector('.dash-v4-error-banner')) return;
+
+    var banner = document.createElement('div');
+    banner.className = 'dash-v4-error-banner';
+    banner.textContent = 'Could not load dashboard data. Please try again later.';
+    layout.prepend(banner);
+  }
+
+  function renderDashboardData(data) {
+    StatsCards(data);
+    LeaderboardCard(data);
+    SkillHeatmap(data);
+    StreakTracker(data);
+    SubmissionsTable(data.recentSubmissions || []);
+  }
+
+  function resolveUserId() {
+    var stored = localStorage.getItem('preecode_uid');
+    if (isValidObjectId(stored)) {
+      return Promise.resolve(stored);
+    }
+
+    return Api.getCurrentUser()
+      .then(function (me) {
+        var resolved = (me && (me._id || me.id)) || '';
+        if (!isValidObjectId(resolved)) {
+          throw new Error('Could not resolve authenticated user id');
+        }
+        localStorage.setItem('preecode_uid', resolved);
+        if (me && me.username) localStorage.setItem('preecode_name', me.username);
+        if (me && me.avatar) localStorage.setItem('preecode_avatar', me.avatar);
+        return resolved;
+      });
+  }
+
+  function loadDashboardData(userId) {
+    return Api.getStats(userId).catch(function (err) {
+      // Auto-recover once if a stale user id was cached in localStorage.
+      return Api.getCurrentUser().then(function (me) {
+        var resolved = (me && (me._id || me.id)) || '';
+        if (!isValidObjectId(resolved) || resolved === userId) {
+          throw err;
+        }
+        localStorage.setItem('preecode_uid', resolved);
+        return Api.getStats(resolved);
+      });
+    });
+  }
+
+  resolveUserId()
+    .then(function (userId) {
+      return loadDashboardData(userId);
+    })
     .then(function (data) {
-      StatsCards(data);
-      LeaderboardCard(data);
-      SkillHeatmap(data);
-      StreakTracker(data);
-      SubmissionsTable(data.recentSubmissions || []);
+      renderDashboardData(data);
     })
     .catch(function (err) {
       console.error('Dashboard load failed:', err);
-      var layout = document.querySelector('.dash-v4');
-      if (layout) {
-        var banner = document.createElement('div');
-        banner.style.cssText = 'background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);border-radius:12px;padding:16px;margin-bottom:20px;color:#f87171;font-size:13px;font-weight:600;text-align:center;';
-        banner.textContent = 'Could not load dashboard data. Please try again later.';
-        layout.prepend(banner);
-      }
+      showDashboardErrorBanner();
     });
 
   Api.getPractice()
@@ -499,5 +572,7 @@
     .catch(function (err) {
       console.error('Practice data load failed:', err);
     });
+
+  setupOpenVsCodeButton();
 
 })();

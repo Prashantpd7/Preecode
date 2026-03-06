@@ -83,6 +83,17 @@ var Api = {
     });
   },
 
+  // Get currently authenticated user profile
+  getCurrentUser: function () {
+    return fetch(API_BASE + '/users/me', {
+      headers: Api._authHeaders(),
+      credentials: 'include',
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to fetch current user'); });
+      return res.json();
+    });
+  },
+
   // Add a submission
   addSubmission: function (userId, problemName, difficulty, status) {
     return fetch(API_BASE + '/submissions', {

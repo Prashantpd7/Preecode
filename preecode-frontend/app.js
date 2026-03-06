@@ -23,9 +23,35 @@ document.querySelectorAll('.pw-toggle').forEach(function (btn) {
 // ── LOGIN PAGE ───────────────────────────────────────────
 var loginForm = document.getElementById('loginForm');
 if (loginForm) {
-  // Already logged in → go to dashboard
-  if (localStorage.getItem('token')) {
+  function getRedirectTargetFromQuery() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var target = params.get('redirect');
+      if (!target) return '';
+      try {
+        return decodeURIComponent(target);
+      } catch (e) {
+        return target;
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function redirectWithTokenOrDashboard(token) {
+    var redirectTarget = getRedirectTargetFromQuery();
+    if (redirectTarget) {
+      var sep = redirectTarget.indexOf('?') === -1 ? '?' : '&';
+      window.location.href = redirectTarget + sep + 'token=' + encodeURIComponent(token || '');
+      return;
+    }
     window.location.href = '/pages/dashboard.html';
+  }
+
+  // Already logged in → go to dashboard
+  var existingToken = localStorage.getItem('token');
+  if (existingToken) {
+    redirectWithTokenOrDashboard(existingToken);
   }
 
   loginForm.addEventListener('submit', function (e) {
@@ -63,28 +89,7 @@ if (loginForm) {
         if (data.plan) localStorage.setItem('preecode_plan', data.plan);
         if (data.foundingBadgeLevel) localStorage.setItem('preecode_badge', data.foundingBadgeLevel);
         if (data.hasShared !== undefined) localStorage.setItem('preecode_shared', data.hasShared);
-        // If login page was opened with a redirect (e.g. extension deep link),
-        // forward the token to that redirect so the extension receives the JWT.
-        try {
-          var urlParams = new URLSearchParams(window.location.search);
-          var redirectTarget = urlParams.get('redirect');
-          if (redirectTarget) {
-            try {
-              redirectTarget = decodeURIComponent(redirectTarget);
-            } catch (e) {
-              // ignore if not encoded
-            }
-            // Append token as query param and navigate — this will trigger
-            // the vscode URI handler inside VS Code when opened by the user.
-            var sep = redirectTarget.indexOf('?') === -1 ? '?' : '&';
-            window.location.href = redirectTarget + sep + 'token=' + encodeURIComponent(data.token);
-            return;
-          }
-        } catch (e) {
-          /* ignore and fall through to dashboard */
-        }
-
-        window.location.href = '/pages/dashboard.html';
+        redirectWithTokenOrDashboard(data.token);
       })
       .catch(function (err) {
         errorMsg.textContent = err.message || 'Login failed. Check your credentials.';
@@ -98,9 +103,35 @@ if (loginForm) {
 // ── REGISTER PAGE ────────────────────────────────────────
 var registerForm = document.getElementById('registerForm');
 if (registerForm) {
-  // Already logged in → go to dashboard
-  if (localStorage.getItem('token')) {
+  function getRegisterRedirectTargetFromQuery() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var target = params.get('redirect');
+      if (!target) return '';
+      try {
+        return decodeURIComponent(target);
+      } catch (e) {
+        return target;
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function redirectAfterRegister(token) {
+    var redirectTarget = getRegisterRedirectTargetFromQuery();
+    if (redirectTarget) {
+      var sep = redirectTarget.indexOf('?') === -1 ? '?' : '&';
+      window.location.href = redirectTarget + sep + 'token=' + encodeURIComponent(token || '');
+      return;
+    }
     window.location.href = '/pages/dashboard.html';
+  }
+
+  // Already logged in
+  var registerExistingToken = localStorage.getItem('token');
+  if (registerExistingToken) {
+    redirectAfterRegister(registerExistingToken);
   }
 
   registerForm.addEventListener('submit', function (e) {
@@ -155,7 +186,7 @@ if (registerForm) {
         if (data.foundingBadgeLevel) localStorage.setItem('preecode_badge', data.foundingBadgeLevel);
         if (data.hasShared !== undefined) localStorage.setItem('preecode_shared', data.hasShared);
         if (data.isNewUser) localStorage.setItem('preecode_new', 'true');
-        window.location.href = '/pages/dashboard.html';
+        redirectAfterRegister(data.token);
       })
       .catch(function (err) {
         errorMsg.textContent = err.message || 'Registration failed. Try again.';

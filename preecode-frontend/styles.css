@@ -5252,6 +5252,44 @@ html.dark .dash-v4-practice:hover {
   letter-spacing: 0.05em;
   margin-top: 6px;
 }
+.dash-v4-practice__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.dash-v4-open-vscode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(59,130,246,0.28);
+  background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.08));
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.dash-v4-open-vscode-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37,99,235,0.42);
+  box-shadow: 0 8px 20px rgba(37,99,235,0.14);
+  background: linear-gradient(135deg, rgba(59,130,246,0.14), rgba(37,99,235,0.12));
+}
+.dash-v4-open-vscode-btn:active,
+.dash-v4-open-vscode-btn.is-launching {
+  transform: translateY(0);
+}
+.dash-v4-open-vscode-btn.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  border-color: var(--border-subtle);
+  color: var(--text-faint);
+  background: var(--bg-tertiary);
+}
 .dash-v4-practice__cta {
   display: inline-flex;
   align-items: center;
@@ -5275,6 +5313,30 @@ html.dark .dash-v4-practice:hover {
 }
 .dash-v4-practice__cta:active {
   transform: translateY(0) scale(0.99);
+}
+@media (max-width: 767px) {
+  .dash-v4-practice__header-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .dash-v4-open-vscode-btn {
+    padding: 8px 12px;
+  }
+}
+
+.dash-v4-error-banner {
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+html.dark .dash-v4-error-banner {
+  color: #f87171;
 }
 
 /* ═══ SKILL HEATMAP – Horizontal progress bars ═══ */

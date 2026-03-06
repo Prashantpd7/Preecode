@@ -281,7 +281,12 @@
       if (!token) return;
 
       var cachedName = localStorage.getItem('preecode_name') || '';
-      if (cachedName && cachedName.toLowerCase() !== 'user') return;
+      var cachedUserId = localStorage.getItem('preecode_uid') || '';
+      var hasValidUserId = /^[a-f\d]{24}$/i.test(cachedUserId);
+      var needsNameHydration = !cachedName || cachedName.toLowerCase() === 'user';
+
+      // Skip network call only if both name and user id are already valid.
+      if (!needsNameHydration && hasValidUserId) return;
 
       var res = await fetch(API_BASE + '/users/me', {
         headers: { Authorization: 'Bearer ' + token },
