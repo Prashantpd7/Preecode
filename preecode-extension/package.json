@@ -26,15 +26,7 @@
 
   "activationEvents": [
     "onStartupFinished",
-    "onUri",
-    "onView:preecode.controlCenter",
-    "onCommand:preecode.openControlCenter",
-    "onCommand:preecode.login",
-    "onCommand:preecode.logout",
-    "onCommand:preecode.quickPractice",
-    "onCommand:preecode.debugSelection",
-    "onCommand:preecode.explainSelection",
-    "onCommand:preecode.reviewCode"
+    "onUri"
   ],
 
   "engines": {
@@ -74,38 +66,46 @@
         {
           "id": "preecode.controlCenter",
           "name": "Control Center",
-          "type": "webview"
+          "type": "webview",
+          "icon": "resources/hubot-view.svg"
         }
       ]
     },
     "commands": [
       {
         "command": "preecode.openControlCenter",
-        "title": "Preecode: Open Control Center"
+        "title": "Preecode: Open Control Center",
+        "icon": "$(dashboard)"
       },
       {
         "command": "preecode.login",
-        "title": "Preecode: Login"
+        "title": "Preecode: Login",
+        "icon": "$(account)"
       },
       {
         "command": "preecode.logout",
-        "title": "Preecode: Logout"
+        "title": "Preecode: Logout",
+        "icon": "$(sign-out)"
       },
       {
         "command": "preecode.quickPractice",
-        "title": "Preecode: Practice"
+        "title": "Preecode: Practice",
+        "icon": "$(play)"
       },
       {
         "command": "preecode.debugSelection",
-        "title": "Preecode: Debug Selection"
+        "title": "Preecode: Debug Selection",
+        "icon": "$(debug-alt)"
       },
       {
         "command": "preecode.explainSelection",
-        "title": "Preecode: Explain Selection"
+        "title": "Preecode: Explain Selection",
+        "icon": "$(lightbulb)"
       },
       {
         "command": "preecode.reviewCode",
-        "title": "Preecode: Review Code"
+        "title": "Preecode: Review Code",
+        "icon": "$(checklist)"
       }
     ],
     "menus": {}
