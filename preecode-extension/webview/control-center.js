@@ -254,9 +254,12 @@ function renderChat(messages, isLoading) {
 function applyState(payload) {
   const isAuthenticated = Boolean(payload.user?.isAuthenticated);
   state.isAuthenticated = isAuthenticated;
-  const displayName = payload.user?.username || payload.user?.email || 'User';
+  const rawName = payload.user?.username
+    || (payload.user?.email ? payload.user.email.split('@')[0] : '')
+    || '';
+  const displayName = rawName || 'User';
   const avatarUrl = payload.user?.avatarUrl || '';
-  userName.textContent = `${displayName}'s Preecode`;
+  userName.textContent = isAuthenticated && rawName ? `${rawName}'s Preecode` : 'Preecode';
   setProfileAvatar(avatarUrl, displayName);
   syncStatus.textContent = syncLabel(payload.syncStatus);
   if (syncStatus) {

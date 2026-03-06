@@ -140,16 +140,9 @@ ${language === 'python' ? `- For Python: Add execution block as:
     } catch (error: any) {
 
         const errorMessage = error?.message || JSON.stringify(error);
-        console.error("OPENAI ERROR:", errorMessage);
+        console.error("OPENAI ERROR:", errorMessage, "Status:", error?.status);
 
-        if (error?.status === 401) {
-            return "OpenAI API Error: Invalid API key. Please check your OPENAI_API_KEY in .env";
-        }
-
-        if (error?.status === 429) {
-            return "OpenAI API Error: Quota exceeded. Check billing settings.";
-        }
-
-        return `OpenAI Error: ${errorMessage}`;
+        // Always fall back to a local question — never show raw API error strings to users
+        return localFallbackQuestion();
     }
 }

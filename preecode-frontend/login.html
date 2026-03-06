@@ -232,13 +232,37 @@
   <script src="api.js"></script>
   <script src="app.js"></script>
 
+  <!-- Server wake-up overlay (shown while Render cold-starts) -->
+  <div id="serverWakeOverlay" style="display:none;position:fixed;inset:0;background:#0B0F14;z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+    <style>@keyframes pc-spin{to{transform:rotate(360deg)}}</style>
+    <div style="width:30px;height:30px;border:3px solid #374151;border-top-color:#f97316;border-radius:50%;animation:pc-spin 0.75s linear infinite;"></div>
+    <p style="font-size:14px;color:#9ca3af;font-family:Inter,system-ui,sans-serif;margin:0;">Connecting to Preecode servers...</p>
+    <p style="font-size:12px;color:#6b7280;font-family:Inter,system-ui,sans-serif;margin:0;">This may take a moment on first launch</p>
+  </div>
+
   <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const googleBtn = document.getElementById("googleLoginBtn");
+  var googleBtn = document.getElementById("googleLoginBtn");
 
   if (googleBtn) {
     googleBtn.addEventListener("click", function () {
-      window.location.href = API_BASE + '/auth/google';
+      var overlay = document.getElementById('serverWakeOverlay');
+      if (overlay) overlay.style.display = 'flex';
+
+      var redirected = false;
+      function doRedirect() {
+        if (redirected) return;
+        redirected = true;
+        window.location.href = API_BASE + '/auth/google';
+      }
+
+      // Redirect regardless after 10 seconds
+      var fallback = setTimeout(doRedirect, 10000);
+
+      // Pre-warm the Render backend so user doesn't see Render's loading page
+      fetch(API_BASE + '/health')
+        .then(function () { clearTimeout(fallback); doRedirect(); })
+        .catch(function () { clearTimeout(fallback); doRedirect(); });
     });
   }
 });

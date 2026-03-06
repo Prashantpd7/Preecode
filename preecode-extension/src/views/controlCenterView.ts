@@ -163,7 +163,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
         <div id="profileTrigger" class="profile-group">
           <div id="profileAvatar" class="avatar" aria-hidden="true">PC</div>
           <div class="profile-copy">
-            <div id="userName" class="title">Prashant's Preecode AI</div>
+            <div id="userName" class="title">Preecode</div>
             <div id="syncStatus" class="sub">Sync: idle</div>
           </div>
         </div>
