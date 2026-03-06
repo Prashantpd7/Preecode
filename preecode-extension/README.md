@@ -1,71 +1,51 @@
-# Preecode README
+# Preecode
 
-This is the README for your extension "preecode". After writing up a brief description, we recommend including the following sections.
+AI-powered coding practice and skill-building platform inside VS Code.
+
+## Overview
+
+Preecode helps you practice consistently, review code with AI assistance, and improve problem-solving skills without leaving VS Code. It combines coding workflows, guidance, and progress-oriented tooling in one extension.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- AI-assisted coding practice directly in VS Code.
+- Quick actions for debugging, explanation, and code review.
+- Integrated practice and submission tracking with backend sync.
+- Login/logout flow connected to the Preecode platform.
+- Control Center webview for focused in-editor workflow.
+- Configurable backend and frontend URLs for local/dev/prod usage.
 
-For example if there is an image subfolder under your extension project workspace:
+## Installation
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Open VS Code.
+2. Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`).
+3. Search for `Preecode` by `Preecode`.
+4. Click **Install**.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+If installing manually, use the generated `.vsix` file:
 
-## Requirements
+```bash
+code --install-extension preecode-0.0.1.vsix
+```
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## Usage
 
-## Extension Settings
+1. Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`).
+2. Run `Preecode: Open Control Center`.
+3. Run `Preecode: Login` to authenticate.
+4. Start practicing, debugging, and reviewing code through Preecode commands.
+5. Track your progress and consistency inside the extension workflow.
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Commands
 
-For example:
+- `Preecode: Open Control Center`
+- `Preecode: Login`
+- `Preecode: Logout`
+- `Preecode: Practice`
+- `Preecode: Debug Selection`
+- `Preecode: Explain Selection`
+- `Preecode: Review Code`
 
-This extension contributes the following settings:
+## Website
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+https://preecode.vercel.app

@@ -1,6 +1,8 @@
 .vscode/**
 .vscode-test/**
 src/**
+.env
+.DS_Store
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md

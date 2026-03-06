@@ -1,16 +1,36 @@
 {
   "name": "preecode",
-  "publisher": "prashant",
-  "displayName": "preecode",
+  "publisher": "Preecode",
+  "displayName": "Preecode",
   "description": "AI-powered coding practice and skill-building platform inside VS Code.",
   "version": "0.0.1",
   "main": "./out/extension.js",
+  "icon": "icon.png",
+  "license": "MIT",
+  "homepage": "https://preecode.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prashantpd7/Preecode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Prashantpd7/Preecode/issues"
+  },
+  "keywords": [
+    "coding",
+    "practice",
+    "ai",
+    "debugging",
+    "programming",
+    "learning"
+  ],
 
   "activationEvents": [
     "onStartupFinished",
     "onUri",
     "onView:preecode.controlCenter",
     "onCommand:preecode.openControlCenter",
+    "onCommand:preecode.login",
+    "onCommand:preecode.logout",
     "onCommand:preecode.quickPractice",
     "onCommand:preecode.debugSelection",
     "onCommand:preecode.explainSelection",
@@ -21,7 +41,8 @@
     "vscode": "^1.109.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Programming Languages"
   ],
   "contributes": {
     "configuration": {
