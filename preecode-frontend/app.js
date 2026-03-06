@@ -23,35 +23,14 @@ document.querySelectorAll('.pw-toggle').forEach(function (btn) {
 // ── LOGIN PAGE ───────────────────────────────────────────
 var loginForm = document.getElementById('loginForm');
 if (loginForm) {
-  function getRedirectTargetFromQuery() {
-    try {
-      var params = new URLSearchParams(window.location.search);
-      var target = params.get('redirect');
-      if (!target) return '';
-      try {
-        return decodeURIComponent(target);
-      } catch (e) {
-        return target;
-      }
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function redirectWithTokenOrDashboard(token) {
-    var redirectTarget = getRedirectTargetFromQuery();
-    if (redirectTarget) {
-      var sep = redirectTarget.indexOf('?') === -1 ? '?' : '&';
-      window.location.href = redirectTarget + sep + 'token=' + encodeURIComponent(token || '');
-      return;
-    }
+  function redirectToDashboard() {
     window.location.href = '/pages/dashboard.html';
   }
 
   // Already logged in → go to dashboard
   var existingToken = localStorage.getItem('token');
   if (existingToken) {
-    redirectWithTokenOrDashboard(existingToken);
+    redirectToDashboard();
   }
 
   loginForm.addEventListener('submit', function (e) {
@@ -89,7 +68,7 @@ if (loginForm) {
         if (data.plan) localStorage.setItem('preecode_plan', data.plan);
         if (data.foundingBadgeLevel) localStorage.setItem('preecode_badge', data.foundingBadgeLevel);
         if (data.hasShared !== undefined) localStorage.setItem('preecode_shared', data.hasShared);
-        redirectWithTokenOrDashboard(data.token);
+        redirectToDashboard();
       })
       .catch(function (err) {
         errorMsg.textContent = err.message || 'Login failed. Check your credentials.';
@@ -103,35 +82,14 @@ if (loginForm) {
 // ── REGISTER PAGE ────────────────────────────────────────
 var registerForm = document.getElementById('registerForm');
 if (registerForm) {
-  function getRegisterRedirectTargetFromQuery() {
-    try {
-      var params = new URLSearchParams(window.location.search);
-      var target = params.get('redirect');
-      if (!target) return '';
-      try {
-        return decodeURIComponent(target);
-      } catch (e) {
-        return target;
-      }
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function redirectAfterRegister(token) {
-    var redirectTarget = getRegisterRedirectTargetFromQuery();
-    if (redirectTarget) {
-      var sep = redirectTarget.indexOf('?') === -1 ? '?' : '&';
-      window.location.href = redirectTarget + sep + 'token=' + encodeURIComponent(token || '');
-      return;
-    }
+  function redirectAfterRegister() {
     window.location.href = '/pages/dashboard.html';
   }
 
   // Already logged in
   var registerExistingToken = localStorage.getItem('token');
   if (registerExistingToken) {
-    redirectAfterRegister(registerExistingToken);
+    redirectAfterRegister();
   }
 
   registerForm.addEventListener('submit', function (e) {
@@ -186,7 +144,7 @@ if (registerForm) {
         if (data.foundingBadgeLevel) localStorage.setItem('preecode_badge', data.foundingBadgeLevel);
         if (data.hasShared !== undefined) localStorage.setItem('preecode_shared', data.hasShared);
         if (data.isNewUser) localStorage.setItem('preecode_new', 'true');
-        redirectAfterRegister(data.token);
+        redirectAfterRegister();
       })
       .catch(function (err) {
         errorMsg.textContent = err.message || 'Registration failed. Try again.';

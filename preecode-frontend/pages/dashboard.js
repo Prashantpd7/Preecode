@@ -20,7 +20,7 @@
       return;
     }
 
-    var extensionUri = 'vscode://prashant.preecode/auth?token=' + encodeURIComponent(token) + '&source=dashboard';
+    var extensionUri = 'vscode://preecode.preecode/auth?token=' + encodeURIComponent(token) + '&source=dashboard';
     btn.href = extensionUri;
     btn.addEventListener('click', function () {
       try {

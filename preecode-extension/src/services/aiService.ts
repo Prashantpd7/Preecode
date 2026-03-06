@@ -14,9 +14,43 @@ export async function generatePracticeQuestion(
     difficulty: string
 ): Promise<string> {
 
+    function localFallbackQuestion(): string {
+        const lang = String(language || 'plaintext').toLowerCase();
+        const topicName = String(topic || 'General').trim() || 'General';
+        const diff = String(difficulty || 'medium').trim().toLowerCase();
+
+        const solution = lang === 'python'
+            ? [
+                'def solve_even_sum(nums):',
+                '    return sum(x for x in nums if x % 2 == 0)',
+                '',
+                'if __name__ == "__main__":',
+                '    print(solve_even_sum([1, 2, 3, 4, 5, 6]))'
+              ].join('\n')
+            : [
+                'function solveEvenSum(nums) {',
+                '  return nums.filter((x) => x % 2 === 0).reduce((acc, x) => acc + x, 0);',
+                '}',
+                '',
+                'console.log(solveEvenSum([1, 2, 3, 4, 5, 6]));'
+              ].join('\n');
+
+        return [
+            '[QUESTION]',
+            `Write a ${diff} ${topicName} problem in ${language}.`,
+            'Given an array of integers, return the sum of all even values.',
+            '',
+            '[HINT]',
+            'Loop through the array once and add numbers where value % 2 is 0.',
+            '',
+            '[SOLUTION]',
+            solution
+        ].join('\n');
+    }
+
     const openai = createOpenAIClient();
     if (!openai) {
-        return "OpenAI API Error: OPENAI_API_KEY not configured. Please set it in your .env and reload VS Code.";
+        return localFallbackQuestion();
     }
 
     try {
