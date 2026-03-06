@@ -521,6 +521,8 @@ window.addEventListener('resize', () => {
 
 maybeNotifyNarrowPanel();
 
+vscode.postMessage({ type: 'ready' });
+
 window.addEventListener('message', (event) => {
   const message = event.data;
   if (message.type === 'state') {

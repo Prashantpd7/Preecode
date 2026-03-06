@@ -159,7 +159,16 @@ export class PracticeTimerService implements vscode.Disposable {
         if (event.document.uri.toString() !== activeEditor.document.uri.toString()) {
           return;
         }
-        if (event.contentChanges.length > 0) {
+        // Start timer only on likely user typing signal (non-whitespace, single-line insert).
+        const hasTypingSignal = event.contentChanges.some((change) => {
+          const text = String(change.text || '');
+          if (!text || text.indexOf('\n') !== -1 || text.indexOf('\r') !== -1) {
+            return false;
+          }
+          return /\S/.test(text);
+        });
+
+        if (hasTypingSignal) {
           this.resumeOnTyping();
         }
       }),

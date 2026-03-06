@@ -717,6 +717,29 @@ function parseAiRating(raw: string): number {
   return Math.max(0, Math.min(10, Math.round(value)));
 }
 
+function isQuestionGenerationErrorText(text: string): boolean {
+  const value = String(text || '').toLowerCase();
+  return value.includes('openai api error') || value.startsWith('openai error:') || value.includes('openai_api_key');
+}
+
+function buildLocalQuestionFallback(topic: string, language: string, difficulty: 'easy' | 'medium' | 'hard'): string {
+  const safeTopic = String(topic || 'General').trim() || 'General';
+  const safeLanguage = String(language || 'plaintext').trim() || 'plaintext';
+  return [
+    '[QUESTION]',
+    `Write a ${difficulty} ${safeTopic} problem solver in ${safeLanguage}.`,
+    'Given an array of integers, return the sum of all even values.',
+    '',
+    '[HINT]',
+    'Loop once and add numbers where value % 2 === 0.',
+    '',
+    '[SOLUTION]',
+    safeLanguage === 'python'
+      ? 'def solve_even_sum(nums):\n    return sum(x for x in nums if x % 2 == 0)\n\nif __name__ == "__main__":\n    print(solve_even_sum([1, 2, 3, 4, 5, 6]))'
+      : 'function solveEvenSum(nums) {\n  return nums.filter((x) => x % 2 === 0).reduce((acc, x) => acc + x, 0);\n}\n\nconsole.log(solveEvenSum([1, 2, 3, 4, 5, 6]));'
+  ].join('\n');
+}
+
 async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string, fallback: string): Promise<string> {
   try {
     const response = await requestAssistantAnalysis({
@@ -1663,7 +1686,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const difficulty = difficultyPick.toLowerCase() as 'easy' | 'medium' | 'hard';
 
-      const generated = await withGenerationNotification('Generating question', async () => {
+      let generated = await withGenerationNotification('Generating question', async () => {
         try {
           const ai = await import('./services/aiService.js');
           return await ai.generatePracticeQuestion(topic, language, difficultyPick);
@@ -1671,6 +1694,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           return `[QUESTION]\nWrite a function that returns the sum of two numbers.\nInclude one test call and print the result.`;
         }
       });
+
+      if (isQuestionGenerationErrorText(generated)) {
+        void vscode.window.showWarningMessage('AI question generation failed (OpenAI key/config). Using a local fallback question.');
+        generated = buildLocalQuestionFallback(topic, language, difficulty);
+      }
 
       await insertGeneratedQuestion(active, generated, difficulty);
 

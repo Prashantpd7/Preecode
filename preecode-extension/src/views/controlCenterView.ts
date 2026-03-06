@@ -100,6 +100,11 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
         return;
       }
 
+      if (message.type === 'ready') {
+        this.postState(preecodeStore.getState());
+        return;
+      }
+
       if (message.type === 'chatDockResize') {
         const nextHeight = message.height;
         if (typeof nextHeight !== 'number') {
@@ -114,6 +119,9 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
         }));
       }
     });
+
+    // Fire one initial state push for environments where webview is already ready.
+    this.postState(preecodeStore.getState());
   }
 
   private postState(state: PreecodeState): void {
