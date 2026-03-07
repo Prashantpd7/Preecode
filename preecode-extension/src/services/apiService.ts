@@ -62,6 +62,11 @@ export interface ChatHistoryItem {
     text: string;
 }
 
+export interface GenerateQuestionRequest {
+    language: string;
+    difficulty: 'easy' | 'medium' | 'hard';
+}
+
 function normalizeDifficulty(input?: string): 'easy' | 'medium' | 'hard' {
     const value = String(input || '').trim().toLowerCase();
     if (value === 'easy' || value === 'medium' || value === 'hard') return value;
@@ -254,5 +259,113 @@ export async function sendAIChatMessage(
         return String(payload?.response || '').trim();
     } catch (error: any) {
         throw new Error(error?.message || 'Could not reach AI chat service.');
+    }
+}
+
+function normalizeQuestionResponse(payload: any): string {
+    const question = String(payload?.question || payload?.data?.question || payload?.result?.question || '').trim();
+    const hint = String(payload?.hint || payload?.data?.hint || payload?.result?.hint || '').trim();
+    const solution = String(payload?.solution || payload?.data?.solution || payload?.result?.solution || '').trim();
+
+    if (!question) {
+        throw new Error('Backend returned empty question content.');
+    }
+
+    const blocks = ['[QUESTION]', question];
+    if (hint) {
+        blocks.push('', '[HINT]', hint);
+    }
+    if (solution) {
+        blocks.push('', '[SOLUTION]', solution);
+    }
+
+    return blocks.join('\n');
+}
+
+function ensureQuestionBlock(text: string): string {
+    const cleaned = String(text || '').trim();
+    if (!cleaned) {
+        throw new Error('Backend returned empty question content.');
+    }
+    if (/\[QUESTION\]/i.test(cleaned)) {
+        return cleaned;
+    }
+    return ['[QUESTION]', cleaned].join('\n');
+}
+
+export async function generateQuestionFromBackend(
+    context: vscode.ExtensionContext,
+    request: GenerateQuestionRequest
+): Promise<string> {
+    const backendUrl = getBackendUrl();
+    const language = String(request.language || '').trim().toLowerCase() || 'plaintext';
+    const difficulty = normalizeDifficulty(request.difficulty);
+
+    let primaryError = '';
+
+    try {
+        const response = await doFetch(`${backendUrl}/generate-question`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                language,
+                difficulty
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const message = String(errorData?.message || '').trim();
+            throw new Error(message || `Question generation failed (${response.status}).`);
+        }
+
+        const payload: any = await response.json().catch(() => ({}));
+        return normalizeQuestionResponse(payload);
+    } catch (error: any) {
+        primaryError = error?.message || 'Could not reach question generation service.';
+    }
+
+    try {
+        const token = await getToken(context);
+        if (!token) {
+            throw new Error('Please login first to generate questions with AI.');
+        }
+
+        const prompt = [
+            `Generate one ${difficulty} coding practice question in ${language}.`,
+            'Return strictly in this format:',
+            '[QUESTION] ...',
+            '[HINT] ...',
+            '[SOLUTION] ...',
+            'Do not use markdown fences.'
+        ].join('\n');
+
+        const response = await doFetch(`${API_BASE}/ai/chat`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: prompt,
+                context: `language=${language};difficulty=${difficulty}`,
+                history: []
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const message = String(errorData?.message || '').trim();
+            throw new Error(message || `AI question generation failed (${response.status}).`);
+        }
+
+        const payload: any = await response.json().catch(() => ({}));
+        const content = String(payload?.response || '').trim();
+        return ensureQuestionBlock(content);
+    } catch (error: any) {
+        const fallbackError = error?.message || 'Could not reach AI question generation service.';
+        throw new Error(`${primaryError} Fallback error: ${fallbackError}`.trim());
     }
 }

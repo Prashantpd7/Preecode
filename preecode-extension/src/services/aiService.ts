@@ -1,7 +1,9 @@
 import OpenAI from "openai";
+import * as vscode from 'vscode';
 
 function createOpenAIClient(): OpenAI | null {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const configKey = vscode.workspace.getConfiguration('preecode').get<string>('openaiApiKey') || '';
+    const apiKey = String(configKey || process.env.OPENAI_API_KEY || '').trim();
     if (!apiKey) {
         return null;
     }
@@ -11,46 +13,12 @@ function createOpenAIClient(): OpenAI | null {
 export async function generatePracticeQuestion(
     topic: string,
     language: string,
-    difficulty: string
+    difficulty: string,
+    recentQuestions: string[] = []
 ): Promise<string> {
-
-    function localFallbackQuestion(): string {
-        const lang = String(language || 'plaintext').toLowerCase();
-        const topicName = String(topic || 'General').trim() || 'General';
-        const diff = String(difficulty || 'medium').trim().toLowerCase();
-
-        const solution = lang === 'python'
-            ? [
-                'def solve_even_sum(nums):',
-                '    return sum(x for x in nums if x % 2 == 0)',
-                '',
-                'if __name__ == "__main__":',
-                '    print(solve_even_sum([1, 2, 3, 4, 5, 6]))'
-              ].join('\n')
-            : [
-                'function solveEvenSum(nums) {',
-                '  return nums.filter((x) => x % 2 === 0).reduce((acc, x) => acc + x, 0);',
-                '}',
-                '',
-                'console.log(solveEvenSum([1, 2, 3, 4, 5, 6]));'
-              ].join('\n');
-
-        return [
-            '[QUESTION]',
-            `Write a ${diff} ${topicName} problem in ${language}.`,
-            'Given an array of integers, return the sum of all even values.',
-            '',
-            '[HINT]',
-            'Loop through the array once and add numbers where value % 2 is 0.',
-            '',
-            '[SOLUTION]',
-            solution
-        ].join('\n');
-    }
-
     const openai = createOpenAIClient();
     if (!openai) {
-        return localFallbackQuestion();
+        throw new Error('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
     }
 
     try {
@@ -77,24 +45,47 @@ export async function generatePracticeQuestion(
 `;
         }
 
-        const prompt = `
-Generate a ${difficulty} level coding practice problem.
+        const safeDifficulty = String(difficulty || 'medium').trim().toLowerCase();
+        const safeTopic = String(topic || 'General').trim() || 'General';
+        const safeLanguage = String(language || 'plaintext').trim().toLowerCase() || 'plaintext';
+        const recentList = recentQuestions
+            .map((q) => q.trim())
+            .filter(Boolean)
+            .slice(0, 5)
+            .map((q, i) => `${i + 1}. ${q}`)
+            .join('\n');
 
-Topic: ${topic}
-Programming Language: ${language}
+        const prompt = `
+    Generate ONE high-quality ${safeDifficulty} coding practice problem.
+
+    Topic focus: ${safeTopic}
+    Programming language for solution: ${safeLanguage}
 
 ${languageInstruction}
+
+    Difficulty design rules:
+    - easy: basic logic, 1-2 core conditions, straightforward constraints.
+    - medium: combines multiple conditions/data rules, requires careful edge-case handling.
+    - hard: non-trivial constraints, trickier corner cases, and optimization awareness.
+
+    Variation rules:
+    - Create a different scenario and objective each time.
+    - Avoid repeating common cliches and avoid reusing exact wording.
+    - If recent questions are provided, do not generate the same or near-duplicate problem.
+
+    Recent questions to avoid repeating:
+    ${recentList || '(none)'}
 
 Return output STRICTLY in this format:
 
 [QUESTION]
-Clear problem statement only.
+    Clear problem statement only, including input/output expectations and constraints.
 
 [HINT]
-A helpful hint for solving the problem.
+    A concise, non-spoiler hint.
 
 [SOLUTION]
-Complete correct solution in ${language}.
+    Complete correct solution in ${safeLanguage}.
 
 Rules for [SOLUTION]:
 - DO NOT wrap the solution in markdown.
@@ -103,12 +94,12 @@ Rules for [SOLUTION]:
 - Do not add extra headings.
 - Do not add explanations outside blocks.
 - Do not remove the block labels.
-- Solution must be valid runnable ${language} code.
+- Solution must be valid runnable ${safeLanguage} code.
 - Solution MUST include both function definition AND an execution block.
 - After defining the function, ALWAYS include a small execution block that:
   * Calls the function with sample input.
   * Prints or logs the result.
-${language === 'python' ? `- For Python: Add execution block as:
+${safeLanguage === 'python' ? `- For Python: Add execution block as:
   if __name__ == "__main__":
       print(function_name(sample_input))` : `- For ${language}: Add execution block as:
   console.log(function_name(sample_input));`}
@@ -117,14 +108,14 @@ ${language === 'python' ? `- For Python: Add execution block as:
 `;
 
         const response = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: 'gpt-4o-mini',
             messages: [
                 { role: "user", content: prompt }
             ],
-            temperature: 0.6,
+            temperature: 0.9,
         });
 
-        let rawText = response.choices[0].message.content || "No content generated.";
+        let rawText = response.choices[0].message.content || '';
 
         // 🔥 Safe Cleanup Layer
             rawText = rawText
@@ -138,11 +129,8 @@ ${language === 'python' ? `- For Python: Add execution block as:
         return rawText;
 
     } catch (error: any) {
-
         const errorMessage = error?.message || JSON.stringify(error);
         console.error("OPENAI ERROR:", errorMessage, "Status:", error?.status);
-
-        // Always fall back to a local question — never show raw API error strings to users
-        return localFallbackQuestion();
+        throw new Error(errorMessage || 'OpenAI question generation failed.');
     }
 }

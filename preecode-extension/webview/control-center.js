@@ -4,7 +4,9 @@ const state = {
   chatDockHeight: 168,
   mode: 'collapsed',
   isAuthenticated: false,
-  userResizedChat: false
+  userResizedChat: false,
+  editorLanguage: 'plaintext',
+  practiceDifficulty: 'easy'
 };
 
 let lastChatSignature = '';
@@ -289,6 +291,8 @@ function applyState(payload) {
 
   practiceQuestion.textContent = payload.practice?.question || '-';
   practiceDifficulty.textContent = payload.practice?.difficulty || 'easy';
+  state.practiceDifficulty = payload.practice?.difficulty || 'easy';
+  state.editorLanguage = payload.editor?.language || 'plaintext';
   practiceAttempts.textContent = String(payload.practice?.attempts || 0);
   runStatus.textContent = payload.practice?.runStatus || 'idle';
 
@@ -396,7 +400,14 @@ for (const btn of Array.from(document.querySelectorAll('[data-action]'))) {
       }
       return;
     }
-    vscode.postMessage({ type: 'quickAction', action });
+    vscode.postMessage({
+      type: 'quickAction',
+      action,
+      payload: {
+        language: state.editorLanguage,
+        difficulty: state.practiceDifficulty
+      }
+    });
   });
 }
 

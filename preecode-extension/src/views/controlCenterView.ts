@@ -3,7 +3,13 @@ import { preecodeStore } from '../state/store';
 import { PreecodeState } from '../state/types';
 
 export interface ControlCenterHandlers {
-  onQuickAction: (action: 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion') => Promise<void>;
+  onQuickAction: (request: {
+    action: 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion';
+    payload?: {
+      language?: string;
+      difficulty?: 'easy' | 'medium' | 'hard';
+    };
+  }) => Promise<void>;
   onTimerMenu: () => Promise<void>;
   onPanelNarrowHint: () => Promise<void>;
   onLogout: () => Promise<void>;
@@ -43,9 +49,12 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
       this.postState(state);
     });
 
-    view.webview.onDidReceiveMessage(async (message: { type: string; payload?: string; action?: string; height?: number; startLine?: number; endLine?: number; direction?: 'prev' | 'next' }) => {
+    view.webview.onDidReceiveMessage(async (message: { type: string; payload?: any; action?: string; height?: number; startLine?: number; endLine?: number; direction?: 'prev' | 'next' }) => {
       if (message.type === 'quickAction' && message.action) {
-        await this.handlers.onQuickAction(message.action as 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion');
+        await this.handlers.onQuickAction({
+          action: message.action as 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion',
+          payload: message.payload
+        });
         return;
       }
 
@@ -202,7 +211,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
 
     <section class="card section-card hidden" id="practiceFlow">
       <div class="section-head-row">
-        <button class="back-btn" data-nav-back="tools" aria-label="Go back">&lt;</button>
+        <button class="back-btn" data-nav-back="tools" aria-label="Go home">⌂</button>
         <div class="section-label normal">Practice Questions</div>
         <span id="practiceTimerValue" class="timer">00:00</span>
       </div>
@@ -222,7 +231,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
 
     <section class="card section-card hidden" id="solutionFlow">
       <div class="section-head-row">
-        <button class="back-btn" data-nav-back="practice" aria-label="Go back">&lt;</button>
+        <button class="back-btn" data-nav-back="tools" aria-label="Go home">⌂</button>
         <div class="section-label normal">Practice Questions</div>
         <span id="solutionTimerValue" class="timer">00:00</span>
       </div>

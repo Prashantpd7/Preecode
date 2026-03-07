@@ -1,5 +1,7 @@
+.git/**
 .vscode/**
 .vscode-test/**
+node_modules/**
 src/**
 .env
 .DS_Store
@@ -11,3 +13,5 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+preecode-backend/**
+preecode-frontend/**

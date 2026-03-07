@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { AuthManager } from './auth/authManager';
 import { runAiAction } from './services/aiActionService';
-import { sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
+import { generateQuestionFromBackend, sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
 import { requestAssistantAnalysis, requestAssistantChatText } from './services/openaiService';
 import { BackendSyncService } from './services/backendSyncService';
 import { preecodeStore } from './state/store';
@@ -37,6 +37,11 @@ type PracticeAction =
   | 'evaluateCode'
   | 'differentApproach'
   | 'saveQuestion';
+
+interface QuickActionPayload {
+  language?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
 
 type ToolAction = 'debug' | 'fix' | 'explain' | 'review';
 
@@ -157,75 +162,6 @@ async function replaceDocument(editor: vscode.TextEditor, nextText: string): Pro
   await editor.edit((builder) => {
     builder.replace(fullRange, nextText);
   });
-}
-
-function extractQuestionFromSource(source: string, language: string): string {
-  const lines = source.split('\n').slice(0, 80);
-  const prefix = language === 'python' ? '#' : '//';
-  const questionLines: string[] = [];
-
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) {
-      if (questionLines.length > 0) break;
-      continue;
-    }
-    if (!line.startsWith(prefix)) {
-      if (questionLines.length > 0) break;
-      continue;
-    }
-    const content = line.replace(new RegExp(`^\\${prefix}\\s*`), '').trim();
-    if (!content) continue;
-    if (/^question\s*\(/i.test(content)) continue;
-    questionLines.push(content);
-  }
-
-  return questionLines.join(' ').trim();
-}
-
-function localChatReply(prompt: string, language: string, source: string, history: { role: 'user' | 'assistant'; text: string }[]): string {
-  const normalized = prompt.toLowerCase();
-  const question = extractQuestionFromSource(source, language);
-  const lastUser = [...history].reverse().find((m) => m.role === 'user')?.text.toLowerCase() || '';
-
-  if (/^(hi|hello|hey|hii|yo)$/.test(normalized.trim())) {
-    return `Hi! I can help with debugging, explaining this question, optimizing code, or writing a clean solution in ${language}. Tell me what you want first.`;
-  }
-
-  if (normalized.includes('yes') || normalized.includes('suggest')) {
-    if (question) {
-      return `Great. Suggested plan:\n1) Define function signature with clear input/output.\n2) Solve core logic using one pass where possible.\n3) Add edge cases (empty input, single item, duplicates).\n4) Run sample test and verify output.\n\nIf you want, I can now draft the exact ${language} function.`;
-    }
-    return 'Sure. Share your code snippet and I will suggest exact line-by-line improvements.';
-  }
-
-  if ((normalized.includes('explain') || normalized.includes('question')) && question) {
-    return `This question asks you to process input and return the required result correctly. For this one: ${question}\n\nStart by writing a clear function signature, handle edge cases, then run with 2-3 sample inputs to verify output.`;
-  }
-
-  if (normalized.includes('error') || normalized.includes('bug')) {
-    return `Debug checklist:\n1) Read the first error line in terminal.\n2) Check the same line in editor for syntax/indentation/name mismatch.\n3) Print key variables before the failing line.\n4) Re-run and confirm the error changed or disappeared.`;
-  }
-  if (normalized.includes('solve') || normalized.includes('solution')) {
-    if (question) {
-      return `Approach:\n1) Parse input and constraints.\n2) Implement core logic in a function.\n3) Return result and test with sample input.\n\nCurrent question: ${question}`;
-    }
-    return 'Share your exact question text and I will give a direct step-by-step solution approach.';
-  }
-  if (normalized.includes('time complexity') || normalized.includes('optimize')) {
-    return 'Try reducing nested loops, use a hash map/set for lookups, and track repeated work with memoization if needed.';
-  }
-  if (normalized.includes('fix') || normalized.includes('review')) {
-    return 'Paste the function you want reviewed and I will return: issue summary, root cause, and corrected version.';
-  }
-  if (question) {
-    if (lastUser.includes('explain') || lastUser.includes('question')) {
-      return `Next step: write the function now and share it here. I will evaluate correctness, edge cases, and complexity.`;
-    }
-    return `Based on this question, start with a minimal correct function first. Then we can optimize. If you share your current code, I’ll give exact fixes.`;
-  }
-
-  return `Share the exact function or error line and I will guide a step-by-step fix in ${language}.`;
 }
 
 function detectQuestionFromFile(editor: vscode.TextEditor): { question: string; difficulty: 'easy' | 'medium' | 'hard' } | null {
@@ -717,30 +653,7 @@ function parseAiRating(raw: string): number {
   return Math.max(0, Math.min(10, Math.round(value)));
 }
 
-function isQuestionGenerationErrorText(text: string): boolean {
-  const value = String(text || '').toLowerCase();
-  return value.includes('openai api error') || value.startsWith('openai error:') || value.includes('openai_api_key');
-}
-
-function buildLocalQuestionFallback(topic: string, language: string, difficulty: 'easy' | 'medium' | 'hard'): string {
-  const safeTopic = String(topic || 'General').trim() || 'General';
-  const safeLanguage = String(language || 'plaintext').trim() || 'plaintext';
-  return [
-    '[QUESTION]',
-    `Write a ${difficulty} ${safeTopic} problem solver in ${safeLanguage}.`,
-    'Given an array of integers, return the sum of all even values.',
-    '',
-    '[HINT]',
-    'Loop once and add numbers where value % 2 === 0.',
-    '',
-    '[SOLUTION]',
-    safeLanguage === 'python'
-      ? 'def solve_even_sum(nums):\n    return sum(x for x in nums if x % 2 == 0)\n\nif __name__ == "__main__":\n    print(solve_even_sum([1, 2, 3, 4, 5, 6]))'
-      : 'function solveEvenSum(nums) {\n  return nums.filter((x) => x % 2 === 0).reduce((acc, x) => acc + x, 0);\n}\n\nconsole.log(solveEvenSum([1, 2, 3, 4, 5, 6]));'
-  ].join('\n');
-}
-
-async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string, fallback: string): Promise<string> {
+async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string, fallback?: string): Promise<string> {
   try {
     const response = await requestAssistantAnalysis({
       action: 'chatbot',
@@ -759,98 +672,63 @@ async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string,
       .filter(Boolean)
       .join('\n')
       .trim();
-    return stripCodeFences(text || fallback);
-  } catch {
-    return fallback;
+    if (text) {
+      return stripCodeFences(text);
+    }
+
+    const fallbackText = await requestAssistantChatText(prompt);
+    const cleaned = stripCodeFences(fallbackText || '').trim();
+    if (cleaned) {
+      return cleaned;
+    }
+
+    if (fallback) {
+      return fallback;
+    }
+    throw new Error('OpenAI returned empty output.');
+  } catch (error) {
+    if (fallback) {
+      return fallback;
+    }
+    const message = error instanceof Error ? error.message : 'OpenAI request failed.';
+    throw new Error(message);
   }
 }
 
 async function generateRunnableSolution(editor: vscode.TextEditor, question: string): Promise<string> {
   const language = editor.document.languageId || 'plaintext';
-  const practice = preecodeStore.getState().practice;
+  const prompt = [
+    `Write a complete runnable ${language} solution for this coding question.`,
+    'Return only raw code and no markdown.',
+    'Include function definition and a small execution block to print/log output.',
+    `Question:\n${question}`
+  ].join('\n\n');
 
-  try {
-    const ai = await import('./services/aiService.js');
-    const raw = await ai.generatePracticeQuestion(
-      question || practice.topic || 'General Programming',
-      language,
-      practice.difficulty || 'medium'
-    );
-    const solution = extractNamedBlock(raw, 'SOLUTION');
-    if (solution) {
-      return stripCodeFences(solution);
-    }
-  } catch {
-    // Fall through to assistant fallback
+  const raw = await requestAssistantChatText(prompt);
+  const code = stripCodeFences(raw);
+  if (!looksLikeRunnableCode(code, language)) {
+    throw new Error('OpenAI returned non-runnable solution output. Try again.');
   }
-
-  try {
-    const response = await requestAssistantAnalysis({
-      action: 'fix',
-      code: editor.document.getText(),
-      language,
-      diagnostics: '',
-      selectedText: question,
-      chatPrompt: `Write a complete runnable ${language} solution for this question with a function and execution block. Return code only.`,
-      fileName: editor.document.fileName
-    });
-    const fixed = stripCodeFences(response.fixed_code || '');
-    if (fixed) {
-      return fixed;
-    }
-  } catch {
-    // Fall through to static fallback
-  }
-
-  if (language === 'python') {
-    return [
-      'def solve_example(value):',
-      '    return value',
-      '',
-      'if __name__ == "__main__":',
-      '    print(solve_example(1))'
-    ].join('\n');
-  }
-
-  return [
-    'function solveExample(value) {',
-    '  return value;',
-    '}',
-    '',
-    'console.log(solveExample(1));'
-  ].join('\n');
+  return code;
 }
 
 async function generateAlternativeRunnableSolution(editor: vscode.TextEditor, question: string, previousSolution: string): Promise<string> {
   const language = editor.document.languageId || 'plaintext';
+  const prompt = [
+    `Write a different runnable ${language} solution for the same coding question.`,
+    'Return only raw code with no markdown and no explanation.',
+    'Use a genuinely different approach from the previous solution.',
+    'Include function definition and an execution block.',
+    `Question:\n${question}`,
+    `Previous solution to avoid:\n${previousSolution || '(none)'}`
+  ].join('\n\n');
 
-  try {
-    const response = await requestAssistantAnalysis({
-      action: 'fix',
-      code: previousSolution || editor.document.getText(),
-      language,
-      diagnostics: '',
-      selectedText: question,
-      chatPrompt: [
-        `Write a different runnable ${language} solution for this question.`,
-        'Return only raw code.',
-        'Do not add explanations, bullets, or instructions.',
-        'Include function and executable test block.',
-        `Question: ${question}`,
-        `Previous solution to avoid:\n${previousSolution}`
-      ].join('\n\n'),
-      fileName: editor.document.fileName
-    });
-
-    const code = stripCodeFences(response.fixed_code || response.reason || '');
-    if (looksLikeRunnableCode(code, language)) {
-      return code;
-    }
-  } catch {
-    // fallback below
+  const raw = await requestAssistantChatText(prompt);
+  const code = stripCodeFences(raw);
+  if (!looksLikeRunnableCode(code, language)) {
+    throw new Error('OpenAI returned non-runnable alternative solution output. Try again.');
   }
-
-  return generateRunnableSolution(editor, question);
+  return code;
 }
 
 function lineWhy(line: string): string {
@@ -1309,21 +1187,20 @@ function formatDebugStepSummary(step: DebugExecutionStep, stepIndex: number, tot
   return [`Line ${step.lineNumber}`, step.explanation].join('\n');
 }
 
-function buildInlineExplainedSolution(language: string, code: string): string {
-  const prefix = commentPrefixForLanguage(language);
-  const lines = code.split('\n');
-  if (!lines.length) {
-    return '';
-  }
+async function buildInlineExplainedSolution(language: string, code: string): Promise<string> {
+  const prompt = [
+    `Explain this ${language} solution line by line for a beginner.`,
+    'Return only code and inline comments.',
+    'Rules:',
+    `- Keep the original ${language} code lines unchanged in order.`,
+    `- After each meaningful line, add exactly one ${language === 'python' ? '#' : '//'} comment line in simple language.`,
+    '- Do not use markdown fences.',
+    '- Keep comments short and practical.',
+    `Code:\n${code}`
+  ].join('\n');
 
-  return lines
-    .map((line) => {
-      if (!line.trim()) {
-        return '';
-      }
-      return `${line}\n${prefix}${lineWhy(line)}`;
-    })
-    .join('\n');
+  const explained = await requestAssistantChatText(prompt);
+  return stripCodeFences(explained).trim();
 }
 
 function blockCommentForLanguage(language: string, title: string, body: string): string {
@@ -1409,11 +1286,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const backendSyncService = new BackendSyncService();
   const latestSolutionByFile = new Map<string, string>();
   const plainSolutionBackupByFile = new Map<string, string>();
+  const explainedSolutionByFile = new Map<string, string>();
   const evaluationBlockByFile = new Map<string, string>();
   const selectionExplanationBlocksByFile = new Map<string, string[]>();
   const reviewBlockByFile = new Map<string, string>();
   const issueFixPreviewCache = new Map<string, string>();
   const issueFixPreviewInFlight = new Set<string>();
+  const recentGeneratedQuestions: string[] = [];
   let debugSession: DebugSessionState | null = null;
 
   const getFileKey = (editor: vscode.TextEditor): string => editor.document.uri.toString();
@@ -1619,7 +1498,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
-  const runQuickAction = async (action: QuickAction): Promise<void> => {
+  const runQuickAction = async (action: QuickAction, payload?: QuickActionPayload): Promise<void> => {
     const trackHelpUsage = (): void => {
       preecodeStore.setState((state) => ({
         ...state,
@@ -1652,7 +1531,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      const language = active.document.languageId || 'plaintext';
+      const language = String(payload?.language || active.document.languageId || 'plaintext').toLowerCase();
       const detectedTopic = inferTopicFromPath(active.document.fileName, language, active.document.getText());
 
       const topicConfirmation = await vscode.window.showQuickPick(
@@ -1679,25 +1558,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       topic = normalizeTopicToOneWord(topic, detectedTopic);
 
-      const difficultyPick = await vscode.window.showQuickPick(['Easy', 'Medium', 'Hard'], {
-        placeHolder: 'Select difficulty level'
-      });
-      if (!difficultyPick) return;
-
-      const difficulty = difficultyPick.toLowerCase() as 'easy' | 'medium' | 'hard';
-
-      let generated = await withGenerationNotification('Generating question', async () => {
-        try {
-          const ai = await import('./services/aiService.js');
-          return await ai.generatePracticeQuestion(topic, language, difficultyPick);
-        } catch {
-          return `[QUESTION]\nWrite a function that returns the sum of two numbers.\nInclude one test call and print the result.`;
+      const preselectedDifficulty = payload?.difficulty;
+      const difficulty = preselectedDifficulty || await (async () => {
+        const difficultyPick = await vscode.window.showQuickPick(['Easy', 'Medium', 'Hard'], {
+          placeHolder: 'Select difficulty level'
+        });
+        if (!difficultyPick) {
+          return null;
         }
+        return difficultyPick.toLowerCase() as 'easy' | 'medium' | 'hard';
+      })();
+      if (!difficulty) {
+        return;
+      }
+
+      const generated = await withGenerationNotification('Generating question', async () => {
+        return generateQuestionFromBackend(context, {
+          language,
+          difficulty
+        });
       });
 
-      if (isQuestionGenerationErrorText(generated)) {
-        void vscode.window.showWarningMessage('AI question generation failed (OpenAI key/config). Using a local fallback question.');
-        generated = buildLocalQuestionFallback(topic, language, difficulty);
+      const generatedQuestionText = extractQuestionBlock(generated);
+      if (generatedQuestionText) {
+        recentGeneratedQuestions.unshift(generatedQuestionText);
+        if (recentGeneratedQuestions.length > 8) {
+          recentGeneratedQuestions.length = 8;
+        }
       }
 
       await insertGeneratedQuestion(active, generated, difficulty);
@@ -1706,7 +1593,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         ...state,
         practice: {
           ...state.practice,
-          question: extractQuestionBlock(generated) || `Practice started for ${state.editor.fileName}`,
+          question: generatedQuestionText || `Practice started for ${state.editor.fileName}`,
           difficulty,
           topic,
           hintsUsed: 0,
@@ -1783,8 +1670,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const explanation = await withGenerationNotification('Generating question explanation', async () => getSimpleAssistantText(
         active,
-        `Explain this coding question in very simple language for a beginner. Keep it clear and short. Question: ${question}`,
-        `This question asks you to write a function that solves the required task correctly. Break it into small steps: understand input, process data, and return the final result.`
+        `Explain this coding question in very simple language for a beginner. Keep it clear and short. Question: ${question}`
       ));
 
       const prefix = commentPrefixForLanguage(language);
@@ -1834,8 +1720,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const hintRaw = await withGenerationNotification('Generating hint', async () => getSimpleAssistantText(
         active,
-        `Give one short direct hint for this coding question without giving full solution. Return one sentence only. Question: ${question}`,
-        'Start with a small helper function and test it on one simple input before handling all cases.'
+        `Give one short direct hint for this coding question without giving full solution. Return one sentence only. Question: ${question}`
       ));
       const hint = singleLineHint(hintRaw);
 
@@ -1863,6 +1748,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const next = removeLastOccurrence(current, existingSolution);
         await replaceDocument(active, `${next.trimEnd()}\n`);
         plainSolutionBackupByFile.delete(fileKey);
+        explainedSolutionByFile.delete(fileKey);
         await backendSyncService.sync('major-event');
         return;
       }
@@ -1891,6 +1777,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await replaceDocument(active, next);
       latestSolutionByFile.set(fileKey, cleanSolution);
       plainSolutionBackupByFile.delete(fileKey);
+      explainedSolutionByFile.delete(fileKey);
       preecodeStore.setState((state) => ({
         ...state,
         practice: {
@@ -1916,12 +1803,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const backedUpPlain = plainSolutionBackupByFile.get(fileKey);
       if (backedUpPlain) {
-        const explainedVersion = buildInlineExplainedSolution(language, backedUpPlain);
+        const explainedVersion = explainedSolutionByFile.get(fileKey) || '';
         const reverted = current.includes(explainedVersion)
           ? replaceLastOccurrence(current, explainedVersion, backedUpPlain)
           : current;
         await replaceDocument(active, `${reverted.trimEnd()}\n`);
         plainSolutionBackupByFile.delete(fileKey);
+        explainedSolutionByFile.delete(fileKey);
         await backendSyncService.sync('major-event');
         return;
       }
@@ -1936,6 +1824,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const next = replaceLastOccurrence(current, latestSolution, explained);
       await replaceDocument(active, next);
       plainSolutionBackupByFile.set(fileKey, latestSolution);
+      explainedSolutionByFile.set(fileKey, explained);
       trackHelpUsage();
       await backendSyncService.sync('major-event');
       return;
@@ -1978,8 +1867,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const question = getCurrentQuestion(active);
       const evaluation = await withGenerationNotification('Generating code evaluation', async () => getSimpleAssistantText(
         active,
-        `Evaluate this solution in simple language: correctness, readability, edge cases, and one improvement. Question: ${question}\nSolution:\n${latestSolution}`,
-        'The code follows a valid structure and is easy to read. Check edge cases (empty input, small values) and add one or two extra tests to improve confidence.'
+        `Evaluate this solution in simple language: correctness, readability, edge cases, and one improvement. Question: ${question}\nSolution:\n${latestSolution}`
       ));
 
       const prefix = commentPrefixForLanguage(language);
@@ -2095,6 +1983,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await replaceDocument(active, next);
       latestSolutionByFile.set(fileKey, cleanAlternative);
       plainSolutionBackupByFile.delete(fileKey);
+      explainedSolutionByFile.delete(fileKey);
       trackHelpUsage();
       await backendSyncService.sync('major-event');
       return;
@@ -2184,8 +2073,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           'Return only 1-2 short lines.',
           'No bullet points. No long paragraph.',
           `Code:\n${selectedCode}`
-        ].join('\n'),
-        'This code runs step by step and gives the final result.'
+        ].join('\n')
       ));
 
       const explanation = toShortSimpleExplanation(explanationRaw, 2);
@@ -2305,9 +2193,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     } catch {
       try {
         assistantText = await requestAssistantChatText(`${fallbackPrompt}\n\nCode:\n${source}`);
-      } catch {
-        const chatHistory = preecodeStore.getState().chat.messages.map((m) => ({ role: m.role, text: m.text }));
-        assistantText = localChatReply(text, language, source, chatHistory);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'OpenAI chat failed.';
+        assistantText = `I couldn't reach OpenAI right now. ${message}`;
       }
     }
 
@@ -2338,7 +2226,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const controlCenter = new ControlCenterViewProvider(context.extensionUri, {
     onQuickAction: async (action) => {
-      await runQuickAction(action);
+      try {
+        await runQuickAction(action.action, action.payload);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'AI action failed.';
+        void vscode.window.showErrorMessage(`Preecode AI: ${message}`);
+      }
     },
     onTimerMenu: async () => {
       const choice = await vscode.window.showQuickPick(

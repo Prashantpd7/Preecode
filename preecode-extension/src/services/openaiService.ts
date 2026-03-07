@@ -3,13 +3,14 @@ import * as vscode from 'vscode';
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
 function getOpenAIApiKey(): string {
-	return process.env.OPENAI_API_KEY || '';
+	const configKey = vscode.workspace.getConfiguration('preecode').get<string>('openaiApiKey') || '';
+	return String(configKey || process.env.OPENAI_API_KEY || '').trim();
 }
 
 export async function generateQuestionExplanation(question: string, code: string, language: string): Promise<string> {
 	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
-		vscode.window.showErrorMessage('OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.');
+		vscode.window.showErrorMessage('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
 		return '';
 	}
 
@@ -170,7 +171,7 @@ export interface AssistantResponse {
 export async function requestAssistantChatText(prompt: string): Promise<string> {
 	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
-		throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY.');
+		throw new Error('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
 	}
 
 	const response = await fetchWithFallback(`${OPENAI_BASE_URL}/chat/completions`, {
@@ -234,7 +235,7 @@ function buildAssistantPrompt(request: AssistantRequest): string {
 export async function requestAssistantAnalysis(request: AssistantRequest): Promise<AssistantResponse> {
 	const OPENAI_API_KEY = getOpenAIApiKey();
 	if (!OPENAI_API_KEY) {
-		throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY.');
+		throw new Error('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
 	}
 
 	const systemPrompt = [

@@ -3,7 +3,7 @@
   "publisher": "Preecode",
   "displayName": "Preecode",
   "description": "AI-powered coding practice and skill-building platform inside VS Code.",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "main": "./out/extension.js",
   "icon": "icon.png",
   "license": "MIT",
@@ -49,6 +49,11 @@
           "type": "string",
           "default": "https://preecode.vercel.app",
           "description": "Base URL of the Preecode frontend website."
+        },
+        "preecode.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "OpenAI API key used for AI actions and question generation. You can also use the `OPENAI_API_KEY` environment variable."
         }
       }
     },
