@@ -107,44 +107,35 @@ async function generateQuestion(language, difficulty) {
 
   let languageInstruction = '';
   if (safeLanguage === 'javascript') {
-    languageInstruction = 'Generate PURE JavaScript. Do NOT use TypeScript type annotations like ": number", ": string", "number[]", etc.';
+    languageInstruction = 'Use pure JavaScript only. No TypeScript annotations.';
   } else if (safeLanguage === 'typescript') {
-    languageInstruction = 'Generate proper TypeScript with type annotations.';
+    languageInstruction = 'Use TypeScript with proper types.';
   } else if (safeLanguage === 'python') {
-    languageInstruction = 'Generate proper Python. Do NOT use JavaScript syntax.';
+    languageInstruction = 'Use Python only. No JavaScript syntax.';
   }
 
-  const executionBlock = safeLanguage === 'python'
-    ? 'For Python: add "if __name__ == \'__main__\': print(function_name(sample_input))"'
-    : `For ${safeLanguage}: add "console.log(function_name(sample_input));" at the end`;
+  const prompt = `Create one ${safeDifficulty} coding practice question for ${safeLanguage}.
+${languageInstruction}
 
-  const prompt = `Generate ONE high-quality ${safeDifficulty} coding practice problem.
+Rules:
+- [QUESTION]: 2-3 sentences maximum. State what the function should do. No "Input:", "Output:", "Constraints:", "Examples:" sections. Just a plain description.
+- [HINT]: One sentence only. A non-spoiler nudge toward the approach.
+- [SOLUTION]: Working ${safeLanguage} code. No markdown fences. Must include a function and a single print/console.log call showing a result.
 
-Programming language for solution: ${safeLanguage}
-${languageInstruction ? '\n' + languageInstruction : ''}
-
-Difficulty rules:
-- easy: basic logic, 1-2 conditions, straightforward constraints
-- medium: combines multiple conditions/data rules, careful edge-case handling
-- hard: non-trivial constraints, tricky corner cases, optimization awareness
-
-Return output STRICTLY in this format (no markdown fences, no extra text):
+Return ONLY this, no other text:
 
 [QUESTION]
-Clear problem statement with input/output expectations and constraints.
+<2-3 sentence problem description>
 
 [HINT]
-A concise non-spoiler hint.
+<one sentence hint>
 
 [SOLUTION]
-Complete correct solution in ${safeLanguage}, raw code only (no backticks).
-${executionBlock}
-The code must be immediately runnable.`;
+<runnable code>`;
 
   const messages = [{ role: 'user', content: prompt }];
-  const raw = await generateResponse(messages, { temperature: 0.9, maxTokens: 1000 });
+  const raw = await generateResponse(messages, { temperature: 0.8, maxTokens: 700 });
 
-  // Strip any accidental markdown fences
   return raw
     .replace(/```[\w]*\n?/g, '')
     .replace(/```/g, '')

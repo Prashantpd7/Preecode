@@ -3,7 +3,7 @@
   "publisher": "Preecode",
   "displayName": "Preecode",
   "description": "AI-powered coding practice and skill-building platform inside VS Code.",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "main": "./out/extension.js",
   "icon": "icon.png",
   "license": "MIT",
@@ -23,12 +23,10 @@
     "programming",
     "learning"
   ],
-
   "activationEvents": [
     "onStartupFinished",
     "onUri"
   ],
-
   "engines": {
     "vscode": "^1.109.0"
   },

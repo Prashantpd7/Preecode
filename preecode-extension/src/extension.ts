@@ -136,7 +136,7 @@ async function insertGeneratedQuestion(editor: vscode.TextEditor, rawQuestionTex
     .map((line) => `${prefix}${line}`)
     .join('\n');
 
-  const block = `${prefix}Question (${difficulty})\n\n${commented}\n`;
+  const block = `${prefix}Question (${difficulty})\n${commented}\n`;
 
   const current = editor.document.getText();
   const glue = current.trim().length === 0 ? '' : '\n\n';
@@ -646,16 +646,15 @@ function insertHintAfterQuestion(source: string, language: string, block: string
 }
 
 function looksLikeRunnableCode(code: string, language: string): boolean {
-  const text = stripCodeFences(code);
-  if (!text) {
+  const text = stripCodeFences(code).trim();
+  if (!text || text.length < 20) {
     return false;
   }
-
-  if (language === 'python') {
-    return /\bdef\b/.test(text) && /\breturn\b/.test(text) && (/__name__\s*==\s*["']__main__["']/.test(text) || /\bprint\(/.test(text));
+  // Reject responses that are clearly prose/error messages, not code
+  if (/^(I'm sorry|I cannot|As an AI|Here is an explanation|This is not|Unfortunately)/i.test(text)) {
+    return false;
   }
-
-  return /\bfunction\b|=>/.test(text) && /\breturn\b/.test(text) && (/console\.log\(/.test(text) || /\bmain\(/.test(text));
+  return true;
 }
 
 function commentOutSolutionBlocks(source: string, language: string): string {
@@ -1786,7 +1785,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const hint = wrapCommentBody(singleLineHint(hintRaw));
 
       const prefix = commentPrefixForLanguage(language);
-      const block = `${prefix}Hint\n${prefix}${hint}`;
+      const commentedHint = hint.split('\n').map(line => `${prefix}${line}`).join('\n');
+      const block = `${prefix}Hint\n${commentedHint}`;
       const next = insertHintAfterQuestion(current, language, block);
       await replaceDocument(active, next);
       trackHelpUsage();
