@@ -1912,7 +1912,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const fileKey = getFileKey(active);
       const current = active.document.getText();
       const existingEvaluationBlock = evaluationBlockByFile.get(fileKey);
-      const visibleSolution = latestSolutionByFile.get(fileKey);
+      const visibleSolution =
+        (latestSolutionByFile.get(fileKey) && current.includes(latestSolutionByFile.get(fileKey)!))
+          ? latestSolutionByFile.get(fileKey)!
+          : (getLatestMarkerContent(current, language, 'SOLUTION') || current.trim());
 
       if (existingEvaluationBlock && current.includes(existingEvaluationBlock)) {
         const next = removeLastOccurrence(current, existingEvaluationBlock);
@@ -1922,8 +1925,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      if (!visibleSolution || !current.includes(visibleSolution)) {
-        vscode.window.showWarningMessage('Generate and keep a visible solution first, then evaluate code.');
+      if (!visibleSolution) {
+        vscode.window.showWarningMessage('No code found in the file to evaluate.');
         return;
       }
 
