@@ -1,7 +1,6 @@
 .git/**
 .vscode/**
 .vscode-test/**
-node_modules/**
 src/**
 .env
 .DS_Store

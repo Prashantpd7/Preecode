@@ -1572,12 +1572,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      const generated = await withGenerationNotification('Generating question', async () => {
-        return generateQuestionFromBackend(context, {
-          language,
-          difficulty
+      let generated = '';
+      try {
+        generated = await withGenerationNotification('Generating question', async () => {
+          return generateQuestionFromBackend(context, {
+            language,
+            difficulty
+          });
         });
-      });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : 'Could not generate question.';
+        const retry = await vscode.window.showErrorMessage(
+          `Backend is waking up. Please try again. ${detail}`,
+          'Retry'
+        );
+        if (retry === 'Retry') {
+          await runQuickAction('generate', payload);
+        }
+        return;
+      }
 
       const generatedQuestionText = extractQuestionBlock(generated);
       if (generatedQuestionText) {

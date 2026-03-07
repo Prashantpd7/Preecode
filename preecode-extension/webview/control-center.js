@@ -1,4 +1,5 @@
 const vscode = acquireVsCodeApi();
+console.log('Preecode webview initialized');
 
 const state = {
   chatDockHeight: 168,
@@ -536,9 +537,11 @@ window.addEventListener('resize', () => {
 maybeNotifyNarrowPanel();
 
 vscode.postMessage({ type: 'ready' });
+console.log('Preecode webview sent ready message');
 
 window.addEventListener('message', (event) => {
   const message = event.data;
+  console.log('Preecode webview received message:', message?.type || 'unknown');
   if (message.type === 'state') {
     applyState(message.payload || {});
   }

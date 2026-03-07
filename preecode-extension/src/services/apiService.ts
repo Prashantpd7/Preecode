@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
 const DEFAULT_BACKEND_URL = 'https://preecode.onrender.com';
+const QUESTION_REQUEST_TIMEOUT_MS = 10_000;
 
 function normalizeBaseUrl(url: string): string {
     return String(url || '').trim().replace(/\/$/, '');
@@ -31,6 +32,21 @@ export async function doFetch(url: string, opts?: any): Promise<any> {
     const mod = await import('node-fetch');
     const fn = (mod && (mod.default || mod)) as any;
     return fn(url, opts);
+}
+
+async function doFetchWithTimeout(url: string, opts: any, timeoutMs = QUESTION_REQUEST_TIMEOUT_MS): Promise<any> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await doFetch(url, { ...(opts || {}), signal: controller.signal });
+    } catch (error: any) {
+        if (error?.name === 'AbortError') {
+            throw new Error('Backend is waking up. Please try again.');
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 // Shape of practice data sent after each successful run
@@ -304,7 +320,8 @@ export async function generateQuestionFromBackend(
     let primaryError = '';
 
     try {
-        const response = await doFetch(`${backendUrl}/generate-question`, {
+        console.log('[Preecode] Calling backend API: /generate-question');
+        const response = await doFetchWithTimeout(`${backendUrl}/generate-question`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -322,6 +339,7 @@ export async function generateQuestionFromBackend(
         }
 
         const payload: any = await response.json().catch(() => ({}));
+        console.log('[Preecode] Backend response received: /generate-question');
         return normalizeQuestionResponse(payload);
     } catch (error: any) {
         primaryError = error?.message || 'Could not reach question generation service.';
@@ -342,7 +360,8 @@ export async function generateQuestionFromBackend(
             'Do not use markdown fences.'
         ].join('\n');
 
-        const response = await doFetch(`${API_BASE}/ai/chat`, {
+        console.log('[Preecode] Calling backend API fallback: /api/ai/chat');
+        const response = await doFetchWithTimeout(`${API_BASE}/ai/chat`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -362,6 +381,7 @@ export async function generateQuestionFromBackend(
         }
 
         const payload: any = await response.json().catch(() => ({}));
+        console.log('[Preecode] Backend response received: /api/ai/chat');
         const content = String(payload?.response || '').trim();
         return ensureQuestionBlock(content);
     } catch (error: any) {
