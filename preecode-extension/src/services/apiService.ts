@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
 const DEFAULT_BACKEND_URL = 'https://preecode.onrender.com';
-const QUESTION_REQUEST_TIMEOUT_MS = 10_000;
+const QUESTION_REQUEST_TIMEOUT_MS = 35_000;
 
 function normalizeBaseUrl(url: string): string {
     return String(url || '').trim().replace(/\/$/, '');
@@ -239,7 +239,7 @@ export async function sendAIChatMessage(
 ): Promise<string> {
     const token = await getToken(context);
     if (!token) {
-        throw new Error('Please login first to use AI chat.');
+        throw new Error('Please login to Preecode to use AI chat.');
     }
 
     const safeHistory = (Array.isArray(history) ? history : [])
@@ -267,6 +267,10 @@ export async function sendAIChatMessage(
             throw new Error('Session expired. Please login again.');
         }
 
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.message || `AI chat failed (${response.status}).`);
@@ -276,11 +280,11 @@ export async function sendAIChatMessage(
         console.log('[Preecode] Backend response received: /api/ai/chat');
         return String(payload?.response || '').trim();
     } catch (error: any) {
-        const messageText = String(error?.message || '').toLowerCase();
-        if (messageText.includes('waking up') || messageText.includes('abort')) {
-            throw new Error('Backend is waking up. Please try again.');
+        const msg = String(error?.message || '');
+        if (msg.includes('waking up') || msg.includes('AbortError') || msg.includes('abort')) {
+            throw new Error('Preecode server is starting up. Please wait a moment and try again.');
         }
-        throw new Error(error?.message || 'Could not reach AI chat service.');
+        throw new Error(msg || 'Could not reach AI chat service.');
     }
 }
 
@@ -319,24 +323,34 @@ export async function generateQuestionFromBackend(
     context: vscode.ExtensionContext,
     request: GenerateQuestionRequest
 ): Promise<string> {
-    const backendUrl = getBackendUrl();
     const language = String(request.language || '').trim().toLowerCase() || 'plaintext';
     const difficulty = normalizeDifficulty(request.difficulty);
 
-    let primaryError = '';
+    const token = await getToken(context);
+    if (!token) {
+        throw new Error('Please login to Preecode to generate questions.');
+    }
 
+    // Primary: dedicated generate-question endpoint
     try {
-        console.log('[Preecode] Calling backend API: /generate-question');
-        const response = await doFetchWithTimeout(`${backendUrl}/generate-question`, {
+        console.log('[Preecode] Calling backend API: /api/ai/generate-question');
+        const response = await doFetchWithTimeout(`${API_BASE}/ai/generate-question`, {
             method: 'POST',
             headers: {
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                language,
-                difficulty
-            })
+            body: JSON.stringify({ language, difficulty })
         });
+
+        if (response.status === 401) {
+            await deleteToken(context);
+            throw new Error('Session expired. Please login again.');
+        }
+
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -345,28 +359,35 @@ export async function generateQuestionFromBackend(
         }
 
         const payload: any = await response.json().catch(() => ({}));
-        console.log('[Preecode] Backend response received: /generate-question');
-        return normalizeQuestionResponse(payload);
+        console.log('[Preecode] Backend response received: /api/ai/generate-question');
+        return ensureQuestionBlock(String(payload?.question || ''));
     } catch (error: any) {
-        primaryError = error?.message || 'Could not reach question generation service.';
+        const msg = String(error?.message || '');
+        // Re-throw auth errors immediately — no point in fallback
+        if (msg.includes('Session expired') || msg.includes('login')) {
+            throw error;
+        }
+        console.warn('[Preecode] Primary generate-question failed, trying chat fallback:', msg);
     }
 
+    // Fallback: use /api/ai/chat to generate a question
     try {
-        const token = await getToken(context);
-        if (!token) {
-            throw new Error('Please login first to generate questions with AI.');
-        }
-
         const prompt = [
             `Generate one ${difficulty} coding practice question in ${language}.`,
-            'Return strictly in this format:',
-            '[QUESTION] ...',
-            '[HINT] ...',
-            '[SOLUTION] ...',
-            'Do not use markdown fences.'
+            'Return strictly in this format (no markdown fences):',
+            '[QUESTION]',
+            '<clear problem statement with input/output and constraints>',
+            '',
+            '[HINT]',
+            '<a concise non-spoiler hint>',
+            '',
+            '[SOLUTION]',
+            '<complete correct solution in ' + language + ', raw code only, no backticks>',
+            '',
+            'Rules: include a small execution block that runs and prints sample output.'
         ].join('\n');
 
-        console.log('[Preecode] Calling backend API fallback: /api/ai/chat');
+        console.log('[Preecode] Calling backend fallback: /api/ai/chat for question generation');
         const response = await doFetchWithTimeout(`${API_BASE}/ai/chat`, {
             method: 'POST',
             headers: {
@@ -380,18 +401,30 @@ export async function generateQuestionFromBackend(
             })
         });
 
+        if (response.status === 401) {
+            await deleteToken(context);
+            throw new Error('Session expired. Please login again.');
+        }
+
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
+
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             const message = String(errorData?.message || '').trim();
-            throw new Error(message || `AI question generation failed (${response.status}).`);
+            throw new Error(message || `Question generation failed (${response.status}).`);
         }
 
         const payload: any = await response.json().catch(() => ({}));
-        console.log('[Preecode] Backend response received: /api/ai/chat');
+        console.log('[Preecode] Backend fallback response received');
         const content = String(payload?.response || '').trim();
         return ensureQuestionBlock(content);
     } catch (error: any) {
-        const fallbackError = error?.message || 'Could not reach AI question generation service.';
-        throw new Error(`${primaryError} Fallback error: ${fallbackError}`.trim());
+        const msg = String(error?.message || '');
+        if (msg.includes('waking up') || msg.includes('abort')) {
+            throw new Error('Preecode server is starting up. Please wait a moment and try again.');
+        }
+        throw new Error(msg || 'Could not reach question generation service.');
     }
 }

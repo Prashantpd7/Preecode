@@ -159,13 +159,13 @@ export class PracticeTimerService implements vscode.Disposable {
         if (event.document.uri.toString() !== activeEditor.document.uri.toString()) {
           return;
         }
-        // Start timer only on direct character typing (single inserted letter/number).
+        // Start timer when user actually types non-whitespace content.
         const hasTypingSignal = event.contentChanges.some((change) => {
           const text = String(change.text || '');
-          if (!text || text.length !== 1 || text.indexOf('\n') !== -1 || text.indexOf('\r') !== -1) {
+          if (!text || text.indexOf('\n') !== -1 || text.indexOf('\r') !== -1) {
             return false;
           }
-          return /[A-Za-z0-9]/.test(text);
+          return /\S/.test(text);
         });
 
         if (hasTypingSignal) {

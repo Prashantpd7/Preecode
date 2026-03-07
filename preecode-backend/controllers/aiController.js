@@ -1,4 +1,18 @@
-const { chat, getHint, reviewCode } = require('../services/aiService');
+const { chat, getHint, reviewCode, generateQuestion } = require('../services/aiService');
+
+// POST /api/ai/generate-question
+exports.generatePracticeQuestion = async (req, res, next) => {
+  try {
+    const { language, difficulty } = req.body;
+    if (!language) {
+      return res.status(400).json({ message: 'language is required.' });
+    }
+    const result = await generateQuestion(language, difficulty);
+    res.json({ question: result });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // POST /api/ai/chat
 exports.chatWithAI = async (req, res, next) => {

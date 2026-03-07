@@ -101,4 +101,54 @@ Final Verdict:
   return generateResponse([{ role: 'user', content: prompt }], { temperature: 0.4 });
 }
 
-module.exports = { generateResponse, chat, getHint, reviewCode };
+async function generateQuestion(language, difficulty) {
+  const safeLanguage = String(language || 'python').trim().toLowerCase() || 'python';
+  const safeDifficulty = String(difficulty || 'medium').trim().toLowerCase();
+
+  let languageInstruction = '';
+  if (safeLanguage === 'javascript') {
+    languageInstruction = 'Generate PURE JavaScript. Do NOT use TypeScript type annotations like ": number", ": string", "number[]", etc.';
+  } else if (safeLanguage === 'typescript') {
+    languageInstruction = 'Generate proper TypeScript with type annotations.';
+  } else if (safeLanguage === 'python') {
+    languageInstruction = 'Generate proper Python. Do NOT use JavaScript syntax.';
+  }
+
+  const executionBlock = safeLanguage === 'python'
+    ? 'For Python: add "if __name__ == \'__main__\': print(function_name(sample_input))"'
+    : `For ${safeLanguage}: add "console.log(function_name(sample_input));" at the end`;
+
+  const prompt = `Generate ONE high-quality ${safeDifficulty} coding practice problem.
+
+Programming language for solution: ${safeLanguage}
+${languageInstruction ? '\n' + languageInstruction : ''}
+
+Difficulty rules:
+- easy: basic logic, 1-2 conditions, straightforward constraints
+- medium: combines multiple conditions/data rules, careful edge-case handling
+- hard: non-trivial constraints, tricky corner cases, optimization awareness
+
+Return output STRICTLY in this format (no markdown fences, no extra text):
+
+[QUESTION]
+Clear problem statement with input/output expectations and constraints.
+
+[HINT]
+A concise non-spoiler hint.
+
+[SOLUTION]
+Complete correct solution in ${safeLanguage}, raw code only (no backticks).
+${executionBlock}
+The code must be immediately runnable.`;
+
+  const messages = [{ role: 'user', content: prompt }];
+  const raw = await generateResponse(messages, { temperature: 0.9, maxTokens: 1000 });
+
+  // Strip any accidental markdown fences
+  return raw
+    .replace(/```[\w]*\n?/g, '')
+    .replace(/```/g, '')
+    .trim();
+}
+
+module.exports = { generateResponse, chat, getHint, reviewCode, generateQuestion };

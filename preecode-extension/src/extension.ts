@@ -88,10 +88,49 @@ function extractQuestionBlock(raw: string): string {
   return (match?.[1] || raw).trim();
 }
 
+function wrapLongLine(line: string, maxWidth = 96): string[] {
+  const text = String(line || '').trimEnd();
+  if (!text || text.length <= maxWidth) {
+    return [text];
+  }
+
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) {
+    return [text];
+  }
+
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (!current) {
+      current = word;
+      continue;
+    }
+    const next = `${current} ${word}`;
+    if (next.length > maxWidth) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) {
+    lines.push(current);
+  }
+  return lines;
+}
+
+function wrapCommentBody(text: string, maxWidth = 96): string {
+  return String(text || '')
+    .split('\n')
+    .flatMap((line) => wrapLongLine(line, maxWidth))
+    .join('\n');
+}
+
 async function insertGeneratedQuestion(editor: vscode.TextEditor, rawQuestionText: string, difficulty: string): Promise<void> {
   const language = editor.document.languageId || 'plaintext';
   const prefix = commentPrefixForLanguage(language);
-  const questionBody = extractQuestionBlock(rawQuestionText);
+  const questionBody = wrapCommentBody(extractQuestionBlock(rawQuestionText));
   const commented = questionBody
     .split('\n')
     .map((line) => `${prefix}${line}`)
@@ -1448,6 +1487,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       reviewBlockByFile.delete(fileKey);
     }
     const latestSolution = latestSolutionByFile.get(fileKey);
+    const explainedSolution = explainedSolutionByFile.get(fileKey);
     preecodeStore.setState((state) => ({
       ...state,
       editor: {
@@ -1462,7 +1502,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         hasSolutionExplanation: plainSolutionBackupByFile.has(getFileKey(editor)),
         hasCodeEvaluation: hasMarkerBlock(source, 'CODE_EVALUATION') || (evaluationBlockByFile.get(getFileKey(editor)) ? source.includes(evaluationBlockByFile.get(getFileKey(editor)) as string) : false),
         hasSelectionExplanation: presentSelectionExplanationBlocks.length > 0,
-        hasVisibleSolution: Boolean(latestSolution && source.includes(latestSolution)),
+        hasVisibleSolution: Boolean(
+          (latestSolution && source.includes(latestSolution)) ||
+          (explainedSolution && source.includes(explainedSolution))
+        ),
         hasReview
       }
     }));
@@ -1563,16 +1606,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       topic = normalizeTopicToOneWord(topic, detectedTopic);
 
-      const preselectedDifficulty = payload?.difficulty;
-      const difficulty = preselectedDifficulty || await (async () => {
-        const difficultyPick = await vscode.window.showQuickPick(['Easy', 'Medium', 'Hard'], {
-          placeHolder: 'Select difficulty level'
-        });
-        if (!difficultyPick) {
-          return null;
-        }
-        return difficultyPick.toLowerCase() as 'easy' | 'medium' | 'hard';
-      })();
+      const difficultyPick = await vscode.window.showQuickPick(['Easy', 'Medium', 'Hard'], {
+        placeHolder: 'Select difficulty level'
+      });
+      if (!difficultyPick) {
+        return;
+      }
+      const difficulty = difficultyPick.toLowerCase() as 'easy' | 'medium' | 'hard';
       if (!difficulty) {
         return;
       }
@@ -1588,7 +1628,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       } catch (error) {
         const detail = error instanceof Error ? error.message : 'Could not generate question.';
         const retry = await vscode.window.showErrorMessage(
-          `Backend is waking up. Please try again. ${detail}`,
+          `Question generation failed: ${detail}`,
           'Retry'
         );
         if (retry === 'Retry') {
@@ -1697,6 +1737,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
+        .flatMap((line) => wrapLongLine(line))
         .map((line) => `${prefix}${line}`)
         .join('\n');
       const block = `${prefix}Question Explanation\n${explanationLines}`;
@@ -1742,7 +1783,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         active,
         `Give one short direct hint for this coding question without giving full solution. Return one sentence only. Question: ${question}`
       ));
-      const hint = singleLineHint(hintRaw);
+      const hint = wrapCommentBody(singleLineHint(hintRaw));
 
       const prefix = commentPrefixForLanguage(language);
       const block = `${prefix}Hint\n${prefix}${hint}`;
@@ -1763,6 +1804,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const language = active.document.languageId || 'plaintext';
       const fileKey = getFileKey(active);
       const current = active.document.getText();
+      const explainedSolution = explainedSolutionByFile.get(fileKey);
+      if (explainedSolution && current.includes(explainedSolution)) {
+        const next = removeLastOccurrence(current, explainedSolution);
+        await replaceDocument(active, `${next.trimEnd()}\n`);
+        plainSolutionBackupByFile.delete(fileKey);
+        explainedSolutionByFile.delete(fileKey);
+        await backendSyncService.sync('major-event');
+        return;
+      }
+
       const existingSolution = latestSolutionByFile.get(fileKey);
       if (existingSolution && current.includes(existingSolution)) {
         const next = removeLastOccurrence(current, existingSolution);
@@ -1896,6 +1947,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
+        .flatMap((line) => wrapLongLine(line))
         .map((line) => `${prefix}${line}`)
         .join('\n');
       const next = appendSection(current, block);
@@ -2110,6 +2162,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           .split('\n')
           .map((line) => line.trim())
           .filter(Boolean)
+          .flatMap((line) => wrapLongLine(line))
           .map((line) => `${prefix}${line}`)
       ].join('\n');
 
