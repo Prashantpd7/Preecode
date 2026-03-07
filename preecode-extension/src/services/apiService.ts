@@ -248,7 +248,8 @@ export async function sendAIChatMessage(
         .map((item) => ({ role: item.role, text: item.text.trim().slice(0, 2000) }));
 
     try {
-        const response = await doFetch(`${API_BASE}/ai/chat`, {
+        console.log('[Preecode] Calling backend API: /api/ai/chat');
+        const response = await doFetchWithTimeout(`${API_BASE}/ai/chat`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -272,8 +273,13 @@ export async function sendAIChatMessage(
         }
 
         const payload: any = await response.json();
+        console.log('[Preecode] Backend response received: /api/ai/chat');
         return String(payload?.response || '').trim();
     } catch (error: any) {
+        const messageText = String(error?.message || '').toLowerCase();
+        if (messageText.includes('waking up') || messageText.includes('abort')) {
+            throw new Error('Backend is waking up. Please try again.');
+        }
         throw new Error(error?.message || 'Could not reach AI chat service.');
     }
 }

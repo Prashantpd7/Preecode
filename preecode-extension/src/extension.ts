@@ -2,9 +2,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AuthManager } from './auth/authManager';
-import { runAiAction } from './services/aiActionService';
 import { generateQuestionFromBackend, sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
-import { requestAssistantAnalysis, requestAssistantChatText } from './services/openaiService';
 import { BackendSyncService } from './services/backendSyncService';
 import { preecodeStore } from './state/store';
 import { RunDetectionService } from './timer/runDetectionService';
@@ -323,19 +321,22 @@ function getProblemSnippetForDiagnostic(editor: vscode.TextEditor, diagnostic: v
   };
 }
 
-async function generateExactReplacement(editor: vscode.TextEditor, diagnostic: vscode.Diagnostic, problemCode: string): Promise<string> {
-  const response = await requestAssistantAnalysis({
-    action: 'fix',
-    code: problemCode,
-    language: editor.document.languageId,
-    diagnostics: `${diagnostic.message} @ line ${diagnostic.range.start.line + 1}`,
-    selectedLine: diagnostic.range.start.line + 1,
-    selectedText: problemCode,
-    fileName: editor.document.fileName,
-    chatPrompt: 'Return ONLY the corrected replacement code for this exact problematic snippet. No explanation.'
-  });
+async function generateExactReplacement(
+  context: vscode.ExtensionContext,
+  editor: vscode.TextEditor,
+  diagnostic: vscode.Diagnostic,
+  problemCode: string
+): Promise<string> {
+  const prompt = [
+    'Return ONLY the corrected replacement code for this exact problematic snippet.',
+    'No explanation.',
+    `Language: ${editor.document.languageId}`,
+    `Diagnostic: ${diagnostic.message} @ line ${diagnostic.range.start.line + 1}`,
+    `Snippet:\n${problemCode}`
+  ].join('\n\n');
 
-  return stripCodeFences(response.fixed_code || '').trim();
+  const response = await askBackendAssistant(context, editor, prompt);
+  return stripCodeFences(response || '').trim();
 }
 
 function getSortedDiagnostics(editor: vscode.TextEditor): vscode.Diagnostic[] {
@@ -357,23 +358,32 @@ function buildDiagnosticsSummary(editor: vscode.TextEditor): string {
     .join('\n');
 }
 
-async function generateFixedFileCode(editor: vscode.TextEditor): Promise<string> {
-  const response = await requestAssistantAnalysis({
-    action: 'fix',
-    code: editor.document.getText(),
-    language: editor.document.languageId,
-    diagnostics: buildDiagnosticsSummary(editor),
-    selectedText: editor.document.getText(),
-    fileName: editor.document.fileName,
-    chatPrompt: [
-      'Fix all diagnostics in this file.',
-      'Return the full corrected file code only.',
-      'Do not add explanations.',
-      'Keep functionality the same and only apply error-fix changes.'
-    ].join(' ')
-  });
+function buildEditorContext(editor: vscode.TextEditor): string {
+  return [
+    `Current file: ${editor.document.fileName}`,
+    `Language: ${editor.document.languageId}`,
+    `Diagnostics:\n${buildDiagnosticsSummary(editor) || 'none'}`
+  ].join('\n\n');
+}
 
-  return stripCodeFences(response.fixed_code || '').trim();
+async function askBackendAssistant(context: vscode.ExtensionContext, editor: vscode.TextEditor, prompt: string): Promise<string> {
+  return sendAIChatMessage(
+    context,
+    prompt,
+    `${buildEditorContext(editor)}\n\nCode:\n${editor.document.getText()}`,
+    []
+  );
+}
+
+async function generateFixedFileCode(context: vscode.ExtensionContext, editor: vscode.TextEditor): Promise<string> {
+  const prompt = [
+    'Fix all diagnostics in this file.',
+    'Return the full corrected file code only.',
+    'Do not add explanations.',
+    'Keep functionality the same and only apply error-fix changes.'
+  ].join(' ');
+  const raw = await askBackendAssistant(context, editor, prompt);
+  return stripCodeFences(raw || '').trim();
 }
 
 function sleep(ms: number): Promise<void> {
@@ -653,33 +663,16 @@ function parseAiRating(raw: string): number {
   return Math.max(0, Math.min(10, Math.round(value)));
 }
 
-async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string, fallback?: string): Promise<string> {
+async function getSimpleAssistantText(
+  context: vscode.ExtensionContext,
+  editor: vscode.TextEditor,
+  prompt: string,
+  fallback?: string
+): Promise<string> {
   try {
-    const response = await requestAssistantAnalysis({
-      action: 'chatbot',
-      code: editor.document.getText(),
-      language: editor.document.languageId,
-      diagnostics: '',
-      selectedText: '',
-      chatPrompt: prompt,
-      fileName: editor.document.fileName
-    });
-    const text = [
-      response.problem,
-      response.reason,
-      Array.isArray(response.step_by_step) ? response.step_by_step.join('\n') : response.step_by_step
-    ]
-      .filter(Boolean)
-      .join('\n')
-      .trim();
+    const text = stripCodeFences(await askBackendAssistant(context, editor, prompt)).trim();
     if (text) {
-      return stripCodeFences(text);
-    }
-
-    const fallbackText = await requestAssistantChatText(prompt);
-    const cleaned = stripCodeFences(fallbackText || '').trim();
-    if (cleaned) {
-      return cleaned;
+      return text;
     }
 
     if (fallback) {
@@ -690,12 +683,12 @@ async function getSimpleAssistantText(editor: vscode.TextEditor, prompt: string,
     if (fallback) {
       return fallback;
     }
-    const message = error instanceof Error ? error.message : 'OpenAI request failed.';
+    const message = error instanceof Error ? error.message : 'AI request failed.';
     throw new Error(message);
   }
 }
 
-async function generateRunnableSolution(editor: vscode.TextEditor, question: string): Promise<string> {
+async function generateRunnableSolution(context: vscode.ExtensionContext, editor: vscode.TextEditor, question: string): Promise<string> {
   const language = editor.document.languageId || 'plaintext';
   const prompt = [
     `Write a complete runnable ${language} solution for this coding question.`,
@@ -704,7 +697,7 @@ async function generateRunnableSolution(editor: vscode.TextEditor, question: str
     `Question:\n${question}`
   ].join('\n\n');
 
-  const raw = await requestAssistantChatText(prompt);
+  const raw = await askBackendAssistant(context, editor, prompt);
   const code = stripCodeFences(raw);
   if (!looksLikeRunnableCode(code, language)) {
     throw new Error('OpenAI returned non-runnable solution output. Try again.');
@@ -712,7 +705,12 @@ async function generateRunnableSolution(editor: vscode.TextEditor, question: str
   return code;
 }
 
-async function generateAlternativeRunnableSolution(editor: vscode.TextEditor, question: string, previousSolution: string): Promise<string> {
+async function generateAlternativeRunnableSolution(
+  context: vscode.ExtensionContext,
+  editor: vscode.TextEditor,
+  question: string,
+  previousSolution: string
+): Promise<string> {
   const language = editor.document.languageId || 'plaintext';
   const prompt = [
     `Write a different runnable ${language} solution for the same coding question.`,
@@ -723,7 +721,7 @@ async function generateAlternativeRunnableSolution(editor: vscode.TextEditor, qu
     `Previous solution to avoid:\n${previousSolution || '(none)'}`
   ].join('\n\n');
 
-  const raw = await requestAssistantChatText(prompt);
+  const raw = await askBackendAssistant(context, editor, prompt);
   const code = stripCodeFences(raw);
   if (!looksLikeRunnableCode(code, language)) {
     throw new Error('OpenAI returned non-runnable alternative solution output. Try again.');
@@ -1187,7 +1185,12 @@ function formatDebugStepSummary(step: DebugExecutionStep, stepIndex: number, tot
   return [`Line ${step.lineNumber}`, step.explanation].join('\n');
 }
 
-async function buildInlineExplainedSolution(language: string, code: string): Promise<string> {
+async function buildInlineExplainedSolution(
+  context: vscode.ExtensionContext,
+  editor: vscode.TextEditor,
+  language: string,
+  code: string
+): Promise<string> {
   const prompt = [
     `Explain this ${language} solution line by line for a beginner.`,
     'Return only code and inline comments.',
@@ -1199,7 +1202,7 @@ async function buildInlineExplainedSolution(language: string, code: string): Pro
     `Code:\n${code}`
   ].join('\n');
 
-  const explained = await requestAssistantChatText(prompt);
+  const explained = await askBackendAssistant(context, editor, prompt);
   return stripCodeFences(explained).trim();
 }
 
@@ -1260,6 +1263,7 @@ async function insertSelectionExplanationAsComments(editor: vscode.TextEditor, e
 }
 
 async function generateDebugLineExplanation(
+  context: vscode.ExtensionContext,
   editor: vscode.TextEditor,
   lineText: string,
   lineNumber: number,
@@ -1268,6 +1272,7 @@ async function generateDebugLineExplanation(
 ): Promise<string> {
   const fallback = lineWhy(lineText);
   return getSimpleAssistantText(
+    context,
     editor,
     [
       `Explain this line in simple language for a beginner: ${lineText}`,
@@ -1384,7 +1389,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     issueFixPreviewInFlight.add(issueInfo.cacheKey);
     try {
       const problem = getProblemSnippetForDiagnostic(editor, top);
-      const fixed = await generateExactReplacement(editor, top, problem.text);
+      const fixed = await generateExactReplacement(context, editor, top, problem.text);
       if (!fixed) {
         return;
       }
@@ -1682,6 +1687,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       const explanation = await withGenerationNotification('Generating question explanation', async () => getSimpleAssistantText(
+        context,
         active,
         `Explain this coding question in very simple language for a beginner. Keep it clear and short. Question: ${question}`
       ));
@@ -1732,6 +1738,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       const hintRaw = await withGenerationNotification('Generating hint', async () => getSimpleAssistantText(
+        context,
         active,
         `Give one short direct hint for this coding question without giving full solution. Return one sentence only. Question: ${question}`
       ));
@@ -1783,7 +1790,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         prepared = replaceLastOccurrence(prepared, previousSolution, commentedPrevious);
       }
 
-      const solution = await withGenerationNotification('Generating solution', async () => generateRunnableSolution(active, question));
+      const solution = await withGenerationNotification('Generating solution', async () => generateRunnableSolution(context, active, question));
       const cleanSolution = stripCodeFences(solution);
       const next = appendSection(prepared, cleanSolution);
 
@@ -1833,7 +1840,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      const explained = await withGenerationNotification('Generating solution explanation', async () => buildInlineExplainedSolution(language, latestSolution));
+      const explained = await withGenerationNotification('Generating solution explanation', async () => buildInlineExplainedSolution(context, active, language, latestSolution));
       const next = replaceLastOccurrence(current, latestSolution, explained);
       await replaceDocument(active, next);
       plainSolutionBackupByFile.set(fileKey, latestSolution);
@@ -1879,6 +1886,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const latestSolution = visibleSolution;
       const question = getCurrentQuestion(active);
       const evaluation = await withGenerationNotification('Generating code evaluation', async () => getSimpleAssistantText(
+        context,
         active,
         `Evaluate this solution in simple language: correctness, readability, edge cases, and one improvement. Question: ${question}\nSolution:\n${latestSolution}`
       ));
@@ -1914,15 +1922,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       let aiRating = 7;
       try {
-        const ratingRaw = await requestAssistantChatText([
-          'Rate this coding approach from 0 to 10.',
-          'Return only one number between 0 and 10.',
-          `Question: ${question}`,
-          `Difficulty: ${state.practice.difficulty}`,
-          `Hint/help usage percent: ${helpUsagePercent}%`,
-          `Code:\n${sourceCode || '(no code provided)'}`
-        ].join('\n\n'));
-        aiRating = parseAiRating(ratingRaw);
+        if (active) {
+          const ratingRaw = await askBackendAssistant(context, active, [
+            'Rate this coding approach from 0 to 10.',
+            'Return only one number between 0 and 10.',
+            `Question: ${question}`,
+            `Difficulty: ${state.practice.difficulty}`,
+            `Hint/help usage percent: ${helpUsagePercent}%`,
+            `Code:\n${sourceCode || '(no code provided)'}`
+          ].join('\n\n'));
+          aiRating = parseAiRating(ratingRaw);
+        }
       } catch {
         aiRating = 7;
       }
@@ -1989,7 +1999,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const alternative = await withGenerationNotification(
         'Generating different approach',
-        async () => generateAlternativeRunnableSolution(active, question, previousSolution || '')
+        async () => generateAlternativeRunnableSolution(context, active, question, previousSolution || '')
       );
       const cleanAlternative = stripCodeFences(alternative);
       const next = appendSection(prepared, cleanAlternative);
@@ -2023,7 +2033,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             break;
           }
 
-          const fixedFile = await generateFixedFileCode(active);
+          const fixedFile = await generateFixedFileCode(context, active);
           if (!fixedFile || fixedFile.trim() === active.document.getText().trim()) {
             break;
           }
@@ -2079,6 +2089,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
       const selectedCode = active.document.getText(active.selection);
       const explanationRaw = await withGenerationNotification('Generating selection explanation', async () => getSimpleAssistantText(
+        context,
         active,
         [
           'Explain this selected code for a beginner.',
@@ -2127,20 +2138,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
-      const analysis = await withGenerationNotification('Reviewing code', async () => runAiAction('review'));
-      const reviewText = [
-        'Code Review Summary',
-        '',
-        `1. Logic clarity\n${analysis.sections.problemSummary || '-'}`,
-        '',
-        `2. Possible bug risks\n${analysis.sections.rootCause || '-'}`,
-        '',
-        `3. Performance suggestions\n${analysis.sections.fixExplanation || '-'}`,
-        '',
-        `4. Readability improvements\n${analysis.sections.improvedCode ? 'Consider naming/style cleanup based on improved version.' : '-'}`
-      ].join('\n');
+      const reviewText = await withGenerationNotification('Reviewing code', async () => askBackendAssistant(
+        context,
+        active,
+        [
+          'Review this code and provide concise feedback.',
+          'Use this format:',
+          '1. Logic clarity',
+          '2. Possible bug risks',
+          '3. Performance suggestions',
+          '4. Readability improvements'
+        ].join('\n')
+      ));
 
-      const block = blockCommentForLanguage(active.document.languageId, 'Code Review Summary', reviewText.replace(/^Code Review Summary\n\n/, ''));
+      const block = blockCommentForLanguage(active.document.languageId, 'Code Review Summary', stripCodeFences(reviewText).replace(/^Code Review Summary\n\n/, ''));
       const next = appendSection(active.document.getText(), block);
       await replaceDocument(active, next);
       reviewBlockByFile.set(fileKey, block);
@@ -2194,22 +2205,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       selectedText.trim() ? `Current selection:\n${selectedText}` : 'Current selection: none'
     ].join('\n');
 
-    const fallbackPrompt = [
-      editorContext,
-      `Recent chat:\n${recentHistory.map((msg) => `${msg.role}: ${msg.text}`).join('\n') || 'none'}`,
-      `User message: ${text}`
-    ].join('\n\n');
-
     let assistantText = '';
     try {
       assistantText = await sendAIChatMessage(context, text, `${editorContext}\n\nCode:\n${source}`, recentHistory);
-    } catch {
-      try {
-        assistantText = await requestAssistantChatText(`${fallbackPrompt}\n\nCode:\n${source}`);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'OpenAI chat failed.';
-        assistantText = `I couldn't reach OpenAI right now. ${message}`;
-      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI chat failed.';
+      assistantText = `I couldn't reach Preecode AI right now. ${message}`;
     }
 
     preecodeStore.setState((state) => ({
@@ -2376,6 +2377,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       const answer = await withGenerationNotification('Getting debug answer', async () => getSimpleAssistantText(
+        context,
         active,
         [
           `Debug question: ${text}`,
