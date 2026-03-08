@@ -45,9 +45,8 @@ app.use(limiter);
 // CORS: allow only configured frontend origins (echo back origin when matched)
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  process.env.FRONTEND_DEV_URL,
+  process.env.FRONTEND_DEV_URL || 'http://localhost:5173',
   process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
-  'http://localhost:5173'
 ].filter(Boolean);
 
 const corsOptions = {

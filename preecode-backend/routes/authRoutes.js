@@ -28,7 +28,7 @@ router.get('/google', (req, res, next) => {
 });
 
 // Use env var for frontend URL; in production Render will set FRONTEND_URL
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://preecode.vercel.app' : 'http://localhost:3000');
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 /* ================= GOOGLE OAUTH CALLBACK ================= */
 

@@ -108,7 +108,7 @@ ${safeLanguage === 'python' ? `- For Python: Add execution block as:
 `;
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: process.env.OPENAI_MODEL_MINI || 'gpt-4o-mini',
             messages: [
                 { role: "user", content: prompt }
             ],

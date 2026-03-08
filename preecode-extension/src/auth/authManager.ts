@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { preecodeStore } from '../state/store';
-import { API_BASE, doFetch } from '../services/apiService';
+import { API_BASE, doFetch, getFrontendUrl } from '../services/apiService';
 import { deleteToken, getToken, saveToken } from '../services/authService';
 
 interface MeResponse {
@@ -159,7 +159,7 @@ export class AuthManager implements vscode.UriHandler {
 
   async login(): Promise<void> {
     const redirect = encodeURIComponent(`vscode://${this.context.extension.id}/auth`);
-    const loginUri = vscode.Uri.parse(`https://preecode.vercel.app/login.html?redirect=${redirect}`);
+    const loginUri = vscode.Uri.parse(`${getFrontendUrl()}/login.html?redirect=${redirect}`);
     await vscode.env.openExternal(loginUri);
   }
 

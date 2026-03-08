@@ -3,8 +3,10 @@
 (function () {
   if (!localStorage.getItem('token')) return;
 
-  var SHARE_TEXT = 'I\'m using Preecode to track my coding practice and consistency — directly inside VS Code.\n\nCurrently in early access. Join before public launch:\nhttps://preecode.netlify.app';
-  var SHARE_URL = 'https://preecode.netlify.app';
+  var SHARE_URL = (typeof window !== 'undefined' && window.PREECODE_CONFIG && window.PREECODE_CONFIG.FRONTEND_URL)
+    ? window.PREECODE_CONFIG.FRONTEND_URL
+    : 'https://preecode.vercel.app';
+  var SHARE_TEXT = 'I\'m using Preecode to track my coding practice and consistency — directly inside VS Code.\n\nCurrently in early access. Join before public launch:\n' + SHARE_URL;
 
   // ── Welcome Modal (first-time only) ──
   function showWelcomeModal() {

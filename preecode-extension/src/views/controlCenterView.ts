@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { preecodeStore } from '../state/store';
 import { PreecodeState } from '../state/types';
+import { getFrontendUrl } from '../services/apiService';
 
 export interface ControlCenterHandlers {
   onQuickAction: (request: {
@@ -104,7 +105,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
       }
 
       if (message.type === 'openDashboard') {
-        const url = 'https://preecode.vercel.app/pages/dashboard.html';
+        const url = `${getFrontendUrl()}/pages/dashboard.html`;
         await vscode.env.openExternal(vscode.Uri.parse(url));
         return;
       }

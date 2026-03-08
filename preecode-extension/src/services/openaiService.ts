@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
 function getOpenAIApiKey(): string {
 	const configKey = vscode.workspace.getConfiguration('preecode').get<string>('openaiApiKey') || '';
@@ -22,7 +22,7 @@ export async function generateQuestionExplanation(question: string, code: string
 				'Authorization': `Bearer ${OPENAI_API_KEY}`,
 			},
 			body: JSON.stringify({
-				model: 'gpt-4-turbo',
+				model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
 				messages: [
 					{
 						role: 'system',
@@ -67,7 +67,7 @@ export async function detectTopic(question: string, code: string): Promise<strin
 				'Authorization': `Bearer ${OPENAI_API_KEY}`,
 			},
 			body: JSON.stringify({
-				model: 'gpt-4-turbo',
+				model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
 				messages: [
 					{
 						role: 'system',
@@ -110,7 +110,7 @@ export async function generateHint(question: string, language: string): Promise<
 				'Authorization': `Bearer ${OPENAI_API_KEY}`,
 			},
 			body: JSON.stringify({
-				model: 'gpt-4-turbo',
+				model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
 				messages: [
 					{
 						role: 'system',
@@ -181,7 +181,7 @@ export async function requestAssistantChatText(prompt: string): Promise<string> 
 			'Authorization': `Bearer ${OPENAI_API_KEY}`
 		},
 		body: JSON.stringify({
-			model: 'gpt-4o-mini',
+			model: process.env.OPENAI_MODEL_MINI || 'gpt-4o-mini',
 			messages: [
 				{
 					role: 'system',
@@ -264,7 +264,7 @@ export async function requestAssistantAnalysis(request: AssistantRequest): Promi
 			'Authorization': `Bearer ${OPENAI_API_KEY}`
 		},
 		body: JSON.stringify({
-			model: 'gpt-4o-mini',
+			model: process.env.OPENAI_MODEL_MINI || 'gpt-4o-mini',
 			messages: [
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: userPrompt }

@@ -18,7 +18,7 @@ async function generateResponse(messages, options = {}) {
 
   try {
     const message = await openai.chat.completions.create({
-      model: 'gpt-4-turbo',
+      model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
       messages,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxTokens || 2048,
