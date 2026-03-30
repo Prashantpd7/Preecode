@@ -261,6 +261,60 @@ var Api = {
     });
   },
 
+  // Upload avatar image
+  uploadAvatar: function (file) {
+    var formData = new FormData();
+    formData.append('avatar', file);
+    return fetch(API_BASE + '/upload/avatar', {
+      method: 'POST',
+      headers: Api._authHeaders(),
+      credentials: 'include',
+      body: formData,
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to upload avatar'); });
+      return res.json();
+    });
+  },
+
+  // Forgot password - request OTP
+  forgotPassword: function (email) {
+    return fetch(API_BASE + '/users/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: email }),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to send OTP'); });
+      return res.json();
+    });
+  },
+
+  // Verify OTP
+  verifyOtp: function (email, otp) {
+    return fetch(API_BASE + '/users/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: email, otp: otp }),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Invalid OTP'); });
+      return res.json();
+    });
+  },
+
+  // Reset password with token
+  resetPassword: function (email, resetToken, newPassword) {
+    return fetch(API_BASE + '/users/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: email, resetToken: resetToken, newPassword: newPassword }),
+    }).then(function (res) {
+      if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'Failed to reset password'); });
+      return res.json();
+    });
+  },
+
   // Build headers with Authorization token
   _authHeaders: function (extra) {
     var headers = {};

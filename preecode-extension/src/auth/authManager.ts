@@ -158,9 +158,29 @@ export class AuthManager implements vscode.UriHandler {
   }
 
   async login(): Promise<void> {
-    const redirect = encodeURIComponent(`vscode://${this.context.extension.id}/auth`);
-    const loginUri = vscode.Uri.parse(`${getFrontendUrl()}/login.html?redirect=${redirect}`);
-    await vscode.env.openExternal(loginUri);
+    // Import LoginPanel here to avoid circular dependencies
+    const { LoginPanel } = await import('../panels/loginPanel.js');
+    LoginPanel.render(this.context, this.context.extension.extensionUri, this);
+  }
+
+  async loginWithToken(token: string): Promise<void> {
+    await saveToken(this.context, token);
+    const lookup = await this.fetchCurrentUser(token);
+    const user = lookup.kind === 'ok' ? lookup.user : { id: '', username: 'User', email: '', avatar: '' };
+    await this.context.workspaceState.update('preecode.cachedUser', user);
+    preecodeStore.setState((state) => ({
+      ...state,
+      user: {
+        isAuthenticated: true,
+        userId: user.id || null,
+        username: user.username || 'User',
+        email: user.email || null,
+        avatarUrl: user.avatar || null,
+        token
+      }
+    }));
+
+    vscode.window.showInformationMessage('Preecode login successful.');
   }
 
   async logout(): Promise<void> {

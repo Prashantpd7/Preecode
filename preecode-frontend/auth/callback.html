@@ -54,6 +54,28 @@
           // Persist token
           try { localStorage.setItem('token', token); } catch (e) { /* ignore */ }
 
+          // Check if we need to redirect to VS Code extension
+          var redirectParam = params.get('redirect');
+          if (redirectParam && redirectParam.toLowerCase().startsWith('vscode://')) {
+            // Build the VS Code deep link with token
+            var decodedRedirect = decodeURIComponent(redirectParam);
+            var sep = decodedRedirect.indexOf('?') === -1 ? '?' : '&';
+            var vscodeDeepLink = decodedRedirect + sep + 'token=' + encodeURIComponent(token);
+
+            msg.textContent = 'Signed in — opening VS Code...';
+
+            // Try to open VS Code via the deep link
+            setTimeout(function () {
+              window.location.href = vscodeDeepLink;
+            }, 500);
+
+            // Show fallback instructions after a delay in case the redirect doesn't work
+            setTimeout(function () {
+              msg.innerHTML = 'If VS Code did not open, <a href="' + vscodeDeepLink + '" style="color:#ffa116">click here</a> or copy this link:<br><code style="font-size:10px;word-break:break-all;color:#9ca3af">' + vscodeDeepLink + '</code>';
+            }, 3000);
+            return;
+          }
+
           // Hydrate user profile for navbar/dashboard/submissions after OAuth login
           try {
             var meRes = await fetch(API_BASE + '/users/me', {

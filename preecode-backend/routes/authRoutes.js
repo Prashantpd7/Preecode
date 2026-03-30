@@ -8,22 +8,24 @@ const router = express.Router();
 
 router.get('/google', (req, res, next) => {
   // Accept an optional `redirect` query param (e.g. vscode://...)
-  // and include it in the OAuth `state` so it is returned to the callback.
-  let state;
+  // Store in session/temporary storage to pass through OAuth callback
   if (req.query && req.query.redirect) {
     try {
       console.log('[auth] /google received redirect:', req.query.redirect);
-      state = Buffer.from(String(req.query.redirect)).toString('base64');
+      // Store the redirect in a session-like manner (we'll use a simple approach)
+      res.cookie('oauth_redirect', req.query.redirect, {
+        maxAge: 10 * 60 * 1000, // 10 minutes
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production'
+      });
     } catch (e) {
-      console.warn('[auth] /google failed to encode redirect:', e && e.message);
-      state = undefined;
+      console.warn('[auth] /google failed to store redirect:', e && e.message);
     }
   }
 
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     session: false,
-    state: state,
   })(req, res, next);
 });
 
@@ -47,23 +49,23 @@ router.get(
     );
     console.log('[auth] Generated JWT for user:', req.user && req.user._id);
 
-    // Decode optional OAuth state for logging/debug only.
-    // We intentionally avoid redirecting to custom URI schemes here so
-    // website login does not trigger automatic "Open VS Code" browser popups.
-    let originalRedirect = null;
-    if (req.query && req.query.state) {
-      try {
-        const decoded = Buffer.from(String(req.query.state), 'base64').toString('utf8');
-        console.log('[auth] OAuth state decoded:', decoded);
-        originalRedirect = decoded;
-      } catch (e) {
-        console.warn('[auth] Failed to decode OAuth state:', e && e.message);
-        // fall through to default redirect
-      }
+    // Get redirect from cookie if available
+    let originalRedirect = req.cookies?.oauth_redirect || null;
+    if (originalRedirect) {
+      console.log('[auth] Retrieved redirect from cookie:', originalRedirect);
+      // Clear the cookie
+      res.clearCookie('oauth_redirect');
     }
 
-    // Fallback: redirect to frontend callback page which will persist the token
-    // Preserve state only for optional future UX branching in frontend.
+    // If redirect is a VS Code URI, redirect directly to VS Code
+    if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
+      const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
+      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
+      console.log('[auth] Redirecting directly to VS Code:', vscodeUri);
+      return res.redirect(vscodeUri);
+    }
+
+    // For web logins, redirect to frontend callback page
     if (originalRedirect) {
       return res.redirect(`${FRONTEND_URL}/auth/callback.html?token=${token}&redirect=${encodeURIComponent(originalRedirect)}`);
     }

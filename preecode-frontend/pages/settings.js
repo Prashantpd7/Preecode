@@ -57,8 +57,12 @@
   var settingsAvatar = document.getElementById('settingsAvatar');
   var settingsAvatarName = document.getElementById('settingsAvatarName');
   var avatarUploadBtn = document.getElementById('avatarUploadBtn');
+  var avatarUploadOverlay = document.getElementById('avatarUploadOverlay');
+  var avatarResetBtn = document.getElementById('avatarResetBtn');
   var avatarFileInput = document.getElementById('avatarFileInput');
-  var avatarBase64 = '';
+  var avatarSpinner = document.getElementById('avatarSpinner');
+  var pendingAvatarUrl = null;
+  var userEmail = '';
 
   // Load user data
   Api.getUser(userId)
@@ -67,6 +71,7 @@
 
       var uname = user.username || '';
       var email = user.email || '';
+      userEmail = email;
       var firstName = user.firstName || '';
       var lastName = user.lastName || '';
 
@@ -104,25 +109,57 @@
     settUsername.style.borderColor = val.length > 0 && !valid ? '#f87171' : '';
   });
 
-  // Avatar upload
-  avatarUploadBtn.addEventListener('click', function () {
+  // Avatar upload - clicking on overlay or button
+  function triggerAvatarUpload() {
     avatarFileInput.click();
-  });
+  }
 
+  avatarUploadBtn.addEventListener('click', triggerAvatarUpload);
+  if (avatarUploadOverlay) {
+    avatarUploadOverlay.addEventListener('click', triggerAvatarUpload);
+  }
+
+  // Reset to email avatar
+  if (avatarResetBtn) {
+    avatarResetBtn.addEventListener('click', function () {
+      if (!userEmail) {
+        showToast('Email not available', 'error');
+        return;
+      }
+      var emailAvatar = 'https://unavatar.io/google/' + encodeURIComponent(userEmail);
+      pendingAvatarUrl = emailAvatar;
+      settingsAvatar.style.backgroundImage = 'url(' + emailAvatar + ')';
+      settingsAvatar.textContent = '';
+      showToast('Email avatar selected. Save changes to apply.');
+    });
+  }
+
+  // Avatar file upload with Cloudinary
   avatarFileInput.addEventListener('change', function () {
     var file = avatarFileInput.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Image must be under 2MB', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image must be under 5MB', 'error');
       return;
     }
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      avatarBase64 = e.target.result;
-      settingsAvatar.style.backgroundImage = 'url(' + avatarBase64 + ')';
-      settingsAvatar.textContent = '';
-    };
-    reader.readAsDataURL(file);
+
+    // Show spinner
+    if (avatarSpinner) avatarSpinner.classList.remove('hidden');
+
+    Api.uploadAvatar(file)
+      .then(function (result) {
+        pendingAvatarUrl = result.url;
+        settingsAvatar.style.backgroundImage = 'url(' + result.url + ')';
+        settingsAvatar.textContent = '';
+        showToast('Photo uploaded. Save changes to apply.');
+      })
+      .catch(function (err) {
+        showToast(err.message || 'Failed to upload image', 'error');
+      })
+      .finally(function () {
+        if (avatarSpinner) avatarSpinner.classList.add('hidden');
+        avatarFileInput.value = '';
+      });
   });
 
   // Account form submit
@@ -140,13 +177,17 @@
       firstName: settFirstName.value.trim(),
       lastName: settLastName.value.trim(),
     };
-    if (avatarBase64) data.avatar = avatarBase64;
+    if (pendingAvatarUrl) data.avatar = pendingAvatarUrl;
 
     Api.updateProfile(data)
-      .then(function () {
+      .then(function (result) {
         if (uname) {
           localStorage.setItem('preecode_name', uname);
         }
+        if (result.user && result.user.avatar) {
+          localStorage.setItem('preecode_avatar', result.user.avatar);
+        }
+        pendingAvatarUrl = null;
         showToast('Profile updated successfully');
       })
       .catch(function (err) {

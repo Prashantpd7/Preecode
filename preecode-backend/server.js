@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const passport = require('./config/passport');
 const connectDB = require('./config/db');
 
@@ -14,6 +15,7 @@ const submissionRoutes = require('./routes/submissionRoutes');
 const practiceRoutes = require('./routes/practiceRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const earlyAccessRoutes = require('./routes/earlyAccessRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const errorHandler = require('./middleware/errorMiddleware');
 
@@ -77,6 +79,7 @@ app.get('/', (req, res) => {
 /* ================= MIDDLEWARE ================= */
 
 app.use(express.json({ limit: '50kb' }));
+app.use(cookieParser());
 app.use(passport.initialize());
 
 /* ================= ROUTES ================= */
@@ -94,6 +97,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/early-access', earlyAccessRoutes);
+app.use('/api/upload', uploadRoutes);
 
 /* ================= ERROR HANDLER ================= */
 

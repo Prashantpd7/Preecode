@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
+  firstName: { type: String },
+  lastName: { type: String },
   provider: { type: String, enum: ['local', 'google'], default: 'local' },
   providerId: { type: String },
   avatar: { type: String },
@@ -13,6 +15,10 @@ const userSchema = new mongoose.Schema({
   easySolved: { type: Number, default: 0 },
   mediumSolved: { type: Number, default: 0 },
   hardSolved: { type: Number, default: 0 },
+
+  // Password reset OTP fields
+  resetOtp: { type: String },
+  resetOtpExpires: { type: Date },
 
   // Early Access & Plan fields
   plan: { type: String, enum: ['free', 'pro'], default: 'pro' },

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createUser, getUser, getStats, loginUser, updateProfile, logoutUser } = require('../controllers/userController');
+const { createUser, getUser, getStats, loginUser, updateProfile, logoutUser, forgotPassword, verifyOtp, resetPassword, changePassword, deleteAccount, logoutAllDevices, updateNotificationPrefs } = require('../controllers/userController');
 const validateObjectId = require('../middleware/validateObjectId');
 const auth = require('../middleware/authMiddleware');
 const checkEarlyAccess = require('../middleware/checkEarlyAccess');
@@ -15,6 +15,12 @@ router.post('/', (req, res, next) => {
 	console.log('[users] POST /api/users (create) from', req.ip, 'bodyKeys=', Object.keys(req.body));
 	return createUser(req, res, next);
 });
+
+// Password reset routes (no auth required)
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-otp', verifyOtp);
+router.post('/reset-password', resetPassword);
+
 // Return current authenticated user
 router.get('/me', auth, checkEarlyAccess, (req, res, next) => {
   return require('../controllers/userController').getMe(req, res, next);
@@ -25,6 +31,18 @@ router.put('/profile/update', auth, (req, res, next) => {
 	console.log('[users] PUT /api/users/profile/update from', req.ip, 'bodyKeys=', Object.keys(req.body));
 	return updateProfile(req, res, next);
 });
+
+// Change password (authenticated)
+router.put('/change-password', auth, changePassword);
+
+// Delete account (authenticated)
+router.delete('/account', auth, deleteAccount);
+
+// Logout all devices (authenticated)
+router.post('/logout-all', auth, logoutAllDevices);
+
+// Update notification preferences
+router.put('/notifications', auth, updateNotificationPrefs);
 
 router.post('/logout', auth, logoutUser);
 
