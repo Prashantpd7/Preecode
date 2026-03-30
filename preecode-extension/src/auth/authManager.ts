@@ -69,6 +69,10 @@ export class AuthManager implements vscode.UriHandler {
     }));
 
     vscode.window.showInformationMessage('Preecode login successful.');
+
+    // Close login panel after successful authentication
+    const { LoginPanel } = await import('../panels/loginPanel.js');
+    LoginPanel.closeCurrent();
   }
 
   async restoreSession(): Promise<void> {

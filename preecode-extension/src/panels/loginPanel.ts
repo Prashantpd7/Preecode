@@ -28,6 +28,12 @@ export class LoginPanel {
     return LoginPanel.current;
   }
 
+  static closeCurrent(): void {
+    if (LoginPanel.current) {
+      LoginPanel.current.close();
+    }
+  }
+
   private constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly extensionUri: vscode.Uri,
