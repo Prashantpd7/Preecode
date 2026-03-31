@@ -67,6 +67,7 @@ function renderVsCodeLaunchPage(res, deepLink) {
   <script>
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
+      // Immediately redirect to VS Code
       window.location.href = deepLink;
     })();
   </script>

@@ -62,11 +62,6 @@ export class LoginPanel {
 
     if (type === 'googleLogin') {
       await this.handleGoogleLogin();
-      // Show success message to user
-      this.panel.webview.postMessage({
-        type: 'googleOpened',
-        message: '✓ Browser opened. Complete sign-in there.'
-      });
       return;
     }
 

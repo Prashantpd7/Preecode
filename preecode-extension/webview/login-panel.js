@@ -489,12 +489,6 @@ window.addEventListener('message', (event) => {
       if (confirmPassword) confirmPassword.value = '';
       switchTab('signin');
     }, 2000);
-  } else if (message.type === 'googleOpened') {
-    clearRequestTimeout();
-    // Show info message that browser was opened
-    hideLoading();
-    showSuccess(message.message || 'Browser opened. Complete sign-in there.');
-    setControlsDisabled(false);
   }
 });
 
