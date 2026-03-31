@@ -26,6 +26,15 @@ type UserLookupResult =
 export class AuthManager implements vscode.UriHandler {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
+  private isAllowedPostLoginUrl(value: string): boolean {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
   private isTrustedCallback(uri: vscode.Uri): boolean {
     const extensionId = this.context.extension.id.toLowerCase();
     const authority = (uri.authority || '').toLowerCase();
@@ -47,6 +56,7 @@ export class AuthManager implements vscode.UriHandler {
     }
 
     const token = params.get('token');
+    const postLogin = params.get('postLogin');
     if (!token) {
       vscode.window.showErrorMessage('Preecode login callback missing token.');
       return;
@@ -69,6 +79,10 @@ export class AuthManager implements vscode.UriHandler {
     }));
 
     vscode.window.showInformationMessage('Preecode login successful.');
+
+    if (postLogin && this.isAllowedPostLoginUrl(postLogin)) {
+      void vscode.env.openExternal(vscode.Uri.parse(postLogin));
+    }
 
     // Close login panel after successful authentication
     const { LoginPanel } = await import('../panels/loginPanel.js');
