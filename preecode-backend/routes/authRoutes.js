@@ -69,31 +69,62 @@ function renderVsCodeRedirectBridge(res, deepLink) {
 <body>
   <main class="card">
     <h2>Login complete</h2>
-    <div class="ok" id="status">You are logged in. Opening Visual Studio Code...</div>
-    <p id="finalHint" style="margin-top:12px;color:#86efac;">If Visual Studio Code is not opened automatically, you can open manually.</p>
+    <div class="ok" id="status">Authentication complete. Attempting to open Visual Studio Code...</div>
+    <p id="finalHint" style="margin-top:12px;color:#86efac;">If Visual Studio Code is not opened automatically, switch to VS Code manually. For future logins, allow this site to open Visual Studio Code links.</p>
   </main>
 
   <script>
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
       var status = document.getElementById('status');
-      var finalHint = document.getElementById('finalHint');
+      var settled = false;
 
-      function openVsCode() {
+      function tryIframeOpen() {
         try {
-          window.location.href = deepLink;
+          var frame = document.createElement('iframe');
+          frame.style.display = 'none';
+          frame.src = deepLink;
+          document.body.appendChild(frame);
+          setTimeout(function () {
+            try { document.body.removeChild(frame); } catch (e) { /* ignore */ }
+          }, 500);
         } catch (e) {
           // ignore
         }
       }
 
-      // Attempt once immediately and once shortly after for reliability.
-      openVsCode();
-      setTimeout(openVsCode, 500);
+      function tryLocationOpen() {
+        try {
+          window.location.assign(deepLink);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Attempt several automatic launches to maximize chance of OS handoff.
+      tryIframeOpen();
+      tryLocationOpen();
+      setTimeout(tryIframeOpen, 350);
+      setTimeout(tryLocationOpen, 700);
+
+      function markRedirected() {
+        if (settled) return;
+        settled = true;
+        status.textContent = 'Redirecting to Visual Studio Code...';
+      }
+
+      window.addEventListener('blur', markRedirected, { once: true });
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          markRedirected();
+        }
+      });
 
       // Keep this page stable and informative instead of appearing stuck.
       setTimeout(function () {
-        status.textContent = 'You are logged in. If VS Code did not open, click "Open Visual Studio Code" or switch to VS Code manually.';
+        if (!settled) {
+          status.textContent = 'Visual Studio Code did not open automatically on this browser session.';
+        }
         try {
           window.stop();
         } catch (e) {
