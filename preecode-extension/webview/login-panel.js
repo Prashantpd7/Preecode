@@ -434,6 +434,8 @@ window.addEventListener('message', (event) => {
       switchTab('forgot2');
     }, 1500);
     if (forgotStep1Submit) forgotStep1Submit.disabled = false;
+    if (forgotStep2Submit) forgotStep2Submit.disabled = false;
+    if (resendOtp) resendOtp.style.pointerEvents = 'auto'; // Enable resend link
   } else if (message.type === 'otpVerified') {
     hideLoading();
     forgotState.resetToken = message.resetToken;
