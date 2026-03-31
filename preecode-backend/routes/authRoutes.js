@@ -55,33 +55,19 @@ function renderVsCodeLaunchPage(res, deepLink) {
       padding: 22px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
     }
-    h2 { margin: 0; font-size: 22px; color: var(--text); }
+    h2 { margin: 0 0 10px; font-size: 22px; color: var(--text); }
+    p { margin: 0; color: var(--muted); line-height: 1.6; font-size: 14px; }
   </style>
 </head>
 <body>
   <main class="card">
     <h2>Login complete</h2>
+    <p>If Visual Studio Code is not opened automatically, please open it manually.</p>
   </main>
   <script>
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
-
-      function triggerVsCode() {
-        try {
-          var frame = document.createElement('iframe');
-          frame.style.display = 'none';
-          frame.src = deepLink;
-          document.body.appendChild(frame);
-          setTimeout(function () {
-            try { document.body.removeChild(frame); } catch (e) {}
-          }, 1200);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      // Auto-trigger VS Code open immediately on page load
-      triggerVsCode();
+      window.location.href = deepLink;
     })();
   </script>
 </body>
