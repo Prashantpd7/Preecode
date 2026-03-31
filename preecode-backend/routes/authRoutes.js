@@ -16,8 +16,7 @@ function escapeHtml(text = '') {
     .replace(/'/g, '&#39;');
 }
 
-function renderVsCodeLaunchPage(res, deepLink) {
-  const safeDeepLink = escapeHtml(deepLink);
+function renderVsCodeSuccessPage(res, vscodeUri) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -28,7 +27,7 @@ function renderVsCodeLaunchPage(res, deepLink) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Preecode Login Complete</title>
+  <title>Preecode Login Success</title>
   <style>
     :root {
       color-scheme: dark;
@@ -36,7 +35,7 @@ function renderVsCodeLaunchPage(res, deepLink) {
       --panel: #111827;
       --text: #d1d5db;
       --muted: #9ca3af;
-      --accent: linear-gradient(120deg, #fbbf24, #f97316);
+      --success: #4ade80;
     }
     * { box-sizing: border-box; }
     body {
@@ -51,27 +50,88 @@ function renderVsCodeLaunchPage(res, deepLink) {
     }
     .card {
       width: 100%;
-      max-width: 620px;
+      max-width: 520px;
       background: var(--panel);
-      border: 1px solid #1f2937;
+      border: 1px solid #22c55e;
       border-radius: 14px;
-      padding: 22px;
+      padding: 32px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      text-align: center;
     }
-    h2 { margin: 0 0 10px; font-size: 22px; color: var(--text); }
-    p { margin: 0; color: var(--muted); line-height: 1.6; font-size: 14px; }
+    .checkmark {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      background: rgba(74, 222, 128, 0.1);
+      border: 2px solid var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+    }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      color: var(--success);
+      font-weight: 600;
+    }
+    p {
+      margin: 8px 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+    .fallback {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .fallback p {
+      margin: 4px 0;
+      font-size: 13px;
+    }
+    a {
+      color: #ffa116;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <main class="card">
-    <h2>Login complete</h2>
-    <p>If Visual Studio Code is not opened automatically, please open it manually.</p>
+    <div class="checkmark">✓</div>
+    <h2>Successfully signed in!</h2>
+    <p>Opening VS Code extension...</p>
+
+    <div class="fallback">
+      <p style="color: var(--text);">If VS Code did not open, you can:</p>
+      <p><a href="#" id="fallbackLink">Click here to open VS Code</a></p>
+      <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">or open VS Code manually</p>
+    </div>
   </main>
+
   <script>
     (function () {
-      var deepLink = ${JSON.stringify(deepLink)};
-      // Immediately redirect to VS Code
-      window.location.href = deepLink;
+      var vscodeUri = ${JSON.stringify(vscodeUri)};
+      var fallbackLink = document.getElementById('fallbackLink');
+
+      // Set up fallback link
+      if (fallbackLink) {
+        fallbackLink.href = 'javascript:void(0)';
+        fallbackLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.href = vscodeUri;
+        });
+      }
+
+      // Try to open VS Code immediately
+      setTimeout(function() {
+        window.location.href = vscodeUri;
+      }, 100);
     })();
   </script>
 </body>
@@ -199,13 +259,12 @@ router.get(
       console.log('[auth] Retrieved redirect from in-memory store:', originalRedirect);
     }
 
-    // VS Code auth flow: direct deep-link redirect for reliable app handoff.
+    // VS Code auth flow: show success page and open VS Code
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      console.log('[auth] Redirecting to VS Code:', vscodeUri);
-      // Use HTTP redirect - this is the most reliable way to open vscode:// URIs
-      return res.redirect(vscodeUri);
+      console.log('[auth] Opening VS Code with success page:', vscodeUri);
+      return renderVsCodeSuccessPage(res, vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
