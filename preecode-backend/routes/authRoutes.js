@@ -13,9 +13,8 @@ function escapeHtml(text = '') {
     .replace(/'/g, '&#39;');
 }
 
-function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
+function renderVsCodeLaunchPage(res, deepLink) {
   const safeDeepLink = escapeHtml(deepLink);
-  const safeCompleteUrl = escapeHtml(completeUrl);
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -26,53 +25,72 @@ function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Preecode Redirect</title>
+  <title>Preecode Login Complete</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --panel: #111827;
+      --text: #d1d5db;
+      --muted: #9ca3af;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #172554 0%, var(--bg) 45%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--panel);
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+    h2 { margin: 0 0 8px; font-size: 22px; color: var(--text); }
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
+  </style>
 </head>
 <body>
+  <main class="card">
+    <h2>Login complete</h2>
+    <p>If Visual Studio Code is not opened automatically, you can open manually.</p>
+  </main>
   <script>
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
-      var completeUrl = ${JSON.stringify(completeUrl)};
-      var moved = false;
-
-      function moveToCompletePage() {
-        if (moved) {
-          return;
-        }
-        moved = true;
-        try {
-          window.location.replace(completeUrl);
-        } catch (e) {
-          // ignore
-        }
-      }
 
       function triggerVsCode() {
         try {
-          window.location.href = deepLink;
+          var frame = document.createElement('iframe');
+          frame.style.display = 'none';
+          frame.src = deepLink;
+          document.body.appendChild(frame);
+          setTimeout(function () {
+            try {
+              document.body.removeChild(frame);
+            } catch (e) {
+              // ignore
+            }
+          }, 1200);
         } catch (e) {
           // ignore
         }
       }
 
-      // Step 3: browser app-launch prompt
+      // Step 3 popup + Step 6 fallback view on same page.
       triggerVsCode();
-
-      // Step 6 should happen immediately after user accepts browser popup.
-      window.addEventListener('blur', moveToCompletePage, { once: true });
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'hidden') {
-          moveToCompletePage();
-        }
-      });
-
-      // Fallback in case blur/visibility events are not fired by the browser.
-      setTimeout(moveToCompletePage, 900);
     })();
   </script>
   <noscript>
     <a href="${safeDeepLink}">Open Visual Studio Code</a>
-    <a href="${safeCompleteUrl}">Continue</a>
   </noscript>
 </body>
 </html>`);
@@ -187,11 +205,9 @@ router.get(
     // VS Code auth flow: trigger deep-link prompt, then move browser to fallback page.
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
-      const origin = `${req.protocol}://${req.get('host')}`;
-      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
       console.log('[auth] Triggering VS Code prompt then fallback page:', vscodeUri);
-      return renderVsCodeLaunchPage(res, vscodeUri, completeUrl);
+      return renderVsCodeLaunchPage(res, vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
