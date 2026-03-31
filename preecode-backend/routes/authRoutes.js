@@ -4,17 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
-function escapeHtml(text = '') {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function renderVsCodeRedirectBridge(res, deepLink) {
-  const safeDeepLink = escapeHtml(deepLink);
+router.get('/redirect-complete', (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!doctype html>
 <html lang="en">
@@ -27,11 +17,8 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       color-scheme: dark;
       --bg: #0b0f14;
       --panel: #111827;
-      --text: #e5e7eb;
+      --text: #d1d5db;
       --muted: #9ca3af;
-      --ok-bg: #052e16;
-      --ok-border: #166534;
-      --ok-text: #86efac;
     }
     * { box-sizing: border-box; }
     body {
@@ -53,103 +40,18 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       padding: 22px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
     }
-    h2 { margin: 0 0 8px; font-size: 22px; }
-    p { margin: 0 0 14px; color: var(--muted); line-height: 1.5; }
-    .ok {
-      background: var(--ok-bg);
-      border: 1px solid var(--ok-border);
-      color: var(--ok-text);
-      padding: 11px 12px;
-      border-radius: 10px;
-      font-size: 14px;
-      margin-bottom: 12px;
-    }
+    h2 { margin: 0 0 8px; font-size: 22px; color: var(--text); }
+    p { margin: 0; color: var(--muted); line-height: 1.6; }
   </style>
 </head>
 <body>
   <main class="card">
     <h2>Login complete</h2>
-    <div class="ok" id="status">Authentication complete. Attempting to open Visual Studio Code...</div>
-    <p id="finalHint" style="margin-top:12px;color:#86efac;">If Visual Studio Code is not opened automatically, switch to VS Code manually. For future logins, allow this site to open Visual Studio Code links.</p>
+    <p>If Visual Studio Code is not opened automatically, you can open manually.</p>
   </main>
-
-  <script>
-    (function () {
-      var deepLink = ${JSON.stringify(deepLink)};
-      var status = document.getElementById('status');
-      var settled = false;
-
-      function tryIframeOpen() {
-        try {
-          var frame = document.createElement('iframe');
-          frame.style.display = 'none';
-          frame.src = deepLink;
-          document.body.appendChild(frame);
-          setTimeout(function () {
-            try { document.body.removeChild(frame); } catch (e) { /* ignore */ }
-          }, 500);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      function tryLocationOpen() {
-        try {
-          window.location.assign(deepLink);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      // Attempt several automatic launches to maximize chance of OS handoff.
-      tryIframeOpen();
-      tryLocationOpen();
-      setTimeout(tryIframeOpen, 350);
-      setTimeout(tryLocationOpen, 700);
-
-      function markRedirected() {
-        if (settled) return;
-        settled = true;
-        status.textContent = 'Redirecting to Visual Studio Code...';
-      }
-
-      window.addEventListener('blur', markRedirected, { once: true });
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'hidden') {
-          markRedirected();
-        }
-      });
-
-      // Keep this page stable and informative instead of appearing stuck.
-      setTimeout(function () {
-        if (!settled) {
-          status.textContent = 'Visual Studio Code did not open automatically on this browser session.';
-        }
-        try {
-          window.stop();
-        } catch (e) {
-          // ignore
-        }
-      }, 1800);
-
-      // Final settle pass so browser tab stops showing spinner-like state.
-      setTimeout(function () {
-        try {
-          history.replaceState({}, document.title, window.location.pathname);
-        } catch (e) {
-          // ignore
-        }
-        try {
-          document.title = 'Preecode Login Complete';
-        } catch (e) {
-          // ignore
-        }
-      }, 2600);
-    })();
-  </script>
 </body>
 </html>`);
-}
+});
 
 /* ================= GOOGLE OAUTH START ================= */
 
@@ -204,12 +106,14 @@ router.get(
       res.clearCookie('oauth_redirect');
     }
 
-    // If redirect is a VS Code URI, show a bridge page with clear fallback UI.
+    // If redirect is a VS Code URI, redirect directly so browser triggers app handoff.
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
-      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      console.log('[auth] Rendering VS Code bridge page:', vscodeUri);
-      return renderVsCodeRedirectBridge(res, vscodeUri);
+      const origin = `${req.protocol}://${req.get('host')}`;
+      const postLoginUrl = `${origin}/api/auth/redirect-complete`;
+      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(postLoginUrl)}`;
+      console.log('[auth] Redirecting directly to VS Code:', vscodeUri);
+      return res.redirect(vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
