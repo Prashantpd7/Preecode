@@ -4,6 +4,65 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+function escapeHtml(text = '') {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
+  const safeDeepLink = escapeHtml(deepLink);
+  const safeCompleteUrl = escapeHtml(completeUrl);
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Preecode Redirect</title>
+</head>
+<body>
+  <script>
+    (function () {
+      var deepLink = ${JSON.stringify(deepLink)};
+      var completeUrl = ${JSON.stringify(completeUrl)};
+
+      function openVsCode() {
+        try {
+          window.location.href = deepLink;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Trigger browser app-launch popup first.
+      openVsCode();
+
+      // Move browser away from Google chooser to final fallback page.
+      setTimeout(function () {
+        try {
+          window.location.replace(completeUrl);
+        } catch (e) {
+          // ignore
+        }
+      }, 120);
+    })();
+  </script>
+  <noscript>
+    <a href="${safeDeepLink}">Open Visual Studio Code</a>
+    <a href="${safeCompleteUrl}">Continue</a>
+  </noscript>
+</body>
+</html>`);
+}
+
 router.get('/redirect-complete', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -114,10 +173,10 @@ router.get(
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const origin = `${req.protocol}://${req.get('host')}`;
-      const postLoginUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
-      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(postLoginUrl)}`;
-      console.log('[auth] Redirecting directly to VS Code:', vscodeUri);
-      return res.redirect(vscodeUri);
+      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
+      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
+      console.log('[auth] Launching VS Code then showing fallback page:', vscodeUri);
+      return renderVsCodeLaunchPage(res, vscodeUri, completeUrl);
     }
 
     // For web logins, redirect to frontend callback page
