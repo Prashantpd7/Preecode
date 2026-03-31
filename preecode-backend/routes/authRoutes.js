@@ -178,7 +178,7 @@ function renderVsCodeLaunchPage(res, deepLink) {
         copyBtn.addEventListener('click', copyLink);
       }
 
-      startLaunch();
+      // Wait for user to click "Open Visual Studio Code" button - don't auto-launch
     })();
   </script>
   <noscript>
