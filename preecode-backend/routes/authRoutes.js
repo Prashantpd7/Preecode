@@ -4,6 +4,150 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+function escapeHtml(text = '') {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderVsCodeRedirectBridge(res, deepLink) {
+  const safeDeepLink = escapeHtml(deepLink);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Preecode Login Complete</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --ok-bg: #052e16;
+      --ok-border: #166534;
+      --ok-text: #86efac;
+      --btn: #f59e0b;
+      --btn-text: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #172554 0%, var(--bg) 45%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--panel);
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+    h2 { margin: 0 0 8px; font-size: 22px; }
+    p { margin: 0 0 14px; color: var(--muted); line-height: 1.5; }
+    .ok {
+      background: var(--ok-bg);
+      border: 1px solid var(--ok-border);
+      color: var(--ok-text);
+      padding: 11px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      border-radius: 8px;
+      border: none;
+      background: var(--btn);
+      color: var(--btn-text);
+      font-weight: 700;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .link {
+      color: #93c5fd;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    code {
+      display: block;
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      color: #cbd5e1;
+      font-size: 11px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h2>Login complete</h2>
+    <div class="ok" id="status">You are logged in. Opening Visual Studio Code...</div>
+    <p>If Visual Studio Code is not opened automatically, use the button below. You can then return to VS Code manually.</p>
+    <div class="actions">
+      <a id="openBtn" class="btn" href="${safeDeepLink}">Open Visual Studio Code</a>
+      <a class="link" href="${safeDeepLink}">Try deep link again</a>
+    </div>
+    <code>${safeDeepLink}</code>
+  </main>
+
+  <script>
+    (function () {
+      var deepLink = ${JSON.stringify(deepLink)};
+      var status = document.getElementById('status');
+      var openBtn = document.getElementById('openBtn');
+
+      function openVsCode() {
+        try {
+          window.location.href = deepLink;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (openBtn) {
+        openBtn.addEventListener('click', function () {
+          status.textContent = 'Attempting to open Visual Studio Code...';
+        });
+      }
+
+      // Attempt once immediately and once shortly after for reliability.
+      openVsCode();
+      setTimeout(openVsCode, 500);
+
+      // Keep this page stable and informative instead of appearing stuck.
+      setTimeout(function () {
+        status.textContent = 'You are logged in. If VS Code did not open, click "Open Visual Studio Code" or switch to VS Code manually.';
+      }, 1800);
+    })();
+  </script>
+</body>
+</html>`);
+}
+
 /* ================= GOOGLE OAUTH START ================= */
 
 router.get('/google', (req, res, next) => {
@@ -57,12 +201,12 @@ router.get(
       res.clearCookie('oauth_redirect');
     }
 
-    // If redirect is a VS Code URI, redirect directly to VS Code
+    // If redirect is a VS Code URI, show a bridge page with clear fallback UI.
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      console.log('[auth] Redirecting directly to VS Code:', vscodeUri);
-      return res.redirect(vscodeUri);
+      console.log('[auth] Rendering VS Code bridge page:', vscodeUri);
+      return renderVsCodeRedirectBridge(res, vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
