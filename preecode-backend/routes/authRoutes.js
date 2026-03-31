@@ -93,20 +93,11 @@ function renderVsCodeSuccessPage(res, vscodeUri) {
     }
     .fallback {
       margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
     .fallback p {
-      margin: 4px 0;
+      margin: 0;
       font-size: 13px;
-    }
-    a {
-      color: #ffa116;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    a:hover {
-      text-decoration: underline;
+      color: var(--muted);
     }
   </style>
 </head>
@@ -117,9 +108,7 @@ function renderVsCodeSuccessPage(res, vscodeUri) {
     <p>Opening VS Code extension...</p>
 
     <div class="fallback">
-      <p style="color: var(--text);">If VS Code did not open, you can:</p>
-      <p><a href="${safeUri}">Click here to open VS Code</a></p>
-      <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">or open VS Code manually</p>
+      <p>If VS Code did not open, you can: open VS Code manually</p>
     </div>
   </main>
 </body>
