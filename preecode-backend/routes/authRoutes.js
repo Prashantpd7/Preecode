@@ -22,11 +22,20 @@ function renderVsCodeSuccessPage(res, vscodeUri) {
   res.setHeader('Expires', '0');
   res.setHeader('Surrogate-Control', 'no-store');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+  // HTML meta refresh for reliable vscode:// redirect
+  const safeUri = String(vscodeUri)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
   res.send(`<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="refresh" content="0;url=${safeUri}" />
   <title>Preecode Login Success</title>
   <style>
     :root {
@@ -109,31 +118,10 @@ function renderVsCodeSuccessPage(res, vscodeUri) {
 
     <div class="fallback">
       <p style="color: var(--text);">If VS Code did not open, you can:</p>
-      <p><a href="#" id="fallbackLink">Click here to open VS Code</a></p>
+      <p><a href="${safeUri}">Click here to open VS Code</a></p>
       <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">or open VS Code manually</p>
     </div>
   </main>
-
-  <script>
-    (function () {
-      var vscodeUri = ${JSON.stringify(vscodeUri)};
-      var fallbackLink = document.getElementById('fallbackLink');
-
-      // Set up fallback link
-      if (fallbackLink) {
-        fallbackLink.href = 'javascript:void(0)';
-        fallbackLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          window.location.href = vscodeUri;
-        });
-      }
-
-      // Try to open VS Code immediately
-      setTimeout(function() {
-        window.location.href = vscodeUri;
-      }, 100);
-    })();
-  </script>
 </body>
 </html>`);
 }
