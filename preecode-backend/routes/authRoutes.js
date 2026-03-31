@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+// In-memory store for OAuth redirects (cleaned up after 15 minutes)
+const pendingOAuthRedirects = new Map();
+
 function escapeHtml(text = '') {
   return String(text)
     .replace(/&/g, '&amp;')
@@ -132,15 +135,28 @@ router.get('/redirect-complete', (req, res) => {
 
 router.get('/google', (req, res, next) => {
   // Accept an optional `redirect` query param (e.g. vscode://...)
-  // Store in session/temporary storage to pass through OAuth callback
   if (req.query && req.query.redirect) {
     try {
-      console.log('[auth] /google received redirect:', req.query.redirect);
-      // Store the redirect in a session-like manner (we'll use a simple approach)
-      res.cookie('oauth_redirect', req.query.redirect, {
-        maxAge: 10 * 60 * 1000, // 10 minutes
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production'
+      // Generate unique ID for this OAuth attempt
+      const oauthStateId = Math.random().toString(36).substring(2, 15) +
+                           Math.random().toString(36).substring(2, 15);
+
+      console.log('[auth] /google received redirect:', req.query.redirect, 'stateId:', oauthStateId);
+
+      // Store the redirect in memory (will be retrieved in callback)
+      pendingOAuthRedirects.set(oauthStateId, req.query.redirect);
+
+      // Clean up after 15 minutes
+      setTimeout(() => {
+        pendingOAuthRedirects.delete(oauthStateId);
+      }, 15 * 60 * 1000);
+
+      // Store state ID in cookie so we can retrieve it in callback
+      res.cookie('oauth_state_id', oauthStateId, {
+        maxAge: 15 * 60 * 1000,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
       });
     } catch (e) {
       console.warn('[auth] /google failed to store redirect:', e && e.message);
@@ -173,12 +189,14 @@ router.get(
     );
     console.log('[auth] Generated JWT for user:', req.user && req.user._id);
 
-    // Get redirect from cookie if available
-    let originalRedirect = req.cookies?.oauth_redirect || null;
-    if (originalRedirect) {
-      console.log('[auth] Retrieved redirect from cookie:', originalRedirect);
-      // Clear the cookie
-      res.clearCookie('oauth_redirect');
+    // Get redirect from in-memory store using state ID from cookie
+    let originalRedirect = null;
+    const stateId = req.cookies?.oauth_state_id;
+    if (stateId && pendingOAuthRedirects.has(stateId)) {
+      originalRedirect = pendingOAuthRedirects.get(stateId);
+      pendingOAuthRedirects.delete(stateId);
+      res.clearCookie('oauth_state_id');
+      console.log('[auth] Retrieved redirect from in-memory store:', originalRedirect);
     }
 
     // VS Code auth flow: direct deep-link redirect for reliable app handoff.
@@ -187,8 +205,7 @@ router.get(
       const origin = `${req.protocol}://${req.get('host')}`;
       const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(completeUrl)}`;
-      // Show fallback immediately on the launch page and still provide a post-login confirmation.
-      console.log('[auth] Rendering VS Code launch page with postLogin fallback:', vscodeUri);
+      console.log('[auth] Rendering VS Code launch page with auto-redirect:', vscodeUri);
       return renderVsCodeLaunchPage(res, vscodeUri);
     }
 
