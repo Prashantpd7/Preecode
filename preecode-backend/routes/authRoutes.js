@@ -33,6 +33,7 @@ function renderVsCodeLaunchPage(res, deepLink) {
       --panel: #111827;
       --text: #d1d5db;
       --muted: #9ca3af;
+      --accent: linear-gradient(120deg, #fbbf24, #f97316);
     }
     * { box-sizing: border-box; }
     body {
@@ -47,25 +48,54 @@ function renderVsCodeLaunchPage(res, deepLink) {
     }
     .card {
       width: 100%;
-      max-width: 560px;
+      max-width: 620px;
       background: var(--panel);
       border: 1px solid #1f2937;
       border-radius: 14px;
       padding: 22px;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
     }
-    h2 { margin: 0 0 8px; font-size: 22px; color: var(--text); }
+    h2 { margin: 0 0 10px; font-size: 22px; color: var(--text); }
     p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .actions { margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .primary {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #0b0f14;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }
+    .secondary {
+      padding: 11px 15px;
+      border-radius: 10px;
+      border: 1px solid #374151;
+      background: #0f172a;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .note { margin-top: 12px; font-size: 14px; color: var(--muted); }
+    .status { margin-top: 12px; font-size: 14px; color: #34d399; }
   </style>
 </head>
 <body>
   <main class="card">
     <h2>Login complete</h2>
-    <p>If Visual Studio Code is not opened automatically, you can open manually.</p>
+    <p>VS Code should open automatically. If it does not, use the options below.</p>
+    <div class="actions">
+      <a id="open-vscode" class="primary" href="${safeDeepLink}">Open Visual Studio Code</a>
+      <button id="copy-link" class="secondary" type="button">Copy link</button>
+    </div>
+    <p class="note">If the automatic prompt is blocked, click "Open Visual Studio Code" or paste the copied link into your browser.</p>
+    <div id="status" class="status" style="display:none;"></div>
   </main>
   <script>
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
+      var statusEl = document.getElementById('status');
 
       function triggerVsCode() {
         try {
@@ -74,19 +104,81 @@ function renderVsCodeLaunchPage(res, deepLink) {
           frame.src = deepLink;
           document.body.appendChild(frame);
           setTimeout(function () {
-            try {
-              document.body.removeChild(frame);
-            } catch (e) {
-              // ignore
-            }
+            try { document.body.removeChild(frame); } catch (e) {}
           }, 1200);
+        } catch (e) {
+          // ignore
+        }
+
+        // Second attempt after the page has painted, to align with the desired flow order.
+        setTimeout(function () {
+          try { window.location.href = deepLink; } catch (e) {}
+        }, 350);
+      }
+
+      function startLaunch() {
+        // Allow the fallback UI to paint before triggering the deep link prompt.
+        requestAnimationFrame(function () {
+          setTimeout(triggerVsCode, 120);
+        });
+      }
+
+      function openViaButton(event) {
+        try {
+          event && event.preventDefault();
+          window.location.href = deepLink;
         } catch (e) {
           // ignore
         }
       }
 
-      // Step 3 popup + Step 6 fallback view on same page.
-      triggerVsCode();
+      function copyLink(event) {
+        if (event) event.preventDefault();
+        var text = deepLink;
+        var onSuccess = function () {
+          if (statusEl) {
+            statusEl.textContent = 'Link copied. Paste into your browser if VS Code does not open.';
+            statusEl.style.display = 'block';
+          }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(onSuccess).catch(function () {
+            fallbackCopy(text, onSuccess);
+          });
+        } else {
+          fallbackCopy(text, onSuccess);
+        }
+      }
+
+      function fallbackCopy(text, onSuccess) {
+        try {
+          var textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(textarea);
+          if (ok && onSuccess) onSuccess();
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      var button = document.getElementById('open-vscode');
+      if (button) {
+        button.addEventListener('click', openViaButton);
+      }
+
+      var copyBtn = document.getElementById('copy-link');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', copyLink);
+      }
+
+      startLaunch();
     })();
   </script>
   <noscript>
@@ -207,10 +299,10 @@ router.get(
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const origin = `${req.protocol}://${req.get('host')}`;
       const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
-      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      const vscodeUriWithPostLogin = `${vscodeUri}&postLogin=${encodeURIComponent(completeUrl)}`;
-      console.log('[auth] Redirecting directly to VS Code:', vscodeUriWithPostLogin);
-      return res.redirect(vscodeUriWithPostLogin);
+      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(completeUrl)}`;
+      // Show fallback immediately on the launch page and still provide a post-login confirmation.
+      console.log('[auth] Rendering VS Code launch page with postLogin fallback:', vscodeUri);
+      return renderVsCodeLaunchPage(res, vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
