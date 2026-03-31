@@ -37,6 +37,33 @@ const resendOtp = document.getElementById('resendOtp');
 
 // Forgot password state
 let forgotState = { email: '', resetToken: '' };
+let activeRequestTimeout = null;
+
+function setControlsDisabled(disabled) {
+  signInSubmit.disabled = disabled;
+  signUpSubmit.disabled = disabled;
+  googleBtn.disabled = disabled;
+  if (forgotStep1Submit) forgotStep1Submit.disabled = disabled;
+  if (forgotStep2Submit) forgotStep2Submit.disabled = disabled;
+  if (forgotStep3Submit) forgotStep3Submit.disabled = disabled;
+}
+
+function clearRequestTimeout() {
+  if (activeRequestTimeout) {
+    window.clearTimeout(activeRequestTimeout);
+    activeRequestTimeout = null;
+  }
+}
+
+function startRequestTimeout() {
+  clearRequestTimeout();
+  // Recover UI controls if extension/backend message is delayed or dropped.
+  activeRequestTimeout = window.setTimeout(() => {
+    hideLoading();
+    setControlsDisabled(false);
+    showError('Request timed out. Please try again.');
+  }, 15000);
+}
 
 // Tab Management
 function switchTab(tabName) {
@@ -249,7 +276,8 @@ signInForm.addEventListener('submit', (e) => {
   const password = signInPassword.value;
 
   // Disable submit button
-  signInSubmit.disabled = true;
+  setControlsDisabled(true);
+  startRequestTimeout();
 
   vscode.postMessage({
     type: 'loginWithEmail',
@@ -269,7 +297,8 @@ signUpForm.addEventListener('submit', (e) => {
   const password = signUpPassword.value;
 
   // Disable submit button
-  signUpSubmit.disabled = true;
+  setControlsDisabled(true);
+  startRequestTimeout();
 
   vscode.postMessage({
     type: 'signupWithEmail',
@@ -291,7 +320,8 @@ if (forgotStep1) {
     }
 
     forgotState.email = email;
-    forgotStep1Submit.disabled = true;
+    setControlsDisabled(true);
+    startRequestTimeout();
 
     vscode.postMessage({
       type: 'forgotPassword',
@@ -312,7 +342,8 @@ if (forgotStep2) {
       return;
     }
 
-    forgotStep2Submit.disabled = true;
+    setControlsDisabled(true);
+    startRequestTimeout();
 
     vscode.postMessage({
       type: 'verifyOtp',
@@ -340,7 +371,8 @@ if (forgotStep3) {
       return;
     }
 
-    forgotStep3Submit.disabled = true;
+    setControlsDisabled(true);
+    startRequestTimeout();
 
     vscode.postMessage({
       type: 'resetPassword',
@@ -376,7 +408,8 @@ if (forgotOtp) {
 
 // Google OAuth
 googleBtn.addEventListener('click', () => {
-  googleBtn.disabled = true;
+  setControlsDisabled(true);
+  startRequestTimeout();
   vscode.postMessage({ type: 'googleLogin' });
 });
 
@@ -391,13 +424,10 @@ window.addEventListener('message', (event) => {
 
   if (message.type === 'loading') {
     showLoading(message.loadingMessage || 'Loading...');
-    signInSubmit.disabled = true;
-    signUpSubmit.disabled = true;
-    googleBtn.disabled = true;
-    if (forgotStep1Submit) forgotStep1Submit.disabled = true;
-    if (forgotStep2Submit) forgotStep2Submit.disabled = true;
-    if (forgotStep3Submit) forgotStep3Submit.disabled = true;
+    setControlsDisabled(true);
+    startRequestTimeout();
   } else if (message.type === 'error') {
+    clearRequestTimeout();
     hideLoading();
     resetErrorStyles();
     showError(message.error);
@@ -407,13 +437,9 @@ window.addEventListener('message', (event) => {
     signInPassword.classList.remove('error');
     signUpPassword.classList.remove('error');
     // Re-enable submit buttons
-    signInSubmit.disabled = false;
-    signUpSubmit.disabled = false;
-    googleBtn.disabled = false;
-    if (forgotStep1Submit) forgotStep1Submit.disabled = false;
-    if (forgotStep2Submit) forgotStep2Submit.disabled = false;
-    if (forgotStep3Submit) forgotStep3Submit.disabled = false;
+    setControlsDisabled(false);
   } else if (message.type === 'success') {
+    clearRequestTimeout();
     hideLoading();
     hideError();
     // Disable all controls briefly before closing
@@ -426,6 +452,7 @@ window.addEventListener('message', (event) => {
     signUpUsername.disabled = true;
     signUpPassword.disabled = true;
   } else if (message.type === 'otpSent') {
+    clearRequestTimeout();
     hideLoading();
     showSuccess(message.message || 'Verification code sent!');
     setTimeout(() => {
@@ -433,10 +460,10 @@ window.addEventListener('message', (event) => {
       resetErrorStyles();
       switchTab('forgot2');
     }, 1500);
-    if (forgotStep1Submit) forgotStep1Submit.disabled = false;
-    if (forgotStep2Submit) forgotStep2Submit.disabled = false;
+    setControlsDisabled(false);
     if (resendOtp) resendOtp.style.pointerEvents = 'auto'; // Enable resend link
   } else if (message.type === 'otpVerified') {
+    clearRequestTimeout();
     hideLoading();
     forgotState.resetToken = message.resetToken;
     showSuccess(message.message || 'Code verified!');
@@ -446,14 +473,13 @@ window.addEventListener('message', (event) => {
       switchTab('forgot3');
     }, 1500);
     // Re-enable all buttons for next step
-    if (forgotStep1Submit) forgotStep1Submit.disabled = false;
-    if (forgotStep2Submit) forgotStep2Submit.disabled = false;
-    if (forgotStep3Submit) forgotStep3Submit.disabled = false;
+    setControlsDisabled(false);
   } else if (message.type === 'passwordReset') {
+    clearRequestTimeout();
     hideLoading();
     showSuccess(message.message || 'Password reset successfully!');
     // Re-enable button immediately before switching
-    if (forgotStep3Submit) forgotStep3Submit.disabled = false;
+    setControlsDisabled(false);
     setTimeout(() => {
       hideError();
       resetErrorStyles();
@@ -464,10 +490,11 @@ window.addEventListener('message', (event) => {
       switchTab('signin');
     }, 2000);
   } else if (message.type === 'googleOpened') {
+    clearRequestTimeout();
     // Show info message that browser was opened
     hideLoading();
     showSuccess(message.message || 'Browser opened. Complete sign-in there.');
-    googleBtn.disabled = true;
+    setControlsDisabled(false);
   }
 });
 
