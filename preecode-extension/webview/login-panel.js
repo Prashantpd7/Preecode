@@ -445,10 +445,15 @@ window.addEventListener('message', (event) => {
       resetErrorStyles();
       switchTab('forgot3');
     }, 1500);
+    // Re-enable all buttons for next step
+    if (forgotStep1Submit) forgotStep1Submit.disabled = false;
     if (forgotStep2Submit) forgotStep2Submit.disabled = false;
+    if (forgotStep3Submit) forgotStep3Submit.disabled = false;
   } else if (message.type === 'passwordReset') {
     hideLoading();
     showSuccess(message.message || 'Password reset successfully!');
+    // Re-enable button immediately before switching
+    if (forgotStep3Submit) forgotStep3Submit.disabled = false;
     setTimeout(() => {
       hideError();
       resetErrorStyles();
@@ -458,7 +463,6 @@ window.addEventListener('message', (event) => {
       if (confirmPassword) confirmPassword.value = '';
       switchTab('signin');
     }, 2000);
-    if (forgotStep3Submit) forgotStep3Submit.disabled = false;
   } else if (message.type === 'googleOpened') {
     // Show info message that browser was opened
     hideLoading();
