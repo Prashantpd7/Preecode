@@ -33,6 +33,19 @@ function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
       var completeUrl = ${JSON.stringify(completeUrl)};
+      var moved = false;
+
+      function moveToCompletePage() {
+        if (moved) {
+          return;
+        }
+        moved = true;
+        try {
+          window.location.replace(completeUrl);
+        } catch (e) {
+          // ignore
+        }
+      }
 
       function triggerVsCode() {
         try {
@@ -45,14 +58,16 @@ function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
       // Step 3: browser app-launch prompt
       triggerVsCode();
 
-      // Step 6: browser fallback page right after prompt appears
-      setTimeout(function () {
-        try {
-          window.location.replace(completeUrl);
-        } catch (e) {
-          // ignore
+      // Step 6 should happen immediately after user accepts browser popup.
+      window.addEventListener('blur', moveToCompletePage, { once: true });
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          moveToCompletePage();
         }
-      }, 900);
+      });
+
+      // Fallback in case blur/visibility events are not fired by the browser.
+      setTimeout(moveToCompletePage, 900);
     })();
   </script>
   <noscript>
