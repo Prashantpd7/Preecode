@@ -111,6 +111,7 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       <a id="openBtn" class="btn" href="${safeDeepLink}">Open Visual Studio Code</a>
       <a class="link" href="${safeDeepLink}">Try deep link again</a>
     </div>
+    <p id="finalHint" style="margin-top:12px;color:#86efac;display:none;">You are logged in to your account. If you are not redirected to VS Code, switch to VS Code manually.</p>
     <code>${safeDeepLink}</code>
   </main>
 
@@ -119,6 +120,7 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       var deepLink = ${JSON.stringify(deepLink)};
       var status = document.getElementById('status');
       var openBtn = document.getElementById('openBtn');
+      var finalHint = document.getElementById('finalHint');
 
       function openVsCode() {
         try {
@@ -141,7 +143,29 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       // Keep this page stable and informative instead of appearing stuck.
       setTimeout(function () {
         status.textContent = 'You are logged in. If VS Code did not open, click "Open Visual Studio Code" or switch to VS Code manually.';
+        if (finalHint) {
+          finalHint.style.display = 'block';
+        }
+        try {
+          window.stop();
+        } catch (e) {
+          // ignore
+        }
       }, 1800);
+
+      // Final settle pass so browser tab stops showing spinner-like state.
+      setTimeout(function () {
+        try {
+          history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) {
+          // ignore
+        }
+        try {
+          document.title = 'Preecode Login Complete';
+        } catch (e) {
+          // ignore
+        }
+      }, 2600);
     })();
   </script>
 </body>
