@@ -84,9 +84,6 @@ function renderVsCodeLaunchPage(res, deepLink) {
       triggerVsCode();
     })();
   </script>
-  <noscript>
-    <a href="${safeDeepLink}">Open Visual Studio Code</a>
-  </noscript>
 </body>
 </html>`);
 }
