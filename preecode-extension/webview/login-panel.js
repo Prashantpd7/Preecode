@@ -61,7 +61,6 @@ function startRequestTimeout() {
   activeRequestTimeout = window.setTimeout(() => {
     hideLoading();
     setControlsDisabled(false);
-    showError('Request timed out. Please try again.');
   }, 15000);
 }
 
