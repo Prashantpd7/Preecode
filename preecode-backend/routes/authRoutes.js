@@ -32,8 +32,6 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       --ok-bg: #052e16;
       --ok-border: #166534;
       --ok-text: #86efac;
-      --btn: #f59e0b;
-      --btn-text: #1f2937;
     }
     * { box-sizing: border-box; }
     body {
@@ -66,60 +64,19 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       font-size: 14px;
       margin-bottom: 12px;
     }
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 6px;
-    }
-    .btn {
-      display: inline-block;
-      text-decoration: none;
-      border-radius: 8px;
-      border: none;
-      background: var(--btn);
-      color: var(--btn-text);
-      font-weight: 700;
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-    .link {
-      color: #93c5fd;
-      text-decoration: none;
-      font-size: 13px;
-    }
-    code {
-      display: block;
-      margin-top: 12px;
-      padding: 10px;
-      border-radius: 8px;
-      background: #0b1220;
-      border: 1px solid #1f2937;
-      color: #cbd5e1;
-      font-size: 11px;
-      word-break: break-all;
-    }
   </style>
 </head>
 <body>
   <main class="card">
     <h2>Login complete</h2>
     <div class="ok" id="status">You are logged in. Opening Visual Studio Code...</div>
-    <p>If Visual Studio Code is not opened automatically, use the button below. You can then return to VS Code manually.</p>
-    <div class="actions">
-      <a id="openBtn" class="btn" href="${safeDeepLink}">Open Visual Studio Code</a>
-      <a class="link" href="${safeDeepLink}">Try deep link again</a>
-    </div>
-    <p id="finalHint" style="margin-top:12px;color:#86efac;display:none;">You are logged in to your account. If you are not redirected to VS Code, switch to VS Code manually.</p>
-    <code>${safeDeepLink}</code>
+    <p id="finalHint" style="margin-top:12px;color:#86efac;">If Visual Studio Code is not opened automatically, you can open manually.</p>
   </main>
 
   <script>
     (function () {
       var deepLink = ${JSON.stringify(deepLink)};
       var status = document.getElementById('status');
-      var openBtn = document.getElementById('openBtn');
       var finalHint = document.getElementById('finalHint');
 
       function openVsCode() {
@@ -130,12 +87,6 @@ function renderVsCodeRedirectBridge(res, deepLink) {
         }
       }
 
-      if (openBtn) {
-        openBtn.addEventListener('click', function () {
-          status.textContent = 'Attempting to open Visual Studio Code...';
-        });
-      }
-
       // Attempt once immediately and once shortly after for reliability.
       openVsCode();
       setTimeout(openVsCode, 500);
@@ -143,9 +94,6 @@ function renderVsCodeRedirectBridge(res, deepLink) {
       // Keep this page stable and informative instead of appearing stuck.
       setTimeout(function () {
         status.textContent = 'You are logged in. If VS Code did not open, click "Open Visual Studio Code" or switch to VS Code manually.';
-        if (finalHint) {
-          finalHint.style.display = 'block';
-        }
         try {
           window.stop();
         } catch (e) {
