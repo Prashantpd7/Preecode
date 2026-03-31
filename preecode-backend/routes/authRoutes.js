@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 
 router.get('/redirect-complete', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(`<!doctype html>
 <html lang="en">
@@ -110,7 +114,7 @@ router.get(
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const origin = `${req.protocol}://${req.get('host')}`;
-      const postLoginUrl = `${origin}/api/auth/redirect-complete`;
+      const postLoginUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(postLoginUrl)}`;
       console.log('[auth] Redirecting directly to VS Code:', vscodeUri);
       return res.redirect(vscodeUri);
