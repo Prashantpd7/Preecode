@@ -4,67 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
-function escapeHtml(text = '') {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
-  const safeDeepLink = escapeHtml(deepLink);
-  const safeCompleteUrl = escapeHtml(completeUrl);
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.setHeader('Surrogate-Control', 'no-store');
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Preecode Redirect</title>
-</head>
-<body>
-  <script>
-    (function () {
-      var deepLink = ${JSON.stringify(deepLink)};
-      var completeUrl = ${JSON.stringify(completeUrl)};
-
-      function openVsCode() {
-        try {
-          window.location.href = deepLink;
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      // Trigger browser app-launch popup first.
-      openVsCode();
-
-      // Move browser away from Google chooser to final fallback page.
-      setTimeout(function () {
-        try {
-          window.location.replace(completeUrl);
-        } catch (e) {
-          // ignore
-        }
-      }, 120);
-    })();
-  </script>
-  <noscript>
-    <a href="${safeDeepLink}">Open Visual Studio Code</a>
-    <a href="${safeCompleteUrl}">Continue</a>
-  </noscript>
-</body>
-</html>`);
-}
-
 router.get('/redirect-complete', (req, res) => {
-  const deepLink = typeof req.query.dl === 'string' ? req.query.dl : '';
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -113,32 +53,6 @@ router.get('/redirect-complete', (req, res) => {
     <h2>Login complete</h2>
     <p>If Visual Studio Code is not opened automatically, you can open manually.</p>
   </main>
-  <script>
-    (function () {
-      var deepLink = ${JSON.stringify(deepLink)};
-      if (!deepLink || deepLink.indexOf('vscode://') !== 0) {
-        return;
-      }
-
-      var tries = 0;
-      var maxTries = 4;
-
-      function attemptOpen() {
-        tries += 1;
-        try {
-          window.location.href = deepLink;
-        } catch (e) {
-          // ignore
-        }
-        if (tries < maxTries) {
-          setTimeout(attemptOpen, 700);
-        }
-      }
-
-      // Retry from fallback page so login continues even if first launch is dropped.
-      setTimeout(attemptOpen, 120);
-    })();
-  </script>
 </body>
 </html>`);
 });
@@ -196,14 +110,14 @@ router.get(
       res.clearCookie('oauth_redirect');
     }
 
-    // If redirect is a VS Code URI, redirect directly so browser triggers app handoff.
+    // If redirect is a VS Code URI, do direct redirect for reliable instant app handoff.
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const origin = `${req.protocol}://${req.get('host')}`;
-      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}&dl=${encodeURIComponent(vscodeUri)}`;
-      console.log('[auth] Launching VS Code then showing fallback page:', vscodeUri);
-      return renderVsCodeLaunchPage(res, vscodeUri, completeUrl);
+      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
+      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(completeUrl)}`;
+      console.log('[auth] Redirecting directly to VS Code:', vscodeUri);
+      return res.redirect(vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
