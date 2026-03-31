@@ -202,12 +202,15 @@ router.get(
       res.clearCookie('oauth_redirect');
     }
 
-    // VS Code auth flow: trigger deep-link prompt, then move browser to fallback page.
+    // VS Code auth flow: direct deep-link redirect for reliable app handoff.
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
+      const origin = `${req.protocol}://${req.get('host')}`;
+      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      console.log('[auth] Triggering VS Code prompt then fallback page:', vscodeUri);
-      return renderVsCodeLaunchPage(res, vscodeUri);
+      const vscodeUriWithPostLogin = `${vscodeUri}&postLogin=${encodeURIComponent(completeUrl)}`;
+      console.log('[auth] Redirecting directly to VS Code:', vscodeUriWithPostLogin);
+      return res.redirect(vscodeUriWithPostLogin);
     }
 
     // For web logins, redirect to frontend callback page
