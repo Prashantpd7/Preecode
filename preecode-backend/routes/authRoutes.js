@@ -64,6 +64,7 @@ function renderVsCodeLaunchPage(res, deepLink, completeUrl) {
 }
 
 router.get('/redirect-complete', (req, res) => {
+  const deepLink = typeof req.query.dl === 'string' ? req.query.dl : '';
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -112,6 +113,32 @@ router.get('/redirect-complete', (req, res) => {
     <h2>Login complete</h2>
     <p>If Visual Studio Code is not opened automatically, you can open manually.</p>
   </main>
+  <script>
+    (function () {
+      var deepLink = ${JSON.stringify(deepLink)};
+      if (!deepLink || deepLink.indexOf('vscode://') !== 0) {
+        return;
+      }
+
+      var tries = 0;
+      var maxTries = 4;
+
+      function attemptOpen() {
+        tries += 1;
+        try {
+          window.location.href = deepLink;
+        } catch (e) {
+          // ignore
+        }
+        if (tries < maxTries) {
+          setTimeout(attemptOpen, 700);
+        }
+      }
+
+      // Retry from fallback page so login continues even if first launch is dropped.
+      setTimeout(attemptOpen, 120);
+    })();
+  </script>
 </body>
 </html>`);
 });
@@ -173,8 +200,8 @@ router.get(
     if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
       const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
       const origin = `${req.protocol}://${req.get('host')}`;
-      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
+      const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}&dl=${encodeURIComponent(vscodeUri)}`;
       console.log('[auth] Launching VS Code then showing fallback page:', vscodeUri);
       return renderVsCodeLaunchPage(res, vscodeUri, completeUrl);
     }
