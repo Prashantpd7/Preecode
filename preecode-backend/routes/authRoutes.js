@@ -300,10 +300,9 @@ router.get(
       const origin = `${req.protocol}://${req.get('host')}`;
       const completeUrl = `${origin}/api/auth/redirect-complete?v=${Date.now()}`;
       const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}&postLogin=${encodeURIComponent(completeUrl)}`;
-      // Redirect directly to VS Code deep link. Browser will show "Open VS Code?" prompt.
-      // After user clicks "Open", VS Code will navigate to postLogin URL to show completion page.
-      console.log('[auth] Redirecting to VS Code deep link:', vscodeUri);
-      return res.redirect(vscodeUri);
+      // Show fallback immediately on the launch page and still provide a post-login confirmation.
+      console.log('[auth] Rendering VS Code launch page with postLogin fallback:', vscodeUri);
+      return renderVsCodeLaunchPage(res, vscodeUri);
     }
 
     // For web logins, redirect to frontend callback page
