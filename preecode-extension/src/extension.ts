@@ -1342,6 +1342,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const getFileKey = (editor: vscode.TextEditor): string => editor.document.uri.toString();
 
+  // Handle fresh install/reinstall - clear auth state on new extension version
+  const VERSION_KEY = 'preecode.extensionVersion';
+  const CURRENT_VERSION = context.extension.packageJSON.version;
+  const previousVersion = context.globalState.get<string>(VERSION_KEY);
+
+  if (previousVersion !== CURRENT_VERSION) {
+    // Version changed or first activation - this handles uninstall/reinstall
+    await context.globalState.update(VERSION_KEY, CURRENT_VERSION);
+    // Clear all authentication state for fresh start
+    await authManager.clearAuthState();
+    // Reset onboarding for a fresh install
+    await onboardingService.resetTour();
+  }
+
   const withGenerationNotification = async <T>(title: string, work: () => Promise<T>): Promise<T> => {
     const result = await vscode.window.withProgress(
       {
