@@ -217,6 +217,23 @@ export class AuthManager implements vscode.UriHandler {
     }));
   }
 
+  async clearAuthState(): Promise<void> {
+    // Clear both secret storage and workspace state for a complete fresh start
+    await deleteToken(this.context);
+    await this.context.workspaceState.update('preecode.cachedUser', undefined);
+    preecodeStore.setState((state) => ({
+      ...state,
+      user: {
+        isAuthenticated: false,
+        userId: null,
+        username: null,
+        email: null,
+        avatarUrl: null,
+        token: null
+      }
+    }));
+  }
+
   private async fetchCurrentUser(token: string): Promise<UserLookupResult> {
     try {
       const response = await doFetch(`${API_BASE}/users/me`, {
