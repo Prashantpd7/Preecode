@@ -20,6 +20,8 @@ export interface ControlCenterHandlers {
   onDebugNavigate: (direction: 'prev' | 'next') => Promise<void>;
   onDebugAsk: (text: string) => Promise<void>;
   onLogin: () => Promise<void>;
+  onTourStep: (step: string) => Promise<void>;
+  onSidebarOpened: () => Promise<void>;
 }
 
 export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
@@ -49,6 +51,9 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
     this.unsubscribe = preecodeStore.subscribe((state) => {
       this.postState(state);
     });
+
+    // Notify when sidebar opens for onboarding
+    void this.handlers.onSidebarOpened();
 
     view.webview.onDidReceiveMessage(async (message: { type: string; payload?: any; action?: string; height?: number; startLine?: number; endLine?: number; direction?: 'prev' | 'next' }) => {
       if (message.type === 'quickAction' && message.action) {
@@ -104,6 +109,11 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
         return;
       }
 
+      if (message.type === 'tourStep' && message.payload) {
+        await this.handlers.onTourStep(message.payload);
+        return;
+      }
+
       if (message.type === 'openDashboard') {
         const url = `${getFrontendUrl()}/pages/dashboard.html`;
         await vscode.env.openExternal(vscode.Uri.parse(url));
@@ -138,6 +148,11 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
     this.webviewView?.webview.postMessage({
       type: 'state',
       payload: state
+    });
+    // Also send onboarding state separately for webview to handle
+    this.webviewView?.webview.postMessage({
+      type: 'onboarding',
+      payload: state.onboarding
     });
   }
 
