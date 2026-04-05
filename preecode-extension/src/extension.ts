@@ -8,6 +8,7 @@ import { preecodeStore } from './state/store';
 import { RunDetectionService } from './timer/runDetectionService';
 import { PracticeTimerService } from './timer/practiceTimerService';
 import { ControlCenterViewProvider } from './views/controlCenterView';
+import { OnboardingService } from './onboarding/onboardingService';
 
 dotenv.config({
   path: path.resolve(__dirname, '../.env')
@@ -1324,6 +1325,7 @@ async function generateDebugLineExplanation(
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const authManager = new AuthManager(context);
+  const onboardingService = new OnboardingService(context);
   const timerService = new PracticeTimerService();
   const runDetectionService = new RunDetectionService(timerService);
   const backendSyncService = new BackendSyncService();
@@ -1360,6 +1362,72 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   await authManager.restoreSession();
+
+  // Initialize onboarding
+  await onboardingService.init();
+  const initialOnboardingState = onboardingService.getState();
+  preecodeStore.setState((state) => ({
+    ...state,
+    onboarding: {
+      isActive: initialOnboardingState.isActive,
+      currentStep: initialOnboardingState.currentStep,
+      isCompleted: initialOnboardingState.isCompleted
+    }
+  }));
+
+  // Show "Click Preecode icon" message when tour starts
+  const unsubscribeOnboardingStart = preecodeStore.subscribe((state) => {
+    if (state.onboarding.currentStep === 'click-sidebar-icon' && state.onboarding.isActive) {
+      // Auto-transition to next step after sidebar opens (300ms delay)
+      setTimeout(async () => {
+        await onboardingService.nextStep('sidebar-open');
+        const updatedState = onboardingService.getState();
+        preecodeStore.setState((s) => ({
+          ...s,
+          onboarding: {
+            isActive: updatedState.isActive,
+            currentStep: updatedState.currentStep,
+            isCompleted: updatedState.isCompleted
+          }
+        }));
+      }, 500);
+    }
+  });
+
+  context.subscriptions.push({
+    dispose: () => unsubscribeOnboardingStart()
+  });
+
+  // Track auth state for onboarding
+  let lastAuthState = false;
+  const unsubscribeOnboarding = preecodeStore.subscribe((state) => {
+    const isNowAuthenticated = state.user.isAuthenticated;
+    const wasAuthenticated = lastAuthState;
+    lastAuthState = isNowAuthenticated;
+
+    // Detect transition from not logged in to logged in
+    if (!wasAuthenticated && isNowAuthenticated && state.onboarding.isActive && state.onboarding.currentStep === 'login') {
+      // Wait for UI to fully render, then move to next step
+      setTimeout(async () => {
+        await onboardingService.nextStep('start-practicing');
+        const updatedState = onboardingService.getState();
+        preecodeStore.setState((s) => ({
+          ...s,
+          onboarding: {
+            isActive: updatedState.isActive,
+            currentStep: updatedState.currentStep,
+            isCompleted: updatedState.isCompleted
+          }
+        }));
+        // Show transition message
+        void vscode.window.showInformationMessage('🎉 Great! You\'re logged in. Now let\'s explore features!');
+      }, 400);
+    }
+  });
+
+  context.subscriptions.push({
+    dispose: () => unsubscribeOnboarding()
+  });
 
   let lastAuthSyncAt = 0;
   const syncAuthIfNeeded = async (): Promise<void> => {
@@ -2338,6 +2406,50 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     onNewChat: async () => {
       await resetChat();
     },
+    onTourStep: async (step: string) => {
+      // Handle tour step progression
+      if (step === 'click-sidebar-icon') {
+        await onboardingService.nextStep('click-sidebar-icon');
+      } else if (step === 'sidebar-open') {
+        await onboardingService.nextStep('sidebar-open');
+      } else if (step === 'login') {
+        await onboardingService.nextStep('login');
+      } else if (step === 'start-practicing') {
+        await onboardingService.nextStep('start-practicing');
+      } else if (step === 'debug-code') {
+        await onboardingService.nextStep('debug-code');
+      } else if (step === 'fix-code') {
+        await onboardingService.nextStep('fix-code');
+      } else if (step === 'explain-selection') {
+        await onboardingService.nextStep('explain-selection');
+      } else if (step === 'review-code') {
+        await onboardingService.nextStep('review-code');
+      } else if (step === 'ai-chat') {
+        await onboardingService.nextStep('ai-chat');
+      } else if (step === 'dashboard') {
+        await onboardingService.nextStep('dashboard');
+      } else if (step === 'profile') {
+        await onboardingService.nextStep('profile');
+      } else if (step === 'completed') {
+        await onboardingService.completeTour();
+      }
+
+      // Update store with new onboarding state
+      const updatedState = onboardingService.getState();
+      preecodeStore.setState((state) => ({
+        ...state,
+        onboarding: {
+          isActive: updatedState.isActive,
+          currentStep: updatedState.currentStep,
+          isCompleted: updatedState.isCompleted
+        }
+      }));
+    },
+    onSidebarOpened: async () => {
+      // Sidebar opened - this is called whenever the sidebar is opened
+      // No need to do anything special since we auto-open on tour start
+      console.log('Preecode sidebar opened');
+    },
     onDebugStart: async (startLine, endLine) => {
       const active = vscode.window.activeTextEditor;
       if (!active) {
@@ -2478,6 +2590,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('preecode.openControlCenter', async () => {
       await vscode.commands.executeCommand('workbench.view.extension.preecode');
+    }),
+    vscode.commands.registerCommand('preecode.restartTour', async () => {
+      await onboardingService.resetTour();
+      await onboardingService.startTour();
+      preecodeStore.setState((state) => ({
+        ...state,
+        onboarding: {
+          isActive: true,
+          currentStep: 'sidebar-open',
+          isCompleted: false
+        }
+      }));
+      // Show info message
+      void vscode.window.showInformationMessage('Tour restarted! Open the Preecode sidebar to begin.');
     })
   );
 

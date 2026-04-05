@@ -44,6 +44,12 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface OnboardingState {
+  isActive: boolean;
+  currentStep: 'none' | 'initial-popup' | 'click-sidebar-icon' | 'sidebar-open' | 'login' | 'start-practicing' | 'debug-code' | 'fix-code' | 'explain-selection' | 'review-code' | 'ai-chat' | 'dashboard' | 'profile' | 'completed';
+  isCompleted: boolean;
+}
+
 export interface PreecodeState {
   user: UserSession;
   syncStatus: SyncStatus;
@@ -51,6 +57,7 @@ export interface PreecodeState {
   lastSyncAt: number | null;
   editor: EditorState;
   practice: PracticeState;
+  onboarding: OnboardingState;
   chat: {
     dockHeight: number;
     messages: ChatMessage[];
@@ -95,6 +102,11 @@ export const initialPreecodeState: PreecodeState = {
     solutionViewed: false,
     success: false,
     runStatus: 'idle'
+  },
+  onboarding: {
+    isActive: false,
+    currentStep: 'none',
+    isCompleted: false
   },
   chat: {
     dockHeight: 168,

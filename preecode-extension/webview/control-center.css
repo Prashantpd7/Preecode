@@ -720,3 +720,316 @@ body {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: 1px;
 }
+
+/* Onboarding Styles */
+.onboarding-highlight {
+  background: color-mix(in srgb, var(--vscode-statusBar-focusBorder, #007acc) 30%, var(--accent) 70%) !important;
+  box-shadow: 0 0 0 2px var(--vscode-statusBar-focusBorder, #007acc) inset !important;
+  border-radius: 8px;
+  animation: onboarding-pulse 2s infinite;
+  position: relative;
+  z-index: 10002;
+}
+
+.onboarding-highlight-box {
+  position: fixed;
+  border: 2px solid var(--vscode-statusBar-focusBorder, #007acc);
+  border-radius: 12px;
+  pointer-events: none;
+  animation: onboarding-pulse-border 2s infinite;
+  z-index: 10001;
+}
+
+@keyframes onboarding-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px var(--vscode-statusBar-focusBorder, #007acc) inset,
+                0 0 0 0 rgba(0, 122, 204, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--vscode-statusBar-focusBorder, #007acc) inset,
+                0 0 30px 10px rgba(0, 122, 204, 0.4);
+  }
+}
+
+@keyframes onboarding-pulse-border {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.onboarding-loading {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  font-size: 13px;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Sidebar Icon Pointer */
+.sidebar-icon-pointer {
+  position: fixed;
+  top: 60px;
+  left: 15px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pointer-beacon {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.beacon-light {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(0, 122, 204, 0.8) 0%, rgba(0, 122, 204, 0.3) 70%, transparent 100%);
+  border-radius: 50%;
+  animation: beacon-pulse 2s ease-in-out infinite;
+}
+
+.beacon-ring {
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  border: 3px solid var(--vscode-statusBar-focusBorder, #007acc);
+  border-radius: 50%;
+  animation: beacon-ring-pulse 2s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+.pointer-arrow {
+  font-size: 28px;
+  animation: arrow-bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes beacon-pulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes beacon-ring-pulse {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+}
+
+@keyframes arrow-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+.onboarding-loading {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  font-size: 13px;
+  z-index: 9998;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.onboarding-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.onboarding-tooltip {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px;
+  max-width: 280px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  z-index: 10001;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.2s ease;
+  pointer-events: auto;
+}
+
+.onboarding-overlay.active .onboarding-tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.onboarding-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
+.onboarding-message {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.onboarding-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.onboarding-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+}
+
+.onboarding-btn.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.onboarding-btn.primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.onboarding-btn.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.onboarding-btn.secondary:hover {
+  background: var(--surface);
+}
+
+.onboarding-completion {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: color-mix(in srgb, var(--vscode-editorWidget-background), #000 20%);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  z-index: 10002;
+  max-width: 400px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+  animation: onboarding-pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.completion-content {
+  color: var(--text);
+}
+
+.completion-emoji {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.completion-content h2 {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.completion-content p {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+@keyframes onboarding-pop-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

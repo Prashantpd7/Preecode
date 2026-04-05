@@ -7,7 +7,12 @@ const state = {
   isAuthenticated: false,
   userResizedChat: false,
   editorLanguage: 'plaintext',
-  practiceDifficulty: 'easy'
+  practiceDifficulty: 'easy',
+  onboarding: {
+    isActive: false,
+    currentStep: 'none',
+    isCompleted: false
+  }
 };
 
 let lastChatSignature = '';
@@ -353,6 +358,288 @@ function applyState(payload) {
   }
 }
 
+function applyOnboardingUI(onboardingState) {
+  if (!onboardingState.isActive) {
+    hideAllOnboardingElements();
+    return;
+  }
+
+  const step = onboardingState.currentStep;
+  console.log('Applying onboarding UI for step:', step);
+
+  hideAllOnboardingElements();
+
+  if (step === 'click-sidebar-icon') {
+    // This step is auto-skipped since sidebar opens automatically
+    console.log('Sidebar opening automatically, skipping click-sidebar-icon step...');
+  } else if (step === 'sidebar-open') {
+    // Step 1: Sidebar just opened - show login button
+    showOnboardingTooltip(
+      loginBtn,
+      '👋 Welcome to Preecode!',
+      'Click "Login" to connect your account and unlock all features.',
+      'next',
+      () => vscode.postMessage({ type: 'tourStep', payload: 'login' })
+    );
+  } else if (step === 'login') {
+    // Waiting for login - show subtle message
+    console.log('Waiting for user to login...');
+    showOnboardingLoadingMessage('Waiting for login...');
+  } else if (step === 'start-practicing') {
+    // Step 2: Highlight the Start Practicing button
+    const startPracticeBtn = toolsFlow?.querySelector('[data-action="practice"]') ||
+                           document.querySelector('[data-mode-target="practice"]');
+
+    showOnboardingTooltip(
+      startPracticeBtn,
+      '🎯 Start Practicing',
+      'Solve coding questions to improve your skills.',
+      'next',
+      () => vscode.postMessage({ type: 'tourStep', payload: 'debug-code' })
+    );
+  } else if (step === 'debug-code') {
+    // Highlight Debug Code button
+    const debugBtn = document.querySelector('[data-action="debug"]');
+    showOnboardingTooltip(
+      debugBtn,
+      '🐛 Debug Code',
+      'Step through your code line-by-line to see what happens.',
+      'next',
+      () => vscode.postMessage({ type: 'tourStep', payload: 'fix-code' })
+    );
+  } else if (step === 'fix-code') {
+    // Highlight Fix Code button
+    const fixBtn = document.querySelector('[data-action="fix"]');
+    showOnboardingTooltip(
+      fixBtn,
+      '🔧 Fix Code',
+      'Automatically find and fix errors in your code.',
+      'next',
+      () => vscode.postMessage({ type: 'tourStep', payload: 'explain-selection' })
+    );
+  } else if (step === 'explain-selection') {
+    // Highlight Explain Selection button
+    showOnboardingTooltip(
+      explainSelectionBtn,
+      '💡 Explain Code',
+      'Select any code snippet and get a simple explanation.',
+      'next',
+      () => vscode.postMessage({ type: 'tourStep', payload: 'review-code' })
+    );
+  } else if (step === 'review-code') {
+    // Highlight Review Code button
+    showOnboardingTooltip(
+      reviewCodeBtn,
+      '👁️ Review Code',
+      'Get professional feedback on code quality and improvements.',
+      'next',
+      () => vscode.postMessage({ type: 'tourStep', payload: 'ai-chat' })
+    );
+  } else if (step === 'ai-chat') {
+    // Highlight AI Chat input
+    const chatInput = document.querySelector('#chatInput');
+    showOnboardingTooltip(
+      chatInput,
+      '💬 Ask Preecode AI',
+      'Ask anything about coding, debugging, or how to use these tools.',
+      'finish',
+      () => {
+        vscode.postMessage({ type: 'tourStep', payload: 'completed' });
+        showOnboardingCompletion();
+      }
+    );
+  }
+}
+
+function hideAllOnboardingElements() {
+  const existing = document.querySelectorAll('.onboarding-overlay, .onboarding-tooltip, .onboarding-loading, .onboarding-highlight, .onboarding-highlight-box, .sidebar-icon-pointer');
+  existing.forEach(el => {
+    if (el.classList.contains('onboarding-highlight')) {
+      el.classList.remove('onboarding-highlight');
+    } else {
+      el.remove();
+    }
+  });
+}
+
+function showOnboardingLoadingMessage(text) {
+  const loading = document.createElement('div');
+  loading.className = 'onboarding-loading';
+  loading.innerHTML = `
+    <div class="loading-spinner"></div>
+    <span>${text}</span>
+  `;
+  document.body.appendChild(loading);
+}
+
+function showSidebarIconPointer() {
+  // Create a visual arrow/beacon pointing to the sidebar icon
+  const pointer = document.createElement('div');
+  pointer.className = 'sidebar-icon-pointer';
+  pointer.innerHTML = `
+    <div class="pointer-beacon">
+      <div class="beacon-light"></div>
+      <div class="beacon-ring"></div>
+    </div>
+    <div class="pointer-arrow">👇</div>
+  `;
+  document.body.appendChild(pointer);
+}
+
+function showOnboardingTooltip(targetElement, title, message, buttonType, onNext) {
+  if (!targetElement) {
+    console.warn('Target element not found for onboarding. Title:', title);
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'onboarding-overlay';
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'onboarding-tooltip';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'onboarding-title';
+  titleEl.textContent = title;
+
+  const messageEl = document.createElement('div');
+  messageEl.className = 'onboarding-message';
+  messageEl.textContent = message;
+
+  const buttonContainer = document.createElement('div');
+  buttonContainer.className = 'onboarding-buttons';
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'onboarding-btn primary';
+  nextBtn.textContent = buttonType === 'finish' ? '✨ Finish Tour' : 'Next →';
+  nextBtn.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAllOnboardingElements();
+    onNext();
+  };
+
+  const skipBtn = document.createElement('button');
+  skipBtn.className = 'onboarding-btn secondary';
+  skipBtn.textContent = 'Skip';
+  skipBtn.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAllOnboardingElements();
+    vscode.postMessage({ type: 'tourStep', payload: 'completed' });
+  };
+
+  buttonContainer.appendChild(nextBtn);
+  buttonContainer.appendChild(skipBtn);
+
+  tooltip.appendChild(titleEl);
+  tooltip.appendChild(messageEl);
+  tooltip.appendChild(buttonContainer);
+
+  // Create a visual border box around the element
+  const highlightBox = document.createElement('div');
+  highlightBox.className = 'onboarding-highlight-box';
+  document.body.appendChild(highlightBox);
+
+  // Add highlight effect to the button itself
+  targetElement.classList.add('onboarding-highlight');
+
+  overlay.appendChild(tooltip);
+  document.body.appendChild(overlay);
+
+  setTimeout(() => {
+    const rect = targetElement.getBoundingClientRect();
+    const tooltipWidth = 300;
+    const tooltipHeight = 160;
+    const padding = 15;
+    const minLeftMargin = 75; // Space from left panel (0.5cm + left panel width)
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Always position to the right, aligned with button's left edge or slightly right
+    let tooltipLeft = rect.left + rect.width / 2;
+    let tooltipTop = rect.top - tooltipHeight - padding;
+
+    // Primary: Try to position to the right of button
+    if (rect.right + padding + tooltipWidth <= viewportWidth) {
+      tooltipLeft = rect.right + padding;
+      tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+    } else if (rect.left >= tooltipWidth + padding) {
+      // Secondary: If no space on right, try left side
+      tooltipLeft = rect.left - tooltipWidth - padding;
+      tooltipTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+    } else {
+      // Fallback: Position below the button
+      tooltipLeft = Math.max(minLeftMargin, Math.min(rect.left, viewportWidth - tooltipWidth - padding));
+      tooltipTop = rect.bottom + padding;
+    }
+
+    // Ensure tooltip stays within viewport with minimum left margin
+    if (tooltipLeft < minLeftMargin) {
+      tooltipLeft = minLeftMargin;
+    }
+    if (tooltipLeft + tooltipWidth > viewportWidth) {
+      tooltipLeft = viewportWidth - tooltipWidth - padding;
+    }
+    if (tooltipTop < padding) {
+      tooltipTop = padding;
+    }
+    if (tooltipTop + tooltipHeight > viewportHeight) {
+      tooltipTop = viewportHeight - tooltipHeight - padding;
+    }
+
+    tooltip.style.position = 'fixed';
+    tooltip.style.left = tooltipLeft + 'px';
+    tooltip.style.top = tooltipTop + 'px';
+
+    // Position highlight box around target element
+    if (highlightBox) {
+      highlightBox.style.position = 'fixed';
+      highlightBox.style.left = (rect.left - 5) + 'px';
+      highlightBox.style.top = (rect.top - 5) + 'px';
+      highlightBox.style.width = (rect.width + 10) + 'px';
+      highlightBox.style.height = (rect.height + 10) + 'px';
+    }
+
+    overlay.classList.add('active');
+  }, 100);
+}
+
+function showOnboardingCompletion() {
+  setTimeout(() => {
+    // Create overlay to dim background
+    const overlay = document.createElement('div');
+    overlay.className = 'onboarding-overlay';
+    overlay.style.zIndex = '10000';
+    document.body.appendChild(overlay);
+
+    const completion = document.createElement('div');
+    completion.className = 'onboarding-completion';
+    completion.innerHTML = `
+      <div class="completion-content">
+        <div class="completion-emoji">🎉</div>
+        <h2>You're all set!</h2>
+        <p>You've learned all the core features. Start practicing and improving your coding skills with Preecode!</p>
+      </div>
+    `;
+    const startBtn = document.createElement('button');
+    startBtn.className = 'onboarding-btn primary';
+    startBtn.textContent = 'Start Coding →';
+    startBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      completion.remove();
+      overlay.remove();
+    };
+    completion.querySelector('.completion-content').appendChild(startBtn);
+    document.body.appendChild(completion);
+
+    setTimeout(() => {
+      overlay.classList.add('active');
+    }, 10);
+  }, 300);
+}
+
 for (const btn of Array.from(document.querySelectorAll('[data-mode-target]'))) {
   btn.addEventListener('click', () => {
     const modeTarget = btn.getAttribute('data-mode-target');
@@ -578,5 +865,15 @@ window.addEventListener('message', (event) => {
     }
     renderDebugCode();
     updateDebugNavButtons();
+  }
+  if (message.type === 'onboarding') {
+    const payload = message.payload || {};
+    state.onboarding = {
+      isActive: Boolean(payload.isActive),
+      currentStep: String(payload.currentStep || 'none'),
+      isCompleted: Boolean(payload.isCompleted)
+    };
+    console.log('Onboarding state updated:', state.onboarding);
+    applyOnboardingUI(state.onboarding);
   }
 });
