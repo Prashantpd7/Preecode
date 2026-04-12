@@ -1,13 +1,11 @@
-import OpenAI from "openai";
 import * as vscode from 'vscode';
 
-function createOpenAIClient(): OpenAI | null {
-    const configKey = vscode.workspace.getConfiguration('preecode').get<string>('openaiApiKey') || '';
-    const apiKey = String(configKey || process.env.OPENAI_API_KEY || '').trim();
-    if (!apiKey) {
-        return null;
-    }
-    return new OpenAI({ apiKey });
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_MODEL = 'openai/gpt-oss-120b';
+
+function getOpenRouterApiKey(): string {
+    const apiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
+    return apiKey;
 }
 
 export async function generatePracticeQuestion(
@@ -16,14 +14,12 @@ export async function generatePracticeQuestion(
     difficulty: string,
     recentQuestions: string[] = []
 ): Promise<string> {
-    const openai = createOpenAIClient();
-    if (!openai) {
-        throw new Error('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
+    const openrouterApiKey = getOpenRouterApiKey();
+    if (!openrouterApiKey) {
+        throw new Error('OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable.');
     }
 
     try {
-
-        // 🔥 Language-specific enforcement
         let languageInstruction = "";
 
         if (language === "javascript") {
@@ -107,30 +103,46 @@ ${safeLanguage === 'python' ? `- For Python: Add execution block as:
 - Do not include any markdown or explanations.
 `;
 
-        const response = await openai.chat.completions.create({
-            model: process.env.OPENAI_MODEL_MINI || 'gpt-4o-mini',
-            messages: [
-                { role: "user", content: prompt }
-            ],
-            temperature: 0.9,
+        console.log('Using OpenRouter API');
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openrouterApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: OPENROUTER_MODEL,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.9,
+                max_tokens: 1500,
+            }),
         });
 
-        let rawText = response.choices[0].message.content || '';
+        if (!response.ok) {
+            const errorData: any = await response.json();
+            throw new Error(`OpenRouter API error: ${errorData.error?.message || 'Unknown error'}`);
+        }
 
-        // 🔥 Safe Cleanup Layer
-            rawText = rawText
-        .replace(/```[\w]*\n?/g, "")   // remove ```python or ```
-        .replace(/```/g, "")          // remove closing ```
+        const data: any = await response.json();
+        let rawText = data.choices?.[0]?.message?.content || '';
+
+        rawText = rawText
+        .replace(/```[\w]*\n?/g, "")
+        .replace(/```/g, "")
         .replace(/^\s*[=-]{3,}\s*$/gm, "")
         .replace(/Question:/gi, "")
         .trim();
-
 
         return rawText;
 
     } catch (error: any) {
         const errorMessage = error?.message || JSON.stringify(error);
-        console.error("OPENAI ERROR:", errorMessage, "Status:", error?.status);
-        throw new Error(errorMessage || 'OpenAI question generation failed.');
+        console.error("OpenRouter ERROR:", errorMessage, "Status:", error?.status);
+        throw new Error(errorMessage || 'OpenRouter question generation failed.');
     }
 }

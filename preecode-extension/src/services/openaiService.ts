@@ -1,296 +1,148 @@
 import * as vscode from 'vscode';
 
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_MODEL = 'openai/gpt-oss-120b';
 
-function getOpenAIApiKey(): string {
-	const configKey = vscode.workspace.getConfiguration('preecode').get<string>('openaiApiKey') || '';
-	return String(configKey || process.env.OPENAI_API_KEY || '').trim();
+function getOpenRouterApiKey(): string {
+    const apiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
+    return apiKey;
 }
 
-export async function generateQuestionExplanation(question: string, code: string, language: string): Promise<string> {
-	const OPENAI_API_KEY = getOpenAIApiKey();
-	if (!OPENAI_API_KEY) {
-		vscode.window.showErrorMessage('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
-		return '';
-	}
+export async function generatePracticeQuestion(
+    topic: string,
+    language: string,
+    difficulty: string,
+    recentQuestions: string[] = []
+): Promise<string> {
+    const openrouterApiKey = getOpenRouterApiKey();
+    if (!openrouterApiKey) {
+        throw new Error('OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable.');
+    }
 
-	try {
-		const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${OPENAI_API_KEY}`,
-			},
-			body: JSON.stringify({
-				model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
-				messages: [
-					{
-						role: 'system',
-						content: 'You are an expert code reviewer and teacher. Provide concise, helpful feedback on the submitted code solution.' 
-					},
-					{
-						role: 'user',
-						content: `Question: ${question}\n\nLanguage: ${language}\n\nSolution Code:\n${code}\n\nProvide helpful feedback and explain the approach.`
-					}
-				],
-				temperature: 0.7,
-				max_tokens: 500,
-			}),
-		});
+    try {
+        let languageInstruction = "";
 
-		if (!response.ok) {
-			const errorData = await response.json() as any;
-			vscode.window.showErrorMessage(`OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`);
-			return '';
-		}
+        if (language === "javascript") {
+            languageInstruction = `
+- Generate PURE JavaScript.
+- DO NOT use TypeScript type annotations.
+- DO NOT use ": number", ": string", "number[]", etc.
+- Do NOT write function signatures with types.
+`;
+        } else if (language === "typescript") {
+            languageInstruction = `
+- Generate proper TypeScript.
+- Type annotations are allowed.
+`;
+        } else if (language === "python") {
+            languageInstruction = `
+- Generate proper Python.
+- Do NOT use JavaScript syntax.
+`;
+        }
 
-		const data: any = await response.json();
-		return data.choices[0]?.message?.content || '';
-	} catch (error) {
-		console.error('OpenAI API Error:', error);
-		vscode.window.showErrorMessage(`Failed to get AI feedback: ${error instanceof Error ? error.message : 'Unknown error'}`);
-		return '';
-	}
-}
+        const safeDifficulty = String(difficulty || 'medium').trim().toLowerCase();
+        const safeTopic = String(topic || 'General').trim() || 'General';
+        const safeLanguage = String(language || 'plaintext').trim().toLowerCase() || 'plaintext';
+        const recentList = recentQuestions
+            .map((q) => q.trim())
+            .filter(Boolean)
+            .slice(0, 5)
+            .map((q, i) => `${i + 1}. ${q}`)
+            .join('\n');
 
-export async function detectTopic(question: string, code: string): Promise<string> {
-	const OPENAI_API_KEY = getOpenAIApiKey();
-	if (!OPENAI_API_KEY) {
-		return 'General';
-	}
+        const prompt = `
+    Generate ONE high-quality ${safeDifficulty} coding practice problem.
 
-	try {
-		const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${OPENAI_API_KEY}`,
-			},
-			body: JSON.stringify({
-				model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
-				messages: [
-					{
-						role: 'system',
-						content: 'You are a coding topic classifier. Return only one of these topics: Arrays, Strings, LinkedList, Trees, Graphs, Dynamic Programming, Sorting, Searching, Hashing, Stacks, Queues, Greedy, BackTracking, or General'
-					},
-					{
-						role: 'user',
-						content: `Classify this coding problem into ONE category:\n\nQuestion: ${question}\n\nCode:\n${code}`
-					}
-				],
-				temperature: 0.3,
-				max_tokens: 50,
-			}),
-		});
+    Topic focus: ${safeTopic}
+    Programming language for solution: ${safeLanguage}
 
-		if (!response.ok) {
-			return 'General';
-		}
+${languageInstruction}
 
-		const data: any = await response.json();
-		const topic = data.choices[0]?.message?.content?.trim() || 'General';
-		return topic;
-	} catch (error) {
-		console.error('Topic detection error:', error);
-		return 'General';
-	}
-}
+    Difficulty design rules:
+    - easy: basic logic, 1-2 core conditions, straightforward constraints.
+    - medium: combines multiple conditions/data rules, requires careful edge-case handling.
+    - hard: non-trivial constraints, trickier corner cases, and optimization awareness.
 
-export async function generateHint(question: string, language: string): Promise<string> {
-	const OPENAI_API_KEY = getOpenAIApiKey();
-	if (!OPENAI_API_KEY) {
-		return 'No hint available. Configure OpenAI API key.';
-	}
+    Variation rules:
+    - Create a different scenario and objective each time.
+    - Avoid repeating common cliches and avoid reusing exact wording.
+    - If recent questions are provided, do not generate the same or near-duplicate problem.
 
-	try {
-		const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${OPENAI_API_KEY}`,
-			},
-			body: JSON.stringify({
-				model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
-				messages: [
-					{
-						role: 'system',
-						content: 'You are a helpful programming mentor. Provide a single hint (not the solution) to help solve the problem.'
-					},
-					{
-						role: 'user',
-						content: `Give me ONE helpful hint for this problem:\n\nQuestion: ${question}\n\nLanguage: ${language}\n\nDo not provide the solution, only a hint.`
-					}
-				],
-				temperature: 0.7,
-				max_tokens: 200,
-			}),
-		});
+    Recent questions to avoid repeating:
+    ${recentList || '(none)'}
 
-		if (!response.ok) {
-			return 'Could not generate hint.';
-		}
+Return output STRICTLY in this format:
 
-		const data: any = await response.json();
-		return data.choices[0]?.message?.content || 'No hint available.';
-	} catch (error) {
-		console.error('Hint generation error:', error);
-		return 'Could not generate hint.';
-	}
-}
+[QUESTION]
+    Clear problem statement only, including input/output expectations and constraints.
 
-export type AssistantAction =
-	| 'debug'
-	| 'fix'
-	| 'explain'
-	| 'line_execution'
-	| 'optimize'
-	| 'find_bugs'
-	| 'improve_readability'
-	| 'chatbot';
+[HINT]
+    A concise, non-spoiler hint.
 
-export interface AssistantRequest {
-	action: AssistantAction;
-	code: string;
-	language: string;
-	diagnostics: string;
-	selectedLine?: number;
-	selectedText?: string;
-	fileName?: string;
-	chatPrompt?: string;
-}
+[SOLUTION]
+    Complete correct solution in ${safeLanguage}.
 
-export interface AssistantResponse {
-	problem: string;
-	reason: string;
-	step_by_step: string[] | string;
-	line_execution: string[] | string;
-	fixed_code: string;
-	suggestions: string[] | string;
-}
+Rules for [SOLUTION]:
+- DO NOT wrap the solution in markdown.
+- DO NOT use triple backticks.
+- Return raw code only inside [SOLUTION].
+- Do not add extra headings.
+- Do not add explanations outside blocks.
+- Do not remove the block labels.
+- Solution must be valid runnable ${safeLanguage} code.
+- Solution MUST include both function definition AND an execution block.
+- After defining the function, ALWAYS include a small execution block that:
+  * Calls the function with sample input.
+  * Prints or logs the result.
+${safeLanguage === 'python' ? `- For Python: Add execution block as:
+  if __name__ == "__main__":
+      print(function_name(sample_input))` : `- For ${language}: Add execution block as:
+  console.log(function_name(sample_input));`}
+- The code must be immediately runnable when user clicks Run.
+- Do not include any markdown or explanations.
+`;
 
-export async function requestAssistantChatText(prompt: string): Promise<string> {
-	const OPENAI_API_KEY = getOpenAIApiKey();
-	if (!OPENAI_API_KEY) {
-		throw new Error('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
-	}
+        console.log('Using OpenRouter API');
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openrouterApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: OPENROUTER_MODEL,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.9,
+                max_tokens: 1500,
+            }),
+        });
 
-	const response = await fetchWithFallback(`${OPENAI_BASE_URL}/chat/completions`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${OPENAI_API_KEY}`
-		},
-		body: JSON.stringify({
-			model: process.env.OPENAI_MODEL_MINI || 'gpt-4o-mini',
-			messages: [
-				{
-					role: 'system',
-					content: 'You are Preecode AI. Answer directly, accurately, and concisely. If asked for code output, compute it from the provided code.'
-				},
-				{ role: 'user', content: prompt }
-			],
-			temperature: 0.4,
-			max_tokens: 700
-		})
-	});
+        if (!response.ok) {
+            const errorData: any = await response.json();
+            throw new Error(`OpenRouter API error: ${errorData.error?.message || 'Unknown error'}`);
+        }
 
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}));
-		throw new Error(errorData.error?.message || 'OpenAI request failed.');
-	}
+        const data: any = await response.json();
+        let rawText = data.choices?.[0]?.message?.content || '';
 
-	const data: any = await response.json();
-	return String(data.choices?.[0]?.message?.content || '').trim();
-}
+        rawText = rawText
+        .replace(/```[\w]*\n?/g, "")
+        .replace(/```/g, "")
+        .replace(/^\s*[=-]{3,}\s*$/gm, "")
+        .replace(/Question:/gi, "")
+        .trim();
 
-async function fetchWithFallback(url: string, options: any): Promise<any> {
-	if ((globalThis as any).fetch) {
-		return (globalThis as any).fetch(url, options);
-	}
-	const mod = await import('node-fetch');
-	const fn = (mod && (mod.default || mod)) as any;
-	return fn(url, options);
-}
+        return rawText;
 
-function buildAssistantPrompt(request: AssistantRequest): string {
-	const selectedBlock = request.selectedText
-		? `Selected text:\n${request.selectedText}`
-		: 'Selected text: (none)';
-	const selectedLine = request.selectedLine
-		? `Selected line: ${request.selectedLine}`
-		: 'Selected line: (none)';
-
-	return [
-		`Action: ${request.action}`,
-		`File name: ${request.fileName || 'unknown'}`,
-		`Language: ${request.language}`,
-		selectedLine,
-		selectedBlock,
-		`User question: ${request.chatPrompt || '(none)'}`,
-		`Diagnostics:\n${request.diagnostics}`,
-		`Code:\n${request.code}`
-	].join('\n\n');
-}
-
-export async function requestAssistantAnalysis(request: AssistantRequest): Promise<AssistantResponse> {
-	const OPENAI_API_KEY = getOpenAIApiKey();
-	if (!OPENAI_API_KEY) {
-		throw new Error('OpenAI API key not configured. Set preecode.openaiApiKey in VS Code settings or OPENAI_API_KEY.');
-	}
-
-	const systemPrompt = [
-		'You are Preecode AI, a professional coding assistant.',
-		'Return ONLY valid JSON with the following keys:',
-		'problem, reason, step_by_step, line_execution, fixed_code, suggestions.',
-		'Use simple language for beginners.',
-		'If a field is not applicable, return an empty string or empty array.',
-		'Keep responses concise and actionable.'
-	].join(' ');
-
-	const extraLineExec = request.action === 'line_execution'
-		? 'For line_execution, provide a numbered list explaining which line runs first, why it runs, variable changes, control flow, and short, simple steps.'
-		: 'For line_execution, return an empty list unless the action is line_execution.';
-
-	const userPrompt = [
-		'Analyze the code and diagnostics based on the action.',
-		extraLineExec,
-		buildAssistantPrompt(request)
-	].join('\n\n');
-
-	const response = await fetchWithFallback(`${OPENAI_BASE_URL}/chat/completions`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${OPENAI_API_KEY}`
-		},
-		body: JSON.stringify({
-			model: process.env.OPENAI_MODEL_MINI || 'gpt-4o-mini',
-			messages: [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: userPrompt }
-			],
-			temperature: 0.2,
-			max_tokens: 900
-		})
-	});
-
-	if (!response.ok) {
-		const errorData = await response.json().catch(() => ({}));
-		throw new Error(errorData.error?.message || 'OpenAI request failed.');
-	}
-
-	const data: any = await response.json();
-	const content = data.choices?.[0]?.message?.content || '';
-	const trimmed = String(content).trim();
-
-	try {
-		return JSON.parse(trimmed) as AssistantResponse;
-	} catch {
-		const start = trimmed.indexOf('{');
-		const end = trimmed.lastIndexOf('}');
-		if (start >= 0 && end >= 0 && end > start) {
-			return JSON.parse(trimmed.slice(start, end + 1)) as AssistantResponse;
-		}
-		throw new Error('Failed to parse assistant response.');
-	}
+    } catch (error: any) {
+        const errorMessage = error?.message || JSON.stringify(error);
+        console.error("OpenRouter ERROR:", errorMessage, "Status:", error?.status);
+        throw new Error(errorMessage || 'OpenRouter question generation failed.');
+    }
 }

@@ -8,9 +8,27 @@ function normalizeBaseUrl(url: string): string {
     return String(url || '').trim().replace(/\/$/, '');
 }
 
+export function isDevHost(): boolean {
+    return (
+        vscode.env.appName.includes('Extension Development Host') ||
+        process.env.VSCODE_DEV === 'true' ||
+        process.env.VSCODE_DEBUG_MODE === 'true'
+    );
+}
+
 export function getBackendUrl(): string {
-    const configured = vscode.workspace.getConfiguration('preecode').get<string>('backendUrl');
-    return normalizeBaseUrl(configured || DEFAULT_BACKEND_URL);
+    const configured = vscode.workspace.getConfiguration('preecode').get<string>('backendUrl')?.trim();
+    if (configured) {
+        return normalizeBaseUrl(configured);
+    }
+
+    // When running the extension in a development environment,
+    // prefer a local backend so dev testing uses migrated code.
+    if (isDevHost()) {
+        return 'http://localhost:5001';
+    }
+
+    return DEFAULT_BACKEND_URL;
 }
 
 export function getFrontendUrl(): string {
