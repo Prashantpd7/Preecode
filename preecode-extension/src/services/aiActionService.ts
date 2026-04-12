@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { requestAssistantAnalysis } from './openaiService';
+import { requestAssistantAnalysis } from './geminiService';
 import { AiPanelSections } from '../panels/aiActionPanel';
 
 export type ControlAction = 'debug' | 'explain' | 'review';

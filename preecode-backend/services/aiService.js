@@ -1,31 +1,57 @@
-const OpenAI = require('openai');
+const openrouterApiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
 
-const openaiApiKey = String(process.env.OPENAI_API_KEY || '').trim();
-const openai = openaiApiKey
-  ? new OpenAI({ apiKey: openaiApiKey })
-  : null;
-
-if (!openai) {
-  console.warn('[ai] OPENAI_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
+if (!openrouterApiKey) {
+  console.warn('[ai] OPENROUTER_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
 }
 
 async function generateResponse(messages, options = {}) {
-  if (!openai) {
-    const err = new Error('AI is not configured. Set OPENAI_API_KEY in backend environment variables.');
+  if (!openrouterApiKey) {
+    const err = new Error('AI is not configured. Set OPENROUTER_API_KEY in backend environment variables.');
     err.statusCode = 503;
     throw err;
   }
 
   try {
-    const message = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL_TURBO || 'gpt-4-turbo',
-      messages,
+    console.log('Using OpenRouter API');
+
+    const requestBody = {
+      model: 'openai/gpt-oss-120b',
+      messages: messages,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxTokens || 2048,
-    });
-    return message.choices[0].message.content;
+    };
+
+    const response = await fetch(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`OpenRouter API error: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.choices || !data.choices[0]) {
+      throw new Error('No response from OpenRouter API');
+    }
+
+    const content = data.choices[0].message?.content;
+    if (!content) {
+      throw new Error('Empty response from OpenRouter API');
+    }
+
+    return content;
   } catch (error) {
-    console.error('OpenAI API Error:', error);
+    console.error('OpenRouter API Error:', error);
     throw new Error(`AI service error: ${error.message}`);
   }
 }

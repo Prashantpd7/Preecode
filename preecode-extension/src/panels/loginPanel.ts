@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AuthManager } from '../auth/authManager';
+import { getBackendUrl } from '../services/apiService';
 
 export class LoginPanel {
   private static current: LoginPanel | undefined;
@@ -222,7 +223,7 @@ export class LoginPanel {
     // Open browser to Google OAuth endpoint with redirect back to extension
     const extensionId = this.context.extension.id;
     const redirectUri = encodeURIComponent(`vscode://${extensionId}/auth`);
-    const backendUrl = await this.getBackendUrl();
+    const backendUrl = await getBackendUrl();
     const googleLoginUrl = `${backendUrl}/api/auth/google?redirect=${redirectUri}`;
 
     await vscode.env.openExternal(vscode.Uri.parse(googleLoginUrl));
@@ -361,7 +362,7 @@ export class LoginPanel {
   }
 
   private async apiCall(endpoint: string, options: any): Promise<Response> {
-    const backendUrl = await this.getBackendUrl();
+    const backendUrl = await getBackendUrl();
     const url = `${backendUrl}${endpoint}`;
 
     // Use fetch with error handling
@@ -377,13 +378,6 @@ export class LoginPanel {
     } catch (error: any) {
       throw error;
     }
-  }
-
-  private async getBackendUrl(): Promise<string> {
-    const config = vscode.workspace.getConfiguration('preecode');
-    const configured = config.get<string>('backendUrl');
-    const url = (configured || 'https://preecode.onrender.com').trim().replace(/\/$/, '');
-    return url;
   }
 
   private update(): void {

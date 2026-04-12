@@ -717,7 +717,7 @@ async function getSimpleAssistantText(
     if (fallback) {
       return fallback;
     }
-    throw new Error('OpenAI returned empty output.');
+    throw new Error('AI returned empty output.');
   } catch (error) {
     if (fallback) {
       return fallback;
@@ -739,7 +739,7 @@ async function generateRunnableSolution(context: vscode.ExtensionContext, editor
   const raw = await askBackendAssistant(context, editor, prompt);
   const code = stripCodeFences(raw);
   if (!looksLikeRunnableCode(code, language)) {
-    throw new Error('OpenAI returned non-runnable solution output. Try again.');
+    throw new Error('AI returned non-runnable solution output. Try again.');
   }
   return code;
 }
@@ -763,7 +763,7 @@ async function generateAlternativeRunnableSolution(
   const raw = await askBackendAssistant(context, editor, prompt);
   const code = stripCodeFences(raw);
   if (!looksLikeRunnableCode(code, language)) {
-    throw new Error('OpenAI returned non-runnable alternative solution output. Try again.');
+    throw new Error('AI returned non-runnable alternative solution output. Try again.');
   }
   return code;
 }
