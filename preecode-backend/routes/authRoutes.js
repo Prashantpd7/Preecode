@@ -4,6 +4,19 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+// Validate critical environment variables
+const validateEnvVars = () => {
+  const required = ['JWT_SECRET', 'FRONTEND_URL', 'BACKEND_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
+  const missing = required.filter(v => !process.env[v]);
+
+  if (missing.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+    console.error('Auth routes will not function correctly without these variables.');
+  }
+};
+
+validateEnvVars();
+
 // In-memory store for OAuth redirects (cleaned up after 15 minutes)
 const pendingOAuthRedirects = new Map();
 
@@ -171,6 +184,9 @@ router.get('/redirect-complete', (req, res) => {
 /* ================= GOOGLE OAUTH START ================= */
 
 router.get('/google', (req, res, next) => {
+  console.log('[auth] GET /api/auth/google - Starting Google OAuth flow');
+  console.log('[auth] Query params - redirect:', req.query.redirect || 'none');
+
   // Accept an optional `redirect` query param (e.g. vscode://...)
   if (req.query && req.query.redirect) {
     try {
@@ -178,14 +194,17 @@ router.get('/google', (req, res, next) => {
       const oauthStateId = Math.random().toString(36).substring(2, 15) +
                            Math.random().toString(36).substring(2, 15);
 
-      console.log('[auth] /google received redirect:', req.query.redirect, 'stateId:', oauthStateId);
+      console.log('[auth] OAuth state ID generated:', oauthStateId);
 
       // Store the redirect in memory (will be retrieved in callback)
       pendingOAuthRedirects.set(oauthStateId, req.query.redirect);
 
       // Clean up after 15 minutes
       setTimeout(() => {
-        pendingOAuthRedirects.delete(oauthStateId);
+        if (pendingOAuthRedirects.has(oauthStateId)) {
+          console.log('[auth] Cleaning up expired OAuth state:', oauthStateId);
+          pendingOAuthRedirects.delete(oauthStateId);
+        }
       }, 15 * 60 * 1000);
 
       // Store state ID in cookie so we can retrieve it in callback
@@ -195,61 +214,90 @@ router.get('/google', (req, res, next) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax'
       });
+
+      console.log('[auth] OAuth state cookie set, redirect destination stored');
     } catch (e) {
-      console.warn('[auth] /google failed to store redirect:', e && e.message);
+      console.warn('[auth] Failed to store redirect:', e && e.message);
     }
   }
 
+  console.log('[auth] Calling passport.authenticate("google")');
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     session: false,
   })(req, res, next);
 });
 
-// Use env var for frontend URL; in production Render will set FRONTEND_URL
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
-
 /* ================= GOOGLE OAUTH CALLBACK ================= */
+
+// Validate and use frontend URL
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+console.log('[authRoutes] Frontend URL configured:', FRONTEND_URL);
+
+if (!FRONTEND_URL.startsWith('http://') && !FRONTEND_URL.startsWith('https://')) {
+  console.warn('⚠️  FRONTEND_URL should start with http:// or https://');
+}
 
 router.get(
   '/google/callback',
+  (req, res, next) => {
+    console.log('[auth] GET /api/auth/google/callback - Google callback received');
+    console.log('[auth] Query params:', { code: req.query.code ? '***' : 'missing', error: req.query.error });
+
+    if (req.query.error) {
+      console.error('[auth] Google OAuth error:', req.query.error);
+      const errorUrl = `${FRONTEND_URL}/login.html?error=${encodeURIComponent(req.query.error)}`;
+      console.log('[auth] Redirecting to error page:', errorUrl);
+      return res.redirect(errorUrl);
+    }
+
+    // Continue to Passport authentication
+    next();
+  },
   passport.authenticate('google', {
     session: false,
-    failureRedirect: `${FRONTEND_URL}/auth/callback.html?error=oauth_failed`,
+    failureRedirect: `${FRONTEND_URL}/login.html?error=authentication_failed`,
   }),
   (req, res) => {
-    console.log('[auth] Google callback hit for user:', req.user && req.user._id);
-    const token = jwt.sign(
-      { id: req.user._id, tokenVersion: req.user.tokenVersion || 0 },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    console.log('[auth] Generated JWT for user:', req.user && req.user._id);
+    console.log('[auth] ✅ Google authentication successful for user:', req.user._id);
 
-    // Get redirect from in-memory store using state ID from cookie
-    let originalRedirect = null;
-    const stateId = req.cookies?.oauth_state_id;
-    if (stateId && pendingOAuthRedirects.has(stateId)) {
-      originalRedirect = pendingOAuthRedirects.get(stateId);
-      pendingOAuthRedirects.delete(stateId);
-      res.clearCookie('oauth_state_id');
-      console.log('[auth] Retrieved redirect from in-memory store:', originalRedirect);
+    try {
+      const token = jwt.sign(
+        { id: req.user._id, tokenVersion: req.user.tokenVersion || 0 },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      console.log('[auth] JWT token generated for user:', req.user._id);
+
+      // Get redirect from in-memory store using state ID from cookie
+      let originalRedirect = null;
+      const stateId = req.cookies?.oauth_state_id;
+
+      if (stateId && pendingOAuthRedirects.has(stateId)) {
+        originalRedirect = pendingOAuthRedirects.get(stateId);
+        pendingOAuthRedirects.delete(stateId);
+        res.clearCookie('oauth_state_id');
+        console.log('[auth] Retrieved redirect from state:', originalRedirect);
+      }
+
+      // VS Code auth flow: show success page and open VS Code
+      if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
+        const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
+        const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
+        console.log('[auth] VS Code deep link being opened');
+        return renderVsCodeSuccessPage(res, vscodeUri);
+      }
+
+      // For web logins, redirect to frontend with token
+      // The frontend (callback.html) will handle storing the token safely
+      const callbackUrl = `${FRONTEND_URL}/auth/callback.html?token=${encodeURIComponent(token)}`;
+      console.log('[auth] Redirecting to frontend callback');
+      return res.redirect(callbackUrl);
+    } catch (error) {
+      console.error('[auth] Error in callback handler:', error.message);
+      const errorUrl = `${FRONTEND_URL}/login.html?error=token_generation_failed`;
+      return res.redirect(errorUrl);
     }
-
-    // VS Code auth flow: show success page and open VS Code
-    if (originalRedirect && originalRedirect.toLowerCase().startsWith('vscode://')) {
-      const sep = originalRedirect.indexOf('?') === -1 ? '?' : '&';
-      const vscodeUri = `${originalRedirect}${sep}token=${encodeURIComponent(token)}`;
-      console.log('[auth] Opening VS Code with success page:', vscodeUri);
-      return renderVsCodeSuccessPage(res, vscodeUri);
-    }
-
-    // For web logins, redirect to frontend callback page
-    if (originalRedirect) {
-      return res.redirect(`${FRONTEND_URL}/auth/callback.html?token=${token}&redirect=${encodeURIComponent(originalRedirect)}`);
-    }
-
-    res.redirect(`${FRONTEND_URL}/auth/callback.html?token=${token}`);
   }
 );
 
@@ -288,6 +336,30 @@ router.get('/debug', (req, res) => {
   const deepLink = decoded ? `${decoded}${sep}token=${encodeURIComponent(String(token))}` : '';
 
   res.send(`<!doctype html><html><head><meta charset="utf-8"><title>Auth Debug</title></head><body style="background:#0B0F14;color:#fff;font-family:Inter,Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center;max-width:720px;padding:24px"><h2>Auth Debug</h2><p>Click the button below to attempt opening VS Code via the deep link.</p>${deepLink ? `<p><a id="open" href="${deepLink}" style="display:inline-block;padding:12px 18px;background:#ffa116;color:#081018;border-radius:8px;text-decoration:none">Open VS Code</a></p><p style="color:#9ca3af">If nothing happens, your browser may be blocking custom-scheme navigation. Try another browser or copy the link and run <code>open '${deepLink}'</code> in a terminal.</p>` : '<p style="color:#f88">No redirect provided. Use ?redirect=vscode://preecode.preecode/auth</p>'}</div></body></html>`);
+});
+
+// OAuth configuration endpoint (for debugging/validation)
+router.get('/config', (req, res) => {
+  console.log('[auth] GET /api/auth/config - Configuration check');
+
+  const config = {
+    status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+    backendUrl: process.env.BACKEND_URL || 'http://localhost:5001',
+    oauthCallbackUrl: process.env.GOOGLE_CALLBACK_URL,
+    googleOAuthConfigured: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+  };
+
+  // Only show sensitive info in development
+  if (process.env.NODE_ENV !== 'production') {
+    config.debug = {
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      googleClientIdLength: process.env.GOOGLE_CLIENT_ID?.length || 0,
+    };
+  }
+
+  res.json(config);
 });
 
 module.exports = router;
