@@ -140,7 +140,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Body parsing & cookies
-app.use(express.json({ limit: '50kb' }));
+app.use(express.json({ limit: '10mb' })); // increased for audio base64 payloads
 app.use(cookieParser());
 app.use(passport.initialize());
 
@@ -169,6 +169,7 @@ app.use('/api/practice', practiceRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/early-access', earlyAccessRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/v2', require('./src/routes/v2'));
 
 // Global error handler (must be last)
 app.use(errorHandler);

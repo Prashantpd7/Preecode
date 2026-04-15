@@ -121,22 +121,39 @@
     // Avg Solve Time (populated by PracticePanel)
     animateNumber($('statTime'), 0);
 
-    // Placement Readiness
-    var readiness = Math.max(0, Math.min(100, Math.round((accuracy * 0.6) + Math.min(total, 20) * 2)));
-    animateNumber($('statReadiness'), readiness);
+    // Placement Readiness — fetch from v2 API
+    var readiness = 0;
     var readTrend = $('readinessTrend');
-    if (readTrend) {
-      var rSpan = readTrend.querySelector('span');
-      if (rSpan) {
-        if (total > 0) {
-          rSpan.textContent = readiness >= 70 ? 'On track' : 'Keep solving to improve';
-        } else {
-          rSpan.textContent = 'Start solving to generate stats';
-        }
+    // Try to load from v2 readiness API
+    var uid = localStorage.getItem('preecode_uid');
+    var tok = localStorage.getItem('token');
+    if (uid && tok) {
+      fetch(API_BASE + '/v2/readiness/' + uid, { headers: { Authorization: 'Bearer ' + tok } })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(rd) {
+          if (!rd) return;
+          animateNumber($('statReadiness'), rd.readinessPercent || 0);
+          animateProgress('readinessProgress', rd.readinessPercent || 0);
+          if (readTrend) {
+            var rSpan = readTrend.querySelector('span');
+            var pct = rd.readinessPercent || 0;
+            if (rSpan) rSpan.textContent = pct >= 70 ? '🎯 Placement ready!' : pct >= 40 ? '📈 Good progress' : '🚀 Keep going!';
+            readTrend.className = 'dash-v4-stat__trend ' + (pct >= 70 ? 'up' : 'neutral');
+          }
+        })
+        .catch(function() {
+          // fallback to local calc
+          animateNumber($('statReadiness'), readiness);
+          animateProgress('readinessProgress', readiness);
+        });
+    } else {
+      animateNumber($('statReadiness'), readiness);
+      if (readTrend) {
+        var rSpan = readTrend.querySelector('span');
+        if (rSpan) rSpan.textContent = 'Start solving to generate stats';
       }
-      readTrend.className = 'dash-v4-stat__trend ' + (readiness >= 70 ? 'up' : readiness > 0 ? 'neutral' : 'neutral');
+      animateProgress('readinessProgress', readiness);
     }
-    animateProgress('readinessProgress', readiness);
   }
 
   // ── Component: LeaderboardCard (V4 – blurred preview) ──
