@@ -20,7 +20,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const errorHandler = require('./middleware/errorMiddleware');
 
 process.on('uncaughtException', (err) => {
-  console.error('UNCAUGHT EXCEPTION — shutting down...');
+  console.error('❌ UNCAUGHT EXCEPTION — shutting down...');
   console.error(err.name, err.message);
   process.exit(1);
 });
@@ -86,8 +86,8 @@ app.use(passport.initialize());
 
 app.get('/api/health', (_req, res) => {
   res.json({
-    status: 'OK',
-    environment: process.env.NODE_ENV,
+    status: 'ok',
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
@@ -106,16 +106,25 @@ app.use(errorHandler);
 /* ================= SERVER START ================= */
 
 const startServer = async () => {
+  const NODE_ENV = process.env.NODE_ENV || 'development';
+  console.log(`\n${'='.repeat(50)}`);
+  console.log(`🚀 Preecode Backend Startup`);
+  console.log(`${'='.repeat(50)}`);
+  console.log(`Environment: ${NODE_ENV}`);
+
   await connectDB();
 
   const PORT = process.env.PORT || 5001;
 
   const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`📡 API available at http://localhost:${PORT}/api`);
+    console.log(`🏥 Health check: GET http://localhost:${PORT}/api/health`);
+    console.log(`${'='.repeat(50)}\n`);
   });
 
   process.on('unhandledRejection', (err) => {
-    console.error('UNHANDLED REJECTION — shutting down...');
+    console.error('\n❌ UNHANDLED REJECTION — shutting down...');
     console.error(err.name, err.message);
     server.close(() => process.exit(1));
   });
