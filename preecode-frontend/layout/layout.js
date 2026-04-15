@@ -50,6 +50,9 @@
         '<a href="/pages/dashboard.html" class="' + navCls('dashboard') + '">Dashboard</a>' +
         '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
         '<a href="/pages/submissions.html" class="' + navCls('submissions') + '">Submissions</a>' +
+        '<a href="/pages/resume-upload.html" class="' + navCls('resume-upload') + '">Resume</a>' +
+        '<a href="/pages/interview-setup.html" class="' + navCls('interview-setup') + '">Interview</a>' +
+        '<a href="/pages/placement-dashboard.html" class="' + navCls('placement-dashboard') + '">Placement</a>' +
       '</nav>' +
     '</div>' +
     // Right: Notifications + Streak + Profile
@@ -122,7 +125,10 @@
   mobileMenu.innerHTML =
     '<a href="/pages/dashboard.html" class="' + navCls('dashboard') + '">Dashboard</a>' +
     '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
-    '<a href="/pages/submissions.html" class="' + navCls('submissions') + '">Submissions</a>';
+    '<a href="/pages/submissions.html" class="' + navCls('submissions') + '">Submissions</a>' +
+    '<a href="/pages/resume-upload.html" class="' + navCls('resume-upload') + '">Resume</a>' +
+    '<a href="/pages/interview-setup.html" class="' + navCls('interview-setup') + '">Interview</a>' +
+    '<a href="/pages/placement-dashboard.html" class="' + navCls('placement-dashboard') + '">Placement</a>';
 
   // ── Inject ──
   var shell = document.querySelector('.app-shell');
