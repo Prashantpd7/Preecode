@@ -163,16 +163,26 @@ html, body {
 }
 .timer:hover { background: color-mix(in srgb, var(--surface-2), #fff 8%); }
 /* ── CTA SECTION ── */
-.cta-section { padding: 12px; }
-.cta-section .btn-primary.full {
+.cta-section { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.btn-cta {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
   background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  color: #fff; border: none; border-radius: var(--radius-sm);
+  padding: 13px 14px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all var(--transition);
   box-shadow: 0 4px 16px rgba(37,99,235,0.4);
-  font-size: 13px; padding: 13px 14px;
+  letter-spacing: 0.01em;
 }
-.cta-section .btn-primary.full:hover {
+.btn-cta:hover {
   background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
   box-shadow: 0 6px 20px rgba(37,99,235,0.5);
+  transform: scale(1.02);
 }
+.btn-cta:active { transform: scale(0.99); box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+.btn-cta:focus-visible { outline: 2px solid var(--vscode-focusBorder, #007acc); outline-offset: 2px; }
+.cta-icon { font-size: 14px; line-height: 1; }
+.cta-text { line-height: 1; }
+.tools-section { padding: 0; }
 /* ── MODE CHOOSER ── */
 .mode-chooser {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
