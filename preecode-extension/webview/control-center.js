@@ -392,8 +392,8 @@ function applyOnboardingUI(onboardingState) {
     showOnboardingLoadingMessage('Waiting for login...');
   } else if (step === 'start-practicing') {
     // Step 2: Highlight the Start Practicing button
-    const startPracticeBtn = toolsFlow?.querySelector('[data-action="practice"]') ||
-                           document.querySelector('[data-mode-target="practice"]');
+    const startPracticeBtn = document.getElementById('startPracticeBtn') ||
+                             toolsFlow?.querySelector('[data-mode-target="practice"]');
 
     showOnboardingTooltip(
       startPracticeBtn,
@@ -645,12 +645,15 @@ function showOnboardingCompletion() {
   }, 300);
 }
 
+// ── Mode-target navigation ──
+// CTA button (no data-action) → just switches view
+// Mode cards (generate/detect) → switch view + fire backend action
 for (const el of Array.from(document.querySelectorAll('[data-mode-target]'))) {
   el.addEventListener('click', () => {
     if (!state.isAuthenticated) { return; }
     const modeTarget = el.getAttribute('data-mode-target');
     const action = el.getAttribute('data-action');
-    // Mode cards (generate / detect) fire the action AND switch to solution view
+
     if ((action === 'generate' || action === 'detect') && modeTarget === 'solution') {
       showMode('solution');
       vscode.postMessage({

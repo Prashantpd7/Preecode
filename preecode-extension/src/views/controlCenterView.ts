@@ -205,27 +205,14 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
 
     <!-- ── CTA / TOOLS FLOW ── -->
     <section class="card cta-section hidden" id="toolsFlow">
-      <!-- Primary CTA -->
-      <button class="btn btn-primary full" data-mode-target="practice" data-action="practice" aria-label="Start Practice Session">
-        ▶ Start Practice Session
+      <!-- Primary CTA — only switches view, no backend action -->
+      <button class="btn btn-cta full" id="startPracticeBtn" data-mode-target="practice" aria-label="Start Practice Session">
+        <span class="cta-icon">▶</span>
+        <span class="cta-text">Start Practice Session</span>
       </button>
 
-      <!-- Mode chooser shown after click — handled via JS mode-chooser reveal -->
-      <div class="mode-chooser hidden" id="modeChooser">
-        <div class="mode-card" data-action="generate" data-mode-target="solution" role="button" tabindex="0">
-          <span class="mode-icon">✨</span>
-          <span class="mode-label">AI Generated</span>
-          <span class="mode-sub">New question</span>
-        </div>
-        <div class="mode-card" data-action="detect" data-mode-target="solution" role="button" tabindex="0">
-          <span class="mode-icon">🔍</span>
-          <span class="mode-label">From Code</span>
-          <span class="mode-sub">Detect question</span>
-        </div>
-      </div>
-
       <!-- AI Tools -->
-      <div class="tools-section" style="padding:10px 0 0">
+      <div class="tools-section">
         <div class="section-label" style="margin-bottom:8px">AI Tools</div>
         <div class="tools-grid" id="quickActionsSection">
           <button class="tool-btn" data-action="debug" aria-label="Debug Code">
