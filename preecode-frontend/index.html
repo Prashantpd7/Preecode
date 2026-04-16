@@ -21,14 +21,13 @@
   ════════════════════════════════════ -->
   <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-th-bg/80 border-b border-bdr">
     <div class="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-      <a href="/" class="brand-logo logo-nav"><span class="brand-dark">Preec</span><span class="brand-accent">ode</span></a>
+      <a href="/" class="brand-logo logo-nav"><span class="brand-dark">Pree</span><span class="brand-accent" style="color: #ff9500 !important;">code</span></a>
 
       <div class="hidden md:flex items-center gap-8">
         <a href="#problem" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">About</a>
         <a href="#testimonials" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Testimonials</a>
         <a href="#faq" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">FAQ</a>
-        <a href="login.html" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Login</a>
-        <a href="register.html" class="btn btn-primary btn-sm">Start Free</a>
+        <a href="login.html" class="btn btn-primary btn-sm">Login</a>
       </div>
 
       <button id="mobile-menu-btn" class="md:hidden text-txt-sec hover:text-txt bg-transparent border-none cursor-pointer">
@@ -42,10 +41,10 @@
       <a href="#problem" class="block text-sm text-txt-sec hover:text-txt no-underline">About</a>
       <a href="#testimonials" class="block text-sm text-txt-sec hover:text-txt no-underline">Testimonials</a>
       <a href="#faq" class="block text-sm text-txt-sec hover:text-txt no-underline">FAQ</a>
-      <a href="login.html" class="block text-sm text-txt-sec hover:text-txt no-underline">Login</a>
-      <a href="register.html" class="btn btn-primary btn-sm block w-full text-center">Start Free</a>
+      <a href="login.html" class="btn btn-primary btn-sm block w-full text-center">Login</a>
     </div>
   </nav>
+
 
   <!-- ════════════════════════════════════
        1. HERO SECTION
@@ -65,22 +64,13 @@
             <span class="hero-v5__gradient">Prove What You Build.</span>
           </h1>
           <div class="hero-v5__ctas">
-            <a href="register.html" class="btn btn-primary hero-v5__btn-primary">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
-              Start Free
+            <a href="#" id="vscode-cta" class="btn btn-primary hero-v5__btn-primary">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+              Practice in VS Code
             </a>
             <a href="#faq" class="btn btn-secondary">Learn More</a>
           </div>
-
-          <div class="hero-v5__trust">
-            <div class="hero-v5__trust-avatars">
-              <div class="hero-v5__trust-avatar" style="background:#3b82f6">S</div>
-              <div class="hero-v5__trust-avatar" style="background:#8b5cf6">A</div>
-              <div class="hero-v5__trust-avatar" style="background:#ec4899">P</div>
-              <div class="hero-v5__trust-avatar" style="background:#f97316">R</div>
-            </div>
-            <span class="hero-v5__trust-text">Trusted by 2,500+ developers</span>
-          </div>
+          <p class="text-sm text-txt-sec mt-3">Works inside VS Code</p>
         </div>
 
         <!-- Right: Dashboard Mockup -->
@@ -209,56 +199,58 @@
 
 
   <!-- ════════════════════════════════════
-       PROBLEM → SOLUTION
+       CAREER READINESS SECTION
   ════════════════════════════════════ -->
   <section class="section" id="problem">
     <div class="max-w-5xl mx-auto px-6">
       <div class="section-header reveal">
-        <p class="section-label">The Problem</p>
-        <h2 class="section-title">Most Developers Train Blind.</h2>
+        <p class="section-label">The Gap</p>
+        <h2 class="section-title">Most developers prepare for coding.<br/>Not for interviews.</h2>
       </div>
 
       <div class="probsol-grid reveal">
+        <!-- Traditional Prep Column -->
         <div class="probsol-col">
-          <h3 class="probsol-heading probsol-heading--problem">Without Preecode</h3>
+          <h3 class="probsol-heading probsol-heading--problem">Traditional Prep</h3>
           <div class="probsol-list">
             <div class="probsol-item probsol-item--problem">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              <span>Manual tracking in spreadsheets and notes</span>
+              <span>Solve problems without understanding weak areas</span>
             </div>
             <div class="probsol-item probsol-item--problem">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              <span>No idea which difficulty levels you're avoiding</span>
+              <span>No feedback on communication or thinking process</span>
             </div>
             <div class="probsol-item probsol-item--problem">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              <span>Streaks break with no accountability system</span>
+              <span>Practice coding, but fail real interviews</span>
             </div>
             <div class="probsol-item probsol-item--problem">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-              <span>Constant context switching between browser and editor</span>
+              <span>No connection between practice and job outcomes</span>
             </div>
           </div>
         </div>
 
+        <!-- With Preecode Column -->
         <div class="probsol-col probsol-col--solution">
           <h3 class="probsol-heading probsol-heading--solution">With Preecode</h3>
           <div class="probsol-list">
             <div class="probsol-item probsol-item--solution">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Automatic session capture inside VS Code</span>
+              <span>Identify skill gaps automatically from real coding sessions</span>
             </div>
             <div class="probsol-item probsol-item--solution">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Difficulty breakdown — Easy, Medium, Hard analytics</span>
+              <span>AI-powered feedback on problem solving and communication</span>
             </div>
             <div class="probsol-item probsol-item--solution">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Built-in streak and consistency tracking</span>
+              <span>Practice coding + simulate real interview scenarios</span>
             </div>
             <div class="probsol-item probsol-item--solution">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
-              <span>Everything stays in your editor — zero switching</span>
+              <span>Clear path from practice → interview → job readiness</span>
             </div>
           </div>
         </div>
@@ -359,15 +351,13 @@
   <footer class="footer-main">
     <div class="max-w-6xl mx-auto px-6">
       <div class="footer-grid">
-        <div class="footer-brand"><div class="brand-logo logo-footer mb-3"><span class="brand-dark">Preec</span><span class="brand-accent">ode</span></div><p class="footer-desc">Developer activity analytics built into VS Code. Track sessions, measure growth, and prepare for placements.</p></div>
-        <div class="footer-col"><p class="footer-heading">Product</p><ul class="footer-links"><li><a href="#problem">About</a></li><li><a href="#testimonials">Testimonials</a></li><li><a href="#faq">FAQ</a></li></ul></div>
-        <div class="footer-col"><p class="footer-heading">Company</p><ul class="footer-links"><li><a href="#">About</a></li><li><a href="#">Contact</a></li></ul></div>
-        <div class="footer-col"><p class="footer-heading">Legal</p><ul class="footer-links"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li></ul>
+        <div class="footer-brand"><div class="preecode-logo logo-footer mb-3"><span class="brand-dark" style="font-size: 24px; font-weight: bold;">Pree</span><span class="brand-accent" style="font-size: 24px; font-weight: bold; color: #ff9500 !important;">code</span></div><p class="footer-desc">Developer activity analytics built into VS Code. Track sessions, measure growth, and prepare for placements.</p></div>
+        <nav class="footer-col"><p class="footer-heading">Product</p><ul class="footer-links"><li><a href="#testimonials">Testimonials</a></li><li><a href="#faq">FAQ</a></li></ul></nav>
+        <nav class="footer-col"><p class="footer-heading">Company</p><ul class="footer-links"><li><a href="about.html">About</a></li><li><a href="mailto:preecodeai@gmail.com">Contact</a></li></ul></nav>
+        <nav class="footer-col"><p class="footer-heading">Legal</p><ul class="footer-links"><li><a href="legal.html">Privacy & Terms</a></li></ul>
           <div class="footer-social">
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-            <a href="mailto:hello@preecode.dev" aria-label="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></a>
+            <a href="https://x.com/preecodeai" target="_blank" rel="noopener noreferrer" aria-label="Visit Preecode on X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+            <a href="mailto:preecodeai@gmail.com" aria-label="Send email to Preecode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg></a>
           </div>
         </div>
       </div>
