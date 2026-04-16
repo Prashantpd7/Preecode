@@ -285,7 +285,7 @@ function applyState(payload) {
     const mode = isAuthenticated ? 'dashboard' : 'login';
     loginBtn.dataset.mode = mode;
     loginBtn.setAttribute('aria-label', mode === 'dashboard' ? 'Open Dashboard' : 'Login');
-    const textNode = loginBtn.querySelector('.profile-btn-text');
+    const textNode = loginBtn.querySelector('.btn-text');
     if (textNode) {
       textNode.textContent = mode === 'dashboard' ? 'Dashboard' : 'Login';
     }
@@ -304,6 +304,11 @@ function applyState(payload) {
 
   setIssueBox(problemInCodeLine, problemInCodeLabel, payload.editor?.topIssue || '');
   setIssueBox(expectedFixLine, expectedFixLabel, payload.editor?.expectedFix || '');
+
+  // Show/hide the insight block wrapper
+  const insightBlock = document.getElementById('insightBlock');
+  const hasInsight = (payload.editor?.topIssue || '').trim() || (payload.editor?.expectedFix || '').trim();
+  insightBlock?.classList.toggle('hidden', !hasInsight);
 
   if (explainQuestionBtn) {
     explainQuestionBtn.textContent = payload.editor?.hasQuestionExplanation ? 'Remove Question Explanation' : 'Explain Question';
@@ -354,7 +359,7 @@ function applyState(payload) {
   renderChat(payload.chat?.messages || [], isLoading);
   if (sendBtn) {
     sendBtn.disabled = isLoading;
-    sendBtn.textContent = isLoading ? '...' : 'Send';
+    sendBtn.textContent = isLoading ? '…' : 'Send';
   }
 }
 
@@ -640,19 +645,23 @@ function showOnboardingCompletion() {
   }, 300);
 }
 
-for (const btn of Array.from(document.querySelectorAll('[data-mode-target]'))) {
-  btn.addEventListener('click', () => {
-    const modeTarget = btn.getAttribute('data-mode-target');
-    const action = btn.getAttribute('data-action');
+for (const el of Array.from(document.querySelectorAll('[data-mode-target]'))) {
+  el.addEventListener('click', () => {
+    if (!state.isAuthenticated) { return; }
+    const modeTarget = el.getAttribute('data-mode-target');
+    const action = el.getAttribute('data-action');
+    // Mode cards (generate / detect) fire the action AND switch to solution view
     if ((action === 'generate' || action === 'detect') && modeTarget === 'solution') {
+      showMode('solution');
+      vscode.postMessage({
+        type: 'quickAction',
+        action,
+        payload: { language: state.editorLanguage, difficulty: state.practiceDifficulty }
+      });
       return;
     }
-    if (modeTarget === 'practice' && state.isAuthenticated) {
-      showMode('practice');
-    }
-    if (modeTarget === 'solution' && state.isAuthenticated) {
-      showMode('solution');
-    }
+    if (modeTarget === 'practice') { showMode('practice'); }
+    if (modeTarget === 'solution') { showMode('solution'); }
   });
 }
 
