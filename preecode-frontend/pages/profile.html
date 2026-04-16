@@ -61,92 +61,117 @@
           </div>
         </section>
 
-        <!-- ═══ TWO-COLUMN GRID ═══ -->
-        <div class="dash-v4-twocol dash-v4-anim dash-v4-anim-3">
+        <!-- ═══ SUBMISSIONS TAB ═══ -->
+        <section class="dash-v4-card dash-v4-anim dash-v4-anim-4">
+          <div class="prof-tab-bar">
+            <button class="prof-tab active" data-tab="overview">Overview</button>
+            <button class="prof-tab" data-tab="submissions">Submissions</button>
+          </div>
 
-          <!-- Left Column -->
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <!-- Level / Rank -->
-            <div class="dash-v4-card">
-              <div class="dash-v4-card__header">
-                <span class="dash-v4-card__title">Level & Rank</span>
-                <span class="prof-level-num" id="rankLevel">1</span>
-              </div>
-              <div class="prof-level-header">
+          <!-- Overview panel (badges) -->
+          <div class="prof-tab-panel active" id="tabOverview">
+            <div class="dash-v4-twocol">
+              <!-- Left Column -->
+              <div style="display:flex;flex-direction:column;gap:16px">
                 <div>
-                  <span class="prof-level-name" id="rankName">Beginner</span>
-                  <span class="prof-level-xp" id="rankXP">0 / 50 XP</span>
+                  <div class="dash-v4-card__header mb-3">
+                    <span class="dash-v4-card__title">Level & Rank</span>
+                    <span class="prof-level-num" id="rankLevel">1</span>
+                  </div>
+                  <div class="prof-level-header">
+                    <div>
+                      <span class="prof-level-name" id="rankName">Beginner</span>
+                      <span class="prof-level-xp" id="rankXP">0 / 50 XP</span>
+                    </div>
+                  </div>
+                  <div class="prof-level-track">
+                    <div class="prof-level-fill" id="rankBar" style="width:0%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="dash-v4-card__header mb-3">
+                    <span class="dash-v4-card__title">Difficulty Breakdown</span>
+                  </div>
+                  <div class="prof-diff-group">
+                    <div class="prof-diff-row">
+                      <span class="prof-diff-name">Easy</span>
+                      <div class="prof-diff-track"><div class="prof-diff-fill" id="pEasyBar" style="width:0%;background:#22c55e"></div></div>
+                      <span class="prof-diff-count" id="pEasyCount">0</span>
+                    </div>
+                    <div class="prof-diff-row">
+                      <span class="prof-diff-name">Medium</span>
+                      <div class="prof-diff-track"><div class="prof-diff-fill" id="pMedBar" style="width:0%;background:#f59e0b"></div></div>
+                      <span class="prof-diff-count" id="pMedCount">0</span>
+                    </div>
+                    <div class="prof-diff-row">
+                      <span class="prof-diff-name">Hard</span>
+                      <div class="prof-diff-track"><div class="prof-diff-fill" id="pHardBar" style="width:0%;background:#ef4444"></div></div>
+                      <span class="prof-diff-count" id="pHardCount">0</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="prof-level-track">
-                <div class="prof-level-fill" id="rankBar" style="width:0%"></div>
-              </div>
-            </div>
-
-            <!-- Difficulty Breakdown -->
-            <div class="dash-v4-card">
-              <div class="dash-v4-card__header">
-                <span class="dash-v4-card__title">Difficulty Breakdown</span>
-              </div>
-              <div class="prof-diff-group">
-                <div class="prof-diff-row">
-                  <span class="prof-diff-name">Easy</span>
-                  <div class="prof-diff-track"><div class="prof-diff-fill" id="pEasyBar" style="width:0%;background:#22c55e"></div></div>
-                  <span class="prof-diff-count" id="pEasyCount">0</span>
+              <!-- Right Column: Badges -->
+              <div>
+                <div class="dash-v4-card__header mb-3">
+                  <span class="dash-v4-card__title">Badges</span>
+                  <button class="prof-view-all" id="viewAllBadges" style="display:none">View All</button>
                 </div>
-                <div class="prof-diff-row">
-                  <span class="prof-diff-name">Medium</span>
-                  <div class="prof-diff-track"><div class="prof-diff-fill" id="pMedBar" style="width:0%;background:#f59e0b"></div></div>
-                  <span class="prof-diff-count" id="pMedCount">0</span>
-                </div>
-                <div class="prof-diff-row">
-                  <span class="prof-diff-name">Hard</span>
-                  <div class="prof-diff-track"><div class="prof-diff-fill" id="pHardBar" style="width:0%;background:#ef4444"></div></div>
-                  <span class="prof-diff-count" id="pHardCount">0</span>
+                <div class="prof-badges-grid" id="badgesGrid">
+                  <div class="prof-badge locked" data-badge="firstSolve">
+                    <span class="prof-badge-icon">&#127941;</span>
+                    <div class="prof-badge-info">
+                      <span class="prof-badge-name">First Solve</span>
+                      <div class="prof-badge-bar"><div class="prof-badge-fill" id="badgeFirstBar" style="width:0%"></div></div>
+                    </div>
+                  </div>
+                  <div class="prof-badge locked" data-badge="7day">
+                    <span class="prof-badge-icon">&#128293;</span>
+                    <div class="prof-badge-info">
+                      <span class="prof-badge-name">7-Day Streak</span>
+                      <div class="prof-badge-bar"><div class="prof-badge-fill" id="badge7day" style="width:0%"></div></div>
+                    </div>
+                  </div>
+                  <div class="prof-badge locked prof-badge-extra" data-badge="50problems" style="display:none">
+                    <span class="prof-badge-icon">&#11088;</span>
+                    <div class="prof-badge-info">
+                      <span class="prof-badge-name">50 Problems</span>
+                      <div class="prof-badge-bar"><div class="prof-badge-fill" id="badge50" style="width:0%"></div></div>
+                    </div>
+                  </div>
+                  <div class="prof-badge locked prof-badge-extra" data-badge="hardMaster" style="display:none">
+                    <span class="prof-badge-icon">&#128142;</span>
+                    <div class="prof-badge-info">
+                      <span class="prof-badge-name">Hard Master</span>
+                      <div class="prof-badge-bar"><div class="prof-badge-fill" id="badgeHard" style="width:0%"></div></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Right Column: Badges -->
-          <div class="dash-v4-card">
-            <div class="dash-v4-card__header">
-              <span class="dash-v4-card__title">Badges</span>
-              <button class="prof-view-all" id="viewAllBadges" style="display:none">View All</button>
-            </div>
-            <div class="prof-badges-grid" id="badgesGrid">
-              <div class="prof-badge locked" data-badge="firstSolve">
-                <span class="prof-badge-icon">&#127941;</span>
-                <div class="prof-badge-info">
-                  <span class="prof-badge-name">First Solve</span>
-                  <div class="prof-badge-bar"><div class="prof-badge-fill" id="badgeFirstBar" style="width:0%"></div></div>
-                </div>
-              </div>
-              <div class="prof-badge locked" data-badge="7day">
-                <span class="prof-badge-icon">&#128293;</span>
-                <div class="prof-badge-info">
-                  <span class="prof-badge-name">7-Day Streak</span>
-                  <div class="prof-badge-bar"><div class="prof-badge-fill" id="badge7day" style="width:0%"></div></div>
-                </div>
-              </div>
-              <div class="prof-badge locked prof-badge-extra" data-badge="50problems" style="display:none">
-                <span class="prof-badge-icon">&#11088;</span>
-                <div class="prof-badge-info">
-                  <span class="prof-badge-name">50 Problems</span>
-                  <div class="prof-badge-bar"><div class="prof-badge-fill" id="badge50" style="width:0%"></div></div>
-                </div>
-              </div>
-              <div class="prof-badge locked prof-badge-extra" data-badge="hardMaster" style="display:none">
-                <span class="prof-badge-icon">&#128142;</span>
-                <div class="prof-badge-info">
-                  <span class="prof-badge-name">Hard Master</span>
-                  <div class="prof-badge-bar"><div class="prof-badge-fill" id="badgeHard" style="width:0%"></div></div>
-                </div>
-              </div>
+          <!-- Submissions panel -->
+          <div class="prof-tab-panel" id="tabSubmissions">
+            <div style="overflow-x:auto">
+              <table class="dash-v4-table" style="min-width:560px">
+                <thead>
+                  <tr>
+                    <th>Problem</th>
+                    <th>Difficulty</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="profileSubmissionsBody">
+                  <tr><td colspan="5" class="text-center py-6 text-txt-muted">Loading submissions…</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
+        </section>
 
-        </div>
       </div>
     </div>
   </div>
