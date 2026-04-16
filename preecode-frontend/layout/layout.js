@@ -49,25 +49,30 @@
       '<nav class="topbar-nav" id="topbarNav">' +
         '<a href="/pages/dashboard.html" class="' + navCls('dashboard') + '">Dashboard</a>' +
         '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
-        '<a href="/pages/submissions.html" class="' + navCls('submissions') + '">Submissions</a>' +
         '<a href="/pages/resume-upload.html" class="' + navCls('resume-upload') + '">Resume</a>' +
         '<a href="/pages/interview-setup.html" class="' + navCls('interview-setup') + '">Interview</a>' +
-        '<a href="/pages/placement-dashboard.html" class="' + navCls('placement-dashboard') + '">Placement</a>' +
       '</nav>' +
     '</div>' +
-    // Right: Notifications + Streak + Profile
+    // Right: Start Practice CTA + Notifications + Streak + Profile
     '<div class="topbar-right">' +
+      // Start Practice CTA button
+      '<a href="#" id="startPracticeBtn" class="topbar-start-practice" title="Start a practice session in VS Code">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>' +
+        'Start Practice' +
+      '</a>' +
       // Notifications
       '<div class="notif-container" id="notifContainer">' +
         '<button class="topbar-notif-btn" id="notifBtn" title="Notifications" aria-expanded="false" aria-haspopup="true">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>' +
+          '<span class="notif-badge hidden" id="notifBadge"></span>' +
         '</button>' +
         '<div class="notif-dropdown hidden" id="notifDropdown" role="menu">' +
           '<div class="notif-dropdown-header">' +
             '<span class="notif-dropdown-title">Notifications</span>' +
+            '<button class="notif-mark-read" id="notifMarkRead" style="font-size:11px;background:none;border:none;color:var(--accent,#f97316);cursor:pointer;padding:0">Mark all read</button>' +
           '</div>' +
-          '<div class="notif-dropdown-body">' +
-            '<div class="notif-empty">' +
+          '<div class="notif-dropdown-body" id="notifBody">' +
+            '<div class="notif-empty" id="notifEmpty">' +
               '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>' +
               '<p>No new notifications</p>' +
             '</div>' +
@@ -125,10 +130,9 @@
   mobileMenu.innerHTML =
     '<a href="/pages/dashboard.html" class="' + navCls('dashboard') + '">Dashboard</a>' +
     '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
-    '<a href="/pages/submissions.html" class="' + navCls('submissions') + '">Submissions</a>' +
     '<a href="/pages/resume-upload.html" class="' + navCls('resume-upload') + '">Resume</a>' +
     '<a href="/pages/interview-setup.html" class="' + navCls('interview-setup') + '">Interview</a>' +
-    '<a href="/pages/placement-dashboard.html" class="' + navCls('placement-dashboard') + '">Placement</a>';
+    '<a href="#" id="startPracticeMobile" class="topbar-nav-link" style="color:var(--accent,#f97316);font-weight:600">▶ Start Practice</a>';
 
   // ── Inject ──
   var shell = document.querySelector('.app-shell');
@@ -280,7 +284,112 @@
     });
   }
 
-  // ── Hydrate missing profile fields ──
+  // ── Start Practice Button (VSCode deep link) ──
+  function bindStartPractice(el) {
+    if (!el) return;
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      var token = localStorage.getItem('token') || '';
+      var vscodeUri = 'vscode://preecode.preecode/auth' + (token ? '?token=' + encodeURIComponent(token) + '&source=navbar' : '');
+      // Try to open VS Code via deep link
+      window.location.href = vscodeUri;
+      // Fallback: after 2s if still on page, redirect to problems
+      setTimeout(function () {
+        if (document.hasFocus()) {
+          window.location.href = '/pages/problems.html';
+        }
+      }, 2000);
+    });
+  }
+  bindStartPractice(document.getElementById('startPracticeBtn'));
+  bindStartPractice(document.getElementById('startPracticeMobile'));
+
+  // ── Notification System ──
+  var NOTIF_KEY = 'preecode_notifications';
+  var NOTIF_LAST_SEEN = 'preecode_notif_last_seen';
+
+  function getNotifications() {
+    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch(e) { return []; }
+  }
+
+  function saveNotifications(list) {
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(list));
+  }
+
+  function pushNotification(msg, type) {
+    var list = getNotifications();
+    list.unshift({ id: Date.now(), msg: msg, type: type || 'info', read: false, time: new Date().toISOString() });
+    if (list.length > 20) list = list.slice(0, 20);
+    saveNotifications(list);
+    renderNotifications();
+  }
+
+  function renderNotifications() {
+    var list = getNotifications();
+    var unread = list.filter(function(n) { return !n.read; }).length;
+    var badge = document.getElementById('notifBadge');
+    var body  = document.getElementById('notifBody');
+    var empty = document.getElementById('notifEmpty');
+
+    if (badge) {
+      if (unread > 0) {
+        badge.textContent = unread > 9 ? '9+' : unread;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    if (!body) return;
+    // Remove existing notif items (keep empty state)
+    body.querySelectorAll('.notif-item').forEach(function(el) { el.remove(); });
+
+    if (list.length === 0) {
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    list.slice(0, 8).forEach(function(n) {
+      var item = document.createElement('div');
+      item.className = 'notif-item' + (n.read ? ' read' : '');
+      var icon = n.type === 'success' ? '✅' : n.type === 'warning' ? '⚠️' : 'ℹ️';
+      var timeStr = new Date(n.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      item.innerHTML =
+        '<span class="notif-item-icon">' + icon + '</span>' +
+        '<div class="notif-item-content">' +
+          '<p class="notif-item-msg">' + n.msg + '</p>' +
+          '<span class="notif-item-time">' + timeStr + '</span>' +
+        '</div>';
+      body.appendChild(item);
+    });
+  }
+
+  // Mark all read
+  var markReadBtn = document.getElementById('notifMarkRead');
+  if (markReadBtn) {
+    markReadBtn.addEventListener('click', function() {
+      var list = getNotifications().map(function(n) { n.read = true; return n; });
+      saveNotifications(list);
+      renderNotifications();
+    });
+  }
+
+  // Expose globally so dashboard.js can push notifications
+  window.preecodeNotify = pushNotification;
+
+  // Initial render
+  renderNotifications();
+
+  // Check for dashboard data update (compare last seen stats)
+  (function checkDashboardUpdate() {
+    try {
+      var lastSeen = localStorage.getItem(NOTIF_LAST_SEEN);
+      var currentTotal = localStorage.getItem('preecode_last_total') || '0';
+      var newTotal = localStorage.getItem('preecode_uid') ? null : null;
+      // Will be triggered by dashboard.js via window.preecodeNotify
+    } catch(e) {}
+  })();
   (async function hydrateUser() {
     try {
       var token = localStorage.getItem('token');
