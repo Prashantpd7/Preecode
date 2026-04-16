@@ -45,7 +45,7 @@
   topbar.innerHTML =
     // Left: Logo + Nav links
     '<div class="topbar-left">' +
-      '<a class="brand-logo logo-nav" href="/pages/dashboard.html"><span class="brand-dark">Preec</span><span class="brand-accent">ode</span></a>' +
+      '<a class="brand-logo logo-nav" href="/pages/dashboard.html"><span class="brand-dark">Pree</span><span class="brand-accent">code</span></a>' +
       '<nav class="topbar-nav" id="topbarNav">' +
         '<a href="/pages/dashboard.html" class="' + navCls('dashboard') + '">Dashboard</a>' +
         '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
