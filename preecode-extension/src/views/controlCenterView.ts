@@ -183,39 +183,77 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div class="root">
+
+    <!-- ── HEADER ── -->
     <section class="card header-card">
       <div class="header-row">
-        <div id="profileTrigger" class="profile-group">
+        <div id="profileTrigger" class="profile-group" role="button" tabindex="0" aria-label="Profile menu">
           <div id="profileAvatar" class="avatar" aria-hidden="true">PC</div>
           <div class="profile-copy">
             <div id="userName" class="title">Preecode</div>
-            <div id="syncStatus" class="sub">Sync: idle</div>
+            <div id="syncStatus" class="sub" style="display:none"></div>
           </div>
         </div>
-        <div class="header-right">
-          <button id="loginBtn" class="small-btn profile-btn" data-mode="login" aria-label="Login">
-            <span class="profile-btn-text">Login</span>
-            <span class="profile-btn-icon" aria-hidden="true">⌂</span>
-          </button>
-        </div>
-        <div id="profileMenu" class="profile-menu hidden">
-          <button id="profileLogoutBtn" class="profile-menu-item" type="button">Logout</button>
+        <button id="loginBtn" class="btn btn-dashboard" data-mode="login" aria-label="Login">
+          <span class="btn-text">Login</span>
+        </button>
+        <div id="profileMenu" class="profile-menu hidden" role="menu">
+          <button id="profileLogoutBtn" class="profile-menu-item" type="button" role="menuitem">Logout</button>
         </div>
       </div>
     </section>
 
-    <section class="card section-card hidden" id="toolsFlow">
-      <button class="primary-btn full main-action" data-mode-target="practice" data-action="practice">Start Practicing Question</button>
-      <div class="action-grid" id="quickActionsSection">
-        <button class="primary-btn" data-action="debug">Debug Code</button>
-        <button class="primary-btn" data-action="fix">Fix Code</button>
-        <button id="explainSelectionBtn" class="primary-btn" data-action="explain">Explain Selection</button>
-        <button id="reviewCodeBtn" class="primary-btn" data-action="review">Review Code</button>
+    <!-- ── CTA / TOOLS FLOW ── -->
+    <section class="card cta-section hidden" id="toolsFlow">
+      <!-- Primary CTA -->
+      <button class="btn btn-primary full" data-mode-target="practice" data-action="practice" aria-label="Start Practice Session">
+        ▶ Start Practice Session
+      </button>
+
+      <!-- Mode chooser shown after click — handled via JS mode-chooser reveal -->
+      <div class="mode-chooser hidden" id="modeChooser">
+        <div class="mode-card" data-action="generate" data-mode-target="solution" role="button" tabindex="0">
+          <span class="mode-icon">✨</span>
+          <span class="mode-label">AI Generated</span>
+          <span class="mode-sub">New question</span>
+        </div>
+        <div class="mode-card" data-action="detect" data-mode-target="solution" role="button" tabindex="0">
+          <span class="mode-icon">🔍</span>
+          <span class="mode-label">From Code</span>
+          <span class="mode-sub">Detect question</span>
+        </div>
       </div>
-      <div id="problemInCodeLabel" class="section-label normal insight-title hidden">Problem In Code</div>
-      <div class="ghost-line hidden" id="problemInCodeLine"></div>
-      <div id="expectedFixLabel" class="section-label normal insight-title hidden">Expected Fix Code</div>
-      <div class="ghost-line hidden" id="expectedFixLine"></div>
+
+      <!-- AI Tools -->
+      <div class="tools-section" style="padding:10px 0 0">
+        <div class="section-label" style="margin-bottom:8px">AI Tools</div>
+        <div class="tools-grid" id="quickActionsSection">
+          <button class="tool-btn" data-action="debug" aria-label="Debug Code">
+            <span class="tool-icon">🐛</span>
+            <span class="tool-label">Debug Code</span>
+          </button>
+          <button class="tool-btn" data-action="fix" aria-label="Fix Code">
+            <span class="tool-icon">🔧</span>
+            <span class="tool-label">Fix Code</span>
+          </button>
+          <button id="explainSelectionBtn" class="tool-btn" data-action="explain" aria-label="Explain Selection">
+            <span class="tool-icon">💡</span>
+            <span class="tool-label">Explain Selection</span>
+          </button>
+          <button id="reviewCodeBtn" class="tool-btn" data-action="review" aria-label="Review Code">
+            <span class="tool-icon">👁</span>
+            <span class="tool-label">Review Code</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Insight boxes -->
+      <div class="insight-block hidden" id="insightBlock">
+        <div id="problemInCodeLabel" class="insight-title hidden">Problem In Code</div>
+        <div class="ghost-line hidden" id="problemInCodeLine"></div>
+        <div id="expectedFixLabel" class="insight-title hidden" style="margin-top:8px">Expected Fix</div>
+        <div class="ghost-line hidden" id="expectedFixLine"></div>
+      </div>
 
       <div class="hidden-bindings" aria-hidden="true">
         <strong id="practiceQuestion">-</strong>
@@ -225,16 +263,27 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
       </div>
     </section>
 
-    <section class="card section-card hidden" id="practiceFlow">
+    <!-- ── PRACTICE FLOW (mode chooser active) ── -->
+    <section class="card practice-section hidden" id="practiceFlow">
       <div class="section-head-row">
-        <button class="back-btn" data-nav-back="tools" aria-label="Go home">⌂</button>
-        <div class="section-label normal">Practice Questions</div>
-        <span id="practiceTimerValue" class="timer">00:00</span>
+        <button class="back-btn" data-nav-back="tools" aria-label="Back to tools">← Back</button>
+        <div class="section-label normal">Practice Session</div>
+        <span id="practiceTimerValue" class="timer" role="timer" aria-label="Practice timer">00:00</span>
       </div>
 
-      <div class="practice-actions state-open" id="practiceStatePrimary">
-        <button class="primary-btn full" data-action="generate">Generate Question</button>
-        <button class="primary-btn full" data-action="detect">Detect Question</button>
+      <div class="practice-actions" id="practiceStatePrimary">
+        <div class="mode-chooser">
+          <div class="mode-card" data-action="generate" data-mode-target="solution" role="button" tabindex="0">
+            <span class="mode-icon">✨</span>
+            <span class="mode-label">AI Generated</span>
+            <span class="mode-sub">New question</span>
+          </div>
+          <div class="mode-card" data-action="detect" data-mode-target="solution" role="button" tabindex="0">
+            <span class="mode-icon">🔍</span>
+            <span class="mode-label">From Code</span>
+            <span class="mode-sub">Detect question</span>
+          </div>
+        </div>
       </div>
 
       <div class="hidden-bindings" aria-hidden="true">
@@ -245,26 +294,26 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
       </div>
     </section>
 
-    <section class="card section-card hidden" id="solutionFlow">
+    <!-- ── SOLUTION / ACTIVE PRACTICE FLOW ── -->
+    <section class="card practice-section hidden" id="solutionFlow">
       <div class="section-head-row">
-        <button class="back-btn" data-nav-back="tools" aria-label="Go home">⌂</button>
+        <button class="back-btn" data-nav-back="tools" aria-label="Back to tools">← Back</button>
         <div class="section-label normal">Practice Questions</div>
-        <span id="solutionTimerValue" class="timer">00:00</span>
+        <span id="solutionTimerValue" class="timer" role="timer" aria-label="Session timer">00:00</span>
       </div>
-      <div id="practiceStateSecondary" class="practice-actions open">
-        <div class="action-grid two-col">
-          <button id="explainQuestionBtn" class="primary-btn" data-action="explainQuestion">Explain Question</button>
-          <button id="showHintBtn" class="primary-btn" data-action="showHint">Show Hint</button>
+
+      <div id="practiceStateSecondary" class="practice-actions">
+        <div class="action-grid">
+          <button id="explainQuestionBtn" class="btn btn-secondary btn-sm" data-action="explainQuestion">Explain Question</button>
+          <button id="showHintBtn" class="btn btn-secondary btn-sm" data-action="showHint">Show Hint</button>
+          <button id="showSolutionBtn" class="btn btn-secondary btn-sm" data-action="showSolution">Show Solution</button>
+          <button class="btn btn-secondary btn-sm" data-action="differentApproach">Different Approach</button>
+          <button id="explainSolutionBtn" class="btn btn-secondary btn-sm" data-action="explainSolution">Explain Solution</button>
+          <button id="evaluateCodeBtn" class="btn btn-secondary btn-sm" data-action="evaluateCode">Evaluate Code</button>
         </div>
-        <div class="action-grid two-col">
-          <button id="showSolutionBtn" class="primary-btn" data-action="showSolution">Show Solution</button>
-          <button class="primary-btn" data-action="differentApproach">Different Approach</button>
-        </div>
-        <div class="action-grid two-col">
-          <button id="explainSolutionBtn" class="primary-btn" data-action="explainSolution">Explain Solution</button>
-          <button id="evaluateCodeBtn" class="primary-btn" data-action="evaluateCode">Evaluate Code</button>
-        </div>
-        <button id="saveQuestionBtn" class="primary-btn full save-question-btn" data-action="saveQuestion">Save Question</button>
+        <button id="saveQuestionBtn" class="btn btn-success" data-action="saveQuestion" style="margin-top:8px">
+          ✓ Save Question
+        </button>
       </div>
 
       <div class="hidden-bindings" aria-hidden="true">
@@ -275,47 +324,52 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
       </div>
     </section>
 
+    <!-- ── CHAT DOCK ── -->
     <div id="chatDock" class="chat-dock">
-      <div id="chatGrip" class="chat-grip" aria-hidden="true"></div>
+      <div id="chatGrip" class="chat-grip" aria-hidden="true" title="Drag to resize"></div>
       <div class="dock-head">
-        <span>AI CHAT</span>
-        <button id="newChatBtn" class="dock-plus-btn" aria-label="Start new chat">+</button>
+        <span>AI Chat</span>
+        <button id="newChatBtn" class="dock-plus-btn" aria-label="Start new chat" title="New chat">+</button>
       </div>
-      <section id="debugPanel" class="debug-panel hidden">
+
+      <!-- Debug panel -->
+      <section id="debugPanel" class="debug-panel hidden" aria-label="Debug panel">
         <div class="debug-head-row">
-          <div class="section-label">Debugging Code...</div>
+          <div class="section-label">Debugging Code…</div>
           <button id="debugCloseBtn" class="debug-close-btn" aria-label="Close debug">×</button>
         </div>
         <div id="debugRangeForm" class="debug-range-form">
           <div class="debug-preview-box" aria-hidden="true"></div>
           <div class="debug-range-row">
-            <input id="debugStartLine" type="number" min="1" placeholder="Start line" />
-            <input id="debugEndLine" type="number" min="1" placeholder="End line" />
-            <button id="debugStartBtn" class="small-btn">Start</button>
+            <input id="debugStartLine" type="number" min="1" placeholder="Start line" aria-label="Start line" />
+            <input id="debugEndLine" type="number" min="1" placeholder="End line" aria-label="End line" />
+            <button id="debugStartBtn" class="btn btn-primary btn-sm">Start</button>
           </div>
         </div>
         <div id="debugSession" class="debug-session hidden">
           <div class="debug-nav-row">
-            <button id="debugPrevBtn" class="small-btn">← Prev</button>
+            <button id="debugPrevBtn" class="btn btn-secondary btn-sm">← Prev</button>
             <div id="debugLineBadge" class="debug-line-badge">Line -</div>
-            <button id="debugNextBtn" class="small-btn">Next →</button>
+            <button id="debugNextBtn" class="btn btn-secondary btn-sm">Next →</button>
           </div>
           <pre id="debugCodeView" class="debug-code-view"></pre>
           <div id="debugCurrentExplain" class="debug-current-explain">-</div>
         </div>
       </section>
-      <div id="chatFeed" class="chat-feed"></div>
+
+      <div id="chatFeed" class="chat-feed" role="log" aria-live="polite" aria-label="Chat messages"></div>
+
       <div class="ask-row">
-        <input id="chatInput" type="text" placeholder="Ask Preecode AI" />
-        <button id="sendBtn" class="send-btn">Send</button>
+        <input id="chatInput" type="text" placeholder="Ask Preecode AI…" aria-label="Chat input" autocomplete="off" />
+        <button id="sendBtn" class="btn btn-send" aria-label="Send message">Send</button>
       </div>
 
       <div class="hidden-bindings" aria-hidden="true">
         <span id="compactTimer">00:00</span>
       </div>
     </div>
-  </div>
 
+  </div>
   <script nonce="${nonce}" src="${jsUri}"></script>
 </body>
 </html>`;
