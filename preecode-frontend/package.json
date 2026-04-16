@@ -1,0 +1,17 @@
+{
+  "name": "preecode-frontend",
+  "version": "1.0.0",
+  "description": "Preecode landing page and web frontend",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "build": "echo 'Static site - no build needed'"
+  },
+  "keywords": [
+    "developer",
+    "analytics",
+    "vscode"
+  ],
+  "author": "Preecode",
+  "license": "MIT"
+}
