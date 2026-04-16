@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="control-center.css" />
+  <style>
+    :root {
+      --vscode-sideBar-background: #1e1e1e;
+      --vscode-sideBar-border: #333;
+      --vscode-editorWidget-background: #252526;
+      --vscode-editorWidget-border: #454545;
+      --vscode-foreground: #cccccc;
+      --vscode-descriptionForeground: #858585;
+      --vscode-button-background: #2563EB;
+      --vscode-button-foreground: #ffffff;
+      --vscode-button-hoverBackground: #1d4ed8;
+      --vscode-button-secondaryBackground: #3a3d41;
+      --vscode-button-secondaryHoverBackground: #45494e;
+      --vscode-input-background: #3c3c3c;
+      --vscode-editor-background: #1e1e1e;
+      --vscode-editor-foreground: #d4d4d4;
+      --vscode-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --vscode-editor-font-family: "Cascadia Code", "Fira Code", monospace;
+      --vscode-focusBorder: #007acc;
+      --vscode-progressBar-background: #2563EB;
+      --vscode-testing-iconPassed: #22C55E;
+      --vscode-symbolIcon-keywordForeground: #569cd6;
+      --vscode-symbolIcon-stringForeground: #ce9178;
+      --vscode-symbolIcon-numberForeground: #b5cea8;
+      --vscode-editorLineNumber-foreground: #6a9955;
+      --vscode-statusBar-focusBorder: #007acc;
+    }
+  </style>
+  <title>Preview</title>
+</head>
+<body>
+  <div class="root" style="height:100vh; overflow-y:auto;">
+
+    <!-- HEADER -->
+    <section class="card header-card">
+      <div class="header-row">
+        <div class="profile-group">
+          <div class="avatar">P</div>
+          <div class="profile-copy">
+            <div class="title">prashant_d...'s Preecode</div>
+          </div>
+        </div>
+        <button class="btn btn-dashboard">
+          <span class="btn-text">Dashboard</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- TOOLS FLOW -->
+    <section class="card cta-section">
+      <button class="btn btn-primary full">▶ Start Practice Session</button>
+      <div class="tools-section" style="padding:10px 0 0">
+        <div class="section-label" style="margin-bottom:8px">AI Tools</div>
+        <div class="tools-grid">
+          <button class="tool-btn">
+            <span class="tool-icon">🐛</span>
+            <span class="tool-label">Debug Code</span>
+          </button>
+          <button class="tool-btn">
+            <span class="tool-icon">🔧</span>
+            <span class="tool-label">Fix Code</span>
+          </button>
+          <button class="tool-btn">
+            <span class="tool-icon">💡</span>
+            <span class="tool-label">Explain Selection</span>
+          </button>
+          <button class="tool-btn">
+            <span class="tool-icon">👁</span>
+            <span class="tool-label">Review Code</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRACTICE FLOW (mode chooser) -->
+    <section class="card practice-section">
+      <div class="section-head-row">
+        <button class="back-btn">← Back</button>
+        <div class="section-label normal">Practice Session</div>
+        <span class="timer">02:34</span>
+      </div>
+      <div class="mode-chooser">
+        <div class="mode-card">
+          <span class="mode-icon">✨</span>
+          <span class="mode-label">AI Generated</span>
+          <span class="mode-sub">New question</span>
+        </div>
+        <div class="mode-card active">
+          <span class="mode-icon">🔍</span>
+          <span class="mode-label">From Code</span>
+          <span class="mode-sub">Detect question</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOLUTION FLOW (active session) -->
+    <section class="card practice-section">
+      <div class="section-head-row">
+        <button class="back-btn">← Back</button>
+        <div class="section-label normal">Practice Questions</div>
+        <span class="timer">05:12</span>
+      </div>
+      <div class="practice-actions">
+        <div class="action-grid">
+          <button class="btn btn-secondary btn-sm">Explain Question</button>
+          <button class="btn btn-secondary btn-sm">Show Hint</button>
+          <button class="btn btn-secondary btn-sm">Show Solution</button>
+          <button class="btn btn-secondary btn-sm">Different Approach</button>
+          <button class="btn btn-secondary btn-sm">Explain Solution</button>
+          <button class="btn btn-secondary btn-sm">Evaluate Code</button>
+        </div>
+        <button class="btn btn-success" style="margin-top:8px">✓ Save Question</button>
+      </div>
+    </section>
+
+    <!-- CHAT DOCK -->
+    <div class="chat-dock" style="min-height:220px; flex:none;">
+      <div class="chat-grip"></div>
+      <div class="dock-head">
+        <span>AI Chat</span>
+        <button class="dock-plus-btn">+</button>
+      </div>
+      <div class="chat-feed" style="max-height:160px; overflow-y:auto;">
+        <div class="chat-msg assistant">Hi Prashant! I am your Preecode AI assistant. Ask me anything about your code.</div>
+        <div class="chat-msg user">hii</div>
+        <div class="chat-msg assistant">Hi Prashant! 👋 How can I help you with your code today?</div>
+        <div class="chat-loading-row">
+          <span class="chat-loading-spinner"></span>
+          AI is thinking…
+        </div>
+      </div>
+      <div class="ask-row">
+        <input id="chatInput" type="text" placeholder="Ask Preecode AI…" />
+        <button class="btn btn-send">Send</button>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
