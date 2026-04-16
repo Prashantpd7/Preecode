@@ -1,5 +1,5 @@
 {
   "buildCommand": "",
   "outputDirectory": "preecode-frontend",
-  "public": "preecode-frontend"
+  "public": true
 }
