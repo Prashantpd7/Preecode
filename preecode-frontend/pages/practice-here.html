@@ -45,6 +45,8 @@
     .ph-problem__badge--easy { background: rgba(34,197,94,0.12); color: #22c55e; }
     .ph-problem__badge--medium { background: rgba(234,179,8,0.12); color: #eab308; }
     .ph-problem__badge--hard { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .ph-problem__company { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-bottom: 6px; background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+    .ph-problem__company svg { width: 10px; height: 10px; }
     .ph-problem__title { font-size: 16px; font-weight: 700; color: var(--text-primary, #e6edf3); margin-bottom: 4px; }
     .ph-problem__body { flex: 1; overflow-y: auto; padding: 16px 20px; font-size: 13.5px; line-height: 1.7; color: var(--text-secondary, #8b949e); }
     .ph-problem__body p { margin-bottom: 12px; }
@@ -108,6 +110,21 @@
         <option value="hard">Hard</option>
       </select>
     </div>
+    <div class="ph-topbar__diff">
+      <select id="companySelect">
+        <option value="">Any Company</option>
+        <option value="Amazon">Amazon</option>
+        <option value="Google">Google</option>
+        <option value="Microsoft">Microsoft</option>
+        <option value="Meta">Meta</option>
+        <option value="Apple">Apple</option>
+        <option value="Netflix">Netflix</option>
+        <option value="Uber">Uber</option>
+        <option value="Airbnb">Airbnb</option>
+        <option value="LinkedIn">LinkedIn</option>
+        <option value="Adobe">Adobe</option>
+      </select>
+    </div>
     <button class="ph-btn ph-btn--gen" id="genBtn">
       <i class="fa-solid fa-wand-magic-sparkles"></i> New Question
     </button>
@@ -132,7 +149,13 @@
     <!-- Problem Panel -->
     <div class="ph-problem">
       <div class="ph-problem__header" id="problemHeader" style="display:none">
-        <span class="ph-problem__badge" id="diffBadge">Medium</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span class="ph-problem__badge" id="diffBadge">Medium</span>
+          <span class="ph-problem__company" id="companyBadge" style="display:none">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+            <span id="companyName"></span>
+          </span>
+        </div>
         <div class="ph-problem__title" id="problemTitle">Problem</div>
       </div>
       <div class="ph-problem__body" id="problemBody">
