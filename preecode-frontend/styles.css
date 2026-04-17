@@ -5700,7 +5700,7 @@ html.dark .dash-v4-practice:hover {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 140px 0 120px;
+  padding: 140px 0 60px;
   overflow: hidden;
   text-align: center;
 }
@@ -5883,7 +5883,7 @@ html.light .hero-v5__badge {
 
 /* ── Floating Languages ── */
 .languages-float {
-  padding: 56px 0 96px;
+  padding: 32px 0 96px;
   border-top: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
   position: relative;
