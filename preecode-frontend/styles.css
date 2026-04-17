@@ -3938,8 +3938,18 @@ input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-rin
   font-size: 18px;
 }
 .brand-dark {
-  color: #ffffff;
+  color: var(--text-primary);
   font-weight: bold;
+}
+
+/* Light mode adjustment */
+html.light .brand-dark {
+  color: #0f172a;
+}
+
+/* Dark mode adjustment */
+html.dark .brand-dark {
+  color: #ffffff;
 }
 .brand-accent {
   color: #ff9500;
