@@ -42,9 +42,11 @@
   var editor = null;
   var currentQuestion = null;
   var currentHint = null;
+  var currentSolution = null;
   var timerInterval = null;
   var timerSeconds = 0;
   var hintShown = false;
+  var solutionShown = false;
 
   // ── Init Monaco ──
   require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
@@ -109,8 +111,12 @@
 
     // Reset state
     hintShown = false;
+    solutionShown = false;
+    currentSolution = null;
     document.getElementById('hintBox').classList.remove('visible');
     document.getElementById('hintBtn').disabled = true;
+    document.getElementById('solutionBtn').disabled = true;
+    document.getElementById('solutionBtn').innerHTML = '<i class="fa-solid fa-eye"></i> Solution';
     document.getElementById('problemHeader').style.display = 'none';
     document.getElementById('problemBody').innerHTML = '<div class="ph-problem__empty"><div class="ph-loading__spinner" style="margin:0 auto"></div><p style="margin-top:12px">Generating your challenge...</p></div>';
     document.getElementById('outputBody').textContent = 'Run your code to see output here...';
@@ -129,6 +135,7 @@
         parseAndRenderQuestion(raw, lang, diff);
         startTimer();
         document.getElementById('hintBtn').disabled = false;
+        document.getElementById('solutionBtn').disabled = false;
       })
       .catch(function (err) {
         document.getElementById('problemBody').innerHTML = '<div class="ph-problem__empty"><p style="color:#f87171">Failed to generate question. Please try again.</p></div>';
@@ -151,6 +158,7 @@
 
     currentQuestion = question;
     currentHint = hint;
+    currentSolution = solution;
 
     // Render problem
     document.getElementById('problemHeader').style.display = 'block';
@@ -188,6 +196,26 @@
       box.classList.remove('visible');
       hintShown = false;
       this.innerHTML = '<i class="fa-solid fa-lightbulb"></i> Hint';
+    }
+  });
+
+  // ── Show Solution ──
+  document.getElementById('solutionBtn').addEventListener('click', function () {
+    if (!currentSolution || !editor) return;
+    if (!solutionShown) {
+      if (!confirm('Show solution? This will replace your current code.')) return;
+      editor.setValue(currentSolution);
+      solutionShown = true;
+      this.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Hide Solution';
+      this.style.color = '#f87171';
+      this.style.borderColor = 'rgba(248,113,113,0.3)';
+    } else {
+      var lang = document.getElementById('langSelect').value;
+      editor.setValue(STARTERS[lang]);
+      solutionShown = false;
+      this.innerHTML = '<i class="fa-solid fa-eye"></i> Solution';
+      this.style.color = '';
+      this.style.borderColor = '';
     }
   });
 
@@ -312,6 +340,7 @@
         difficulty: diff,
         date: new Date().toISOString(),
         hintsUsed: hintShown ? 1 : 0,
+        solutionViewed: solutionShown,
       }),
     })
       .then(function (r) { return r.json(); })
