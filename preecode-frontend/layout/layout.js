@@ -57,7 +57,6 @@
     '<div class="topbar-right">' +
       // Start Practice CTA button
       '<a href="https://marketplace.visualstudio.com/items?itemName=Preecode.preecode" target="_blank" rel="noopener noreferrer" id="startPracticeBtn" class="topbar-start-practice" title="Install Preecode VS Code Extension">' +
-        '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 1.5L20 4.5L22.5 3L24 5.5L20 8.5L20 19.5L24 22.5L22.5 24L20 22.5L3 16.5L1 17.5L0 15.5L2 14L2 9L0 7.5L1 5.5L3 6.5L17.5 1.5ZM18 7L5.5 12L18 17V7Z"/></svg>' +
         '<span>Start Practice</span>' +
       '</a>' +
       // Notifications
