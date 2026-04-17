@@ -13,22 +13,25 @@
   <link rel="icon" href="data:,">
 </head>
 
-<body class="bg-[#0B0F14] text-white font-sans min-h-screen antialiased flex items-center justify-center p-4">
+<body class="bg-[#0B0F14] text-white font-sans min-h-screen antialiased">
 
-  <!-- Minimal centered login container -->
-  <div class="w-full max-w-[420px] opacity-0 animate-fade-in">
-
-    <!-- Logo (Top Center) -->
-    <div class="flex justify-center mb-8">
-      <a href="/" class="flex items-center gap-2 no-underline hover:opacity-80 transition-opacity">
-        <div class="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center flex-shrink-0">
-          <svg class="w-5 h-5 text-[#0B0F14]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3"/>
-          </svg>
-        </div>
-        <span class="text-base font-bold tracking-tight"><span class="brand-dark">Pree</span><span class="brand-accent" style="color: #F97316">code</span></span>
+  <!-- Navbar -->
+  <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-[#0B0F14]/80 border-b border-white/[0.05]">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <!-- Logo -->
+      <a href="/" class="flex items-center gap-0 no-underline hover:opacity-80 transition-opacity">
+        <span class="text-lg font-bold tracking-tight"><span class="brand-dark">Pree</span><span class="brand-accent" style="color: #F97316">code</span></span>
       </a>
+
+      <!-- Right side link -->
+      <a href="register.html" class="text-xs text-gray-400 hover:text-orange-400 transition-colors duration-150 no-underline">Create account</a>
     </div>
+  </nav>
+
+  <!-- Main content -->
+  <div class="min-h-screen flex items-center justify-center p-4 pt-24">
+    <!-- Centered login form -->
+    <div class="w-full max-w-[420px] opacity-0 animate-fade-in">
 
     <!-- Login Card -->
     <div class="auth-card">
@@ -143,7 +146,6 @@
         </div>
       </div>
     </div>
-
   </div>
 
   <script src="api.js"></script>
