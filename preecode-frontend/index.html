@@ -117,6 +117,17 @@
           </div>
         </div>
 
+        <!-- CTA Buttons -->
+        <div class="hero-new__ctas">
+          <a href="https://marketplace.visualstudio.com/items?itemName=Preecode.preecode" target="_blank" rel="noopener noreferrer" class="hero-new__cta-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 00-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 00-1.276.057L.327 7.261A1 1 0 00.326 8.74L3.899 12 .326 15.26a1 1 0 00.001 1.479L1.65 17.94a.999.999 0 001.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 001.704.29l4.942-2.377A1.5 1.5 0 0024 19.08V4.92a1.5 1.5 0 00-.85-1.333zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>
+            Install in VS Code
+          </a>
+          <a href="register.html" class="hero-new__cta-secondary">
+            Start Free — No credit card
+          </a>
+        </div>
+
         <!-- Stats -->
         <div class="hero-new__stats">
           <div class="hero-new__stat">
@@ -219,7 +230,7 @@
 
     /* Heading */
     .hero-new__heading {
-      font-size: clamp(36px, 6vw, 64px);
+      font-size: clamp(42px, 7vw, 76px);
       font-weight: 400;
       line-height: 1.15;
       letter-spacing: -0.02em;
@@ -345,7 +356,48 @@
       .hero-new__cards { grid-template-columns: 1fr; }
       .hero-new__stats { gap: 20px; }
       .hero-new__stat-divider { display: none; }
+      .hero-new__ctas { flex-direction: column; align-items: center; }
     }
+  </style>
+
+  <style>
+    .hero-new__ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 32px 0 40px;
+      flex-wrap: wrap;
+    }
+    .hero-new__cta-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 13px 26px;
+      background: #007ACC;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.15s;
+      letter-spacing: -0.1px;
+    }
+    .hero-new__cta-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .hero-new__cta-secondary {
+      display: inline-flex;
+      align-items: center;
+      padding: 13px 26px;
+      background: transparent;
+      color: var(--text-secondary, #6e6e73);
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle, rgba(255,255,255,0.1));
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .hero-new__cta-secondary:hover { border-color: #f97316; color: #f97316; }
   </style>
 
   <script>
@@ -403,7 +455,7 @@
         </div>
         <div class="languages-float__item float-6" style="--lang-color: #DEA584; --float-duration: 11s; --float-delay: -2.5s; --float-distance: 22px; --drift-distance: -8px; --float-rotate: -2deg;">
           <div class="languages-float__icon">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.834 8.101a13.912 13.912 0 01-13.643 11.72 13.912 13.912 0 01-13.643-11.72 13.912 13.912 0 0113.643-11.72 13.912 13.912 0 0113.643 11.72zm-13.643 9.72a11.912 11.912 0 0011.643-9.72 11.912 11.912 0 00-11.643-9.72 11.912 11.912 0 00-11.643 9.72 11.912 11.912 0 0011.643 9.72zm-3.573-6.924l-.192-.483-.192.483H5.64l.41.298-.157.483.341-.248.341.248-.157-.483.41-.298zm3.573 0l-.192-.483-.192.483H9.213l.41.298-.157.483.341-.248.341.248-.157-.483.41-.298zm3.573 0l-.192-.483-.192.483h-.594l.41.298-.157.483.341-.248.341.248-.157-.483.41-.298zm-7.146-2.573l-.192-.483-.192.483H5.64l.41.298-.157.483.341-.248.341.248-.157-.483.41-.298zm3.573 0l-.192-.483-.192.483H9.213l.41.298-.157.483.341-.248.341.248-.157-.483.41-.298zm3.573 0l-.192-.483-.192.483h-.594l.41.298-.157.483.341-.248.341.248-.157-.483.41-.298z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0a12 12 0 100 24A12 12 0 0012 0zm.27 4.5l.44.26 4.5 2.6.44.25v5.2l-.44.25-4.5 2.6-.44.26-.44-.26-4.5-2.6-.44-.25V7.61l.44-.25 4.5-2.6.44-.26zm0 1.04L8.3 7.88v4.68l3.7 2.14 3.7-2.14V7.88L12.27 5.54zM5.1 14.1l.2.95-.87.18-.2-.95.87-.18zm13.8 0l.87.18-.2.95-.87-.18.2-.95zM3.6 11.25l.05.97-.97.05-.05-.97.97-.05zm16.8 0l.97.05-.05.97-.97-.05.05-.97zM4.5 8.55l.38.9-.9.38-.38-.9.9-.38zm15 0l.9.38-.38.9-.9-.38.38-.9zM6.75 6.3l.65.73-.73.65-.65-.73.73-.65zm10.5 0l.73.65-.65.73-.73-.65.65-.73zM9.75 4.8l.87.5-.5.87-.87-.5.5-.87zm4.5 0l.5.87-.87.5-.5-.87.87-.5z"/></svg>
           </div>
           <span class="sr-only">Rust</span>
         </div>
