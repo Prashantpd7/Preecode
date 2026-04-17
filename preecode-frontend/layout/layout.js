@@ -283,21 +283,76 @@
     });
   }
 
-  // ── Start Practice Button (VSCode deep link) ──
+  // ── Start Practice Modal ──
+  function injectPracticeModal() {
+    if (document.getElementById('practiceChoiceModal')) return;
+    var modal = document.createElement('div');
+    modal.id = 'practiceChoiceModal';
+    modal.innerHTML = [
+      '<div class="pc-modal-backdrop" id="pcBackdrop">',
+        '<div class="pc-modal">',
+          '<button class="pc-modal-close" id="pcClose" aria-label="Close">&times;</button>',
+          '<h2 class="pc-modal-title">Where do you want to practice?</h2>',
+          '<p class="pc-modal-sub">Choose your preferred coding environment</p>',
+          '<div class="pc-modal-options">',
+            '<a href="#" id="pcVscode" class="pc-option pc-option--vscode">',
+              '<div class="pc-option-icon">',
+                '<svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 1.5L20 4.5L22.5 3L24 5.5L20 8.5L20 19.5L24 22.5L22.5 24L20 22.5L3 16.5L1 17.5L0 15.5L2 14L2 9L0 7.5L1 5.5L3 6.5L17.5 1.5ZM18 7L5.5 12L18 17V7Z"/></svg>',
+              '</div>',
+              '<div class="pc-option-body">',
+                '<span class="pc-option-title">Practice in VS Code</span>',
+                '<span class="pc-option-desc">Full IDE experience with AI hints, timer & auto-sync</span>',
+              '</div>',
+              '<svg class="pc-option-arrow" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>',
+            '</a>',
+            '<a href="/pages/practice-here.html" class="pc-option pc-option--web">',
+              '<div class="pc-option-icon">',
+                '<svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3"/></svg>',
+              '</div>',
+              '<div class="pc-option-body">',
+                '<span class="pc-option-title">Practice Here</span>',
+                '<span class="pc-option-desc">Online compiler — write, run & save code in your browser</span>',
+              '</div>',
+              '<svg class="pc-option-arrow" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>',
+            '</a>',
+          '</div>',
+        '</div>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(modal);
+
+    document.getElementById('pcClose').addEventListener('click', closePracticeModal);
+    document.getElementById('pcBackdrop').addEventListener('click', function(e) {
+      if (e.target === this) closePracticeModal();
+    });
+    document.getElementById('pcVscode').addEventListener('click', function(e) {
+      e.preventDefault();
+      closePracticeModal();
+      var token = localStorage.getItem('token') || '';
+      var vscodeUri = 'vscode://preecode.preecode/auth' + (token ? '?token=' + encodeURIComponent(token) + '&source=navbar' : '');
+      window.location.href = vscodeUri;
+    });
+  }
+
+  function openPracticeModal() {
+    injectPracticeModal();
+    var modal = document.getElementById('practiceChoiceModal');
+    modal.style.display = 'flex';
+    requestAnimationFrame(function() { modal.classList.add('pc-modal--open'); });
+  }
+
+  function closePracticeModal() {
+    var modal = document.getElementById('practiceChoiceModal');
+    if (!modal) return;
+    modal.classList.remove('pc-modal--open');
+    setTimeout(function() { modal.style.display = 'none'; }, 220);
+  }
+
   function bindStartPractice(el) {
     if (!el) return;
     el.addEventListener('click', function (e) {
       e.preventDefault();
-      var token = localStorage.getItem('token') || '';
-      var vscodeUri = 'vscode://preecode.preecode/auth' + (token ? '?token=' + encodeURIComponent(token) + '&source=navbar' : '');
-      // Try to open VS Code via deep link
-      window.location.href = vscodeUri;
-      // Fallback: after 2s if still on page, redirect to problems
-      setTimeout(function () {
-        if (document.hasFocus()) {
-          window.location.href = '/pages/problems.html';
-        }
-      }, 2000);
+      openPracticeModal();
     });
   }
   bindStartPractice(document.getElementById('startPracticeBtn'));
