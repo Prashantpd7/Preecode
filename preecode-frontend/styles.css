@@ -6214,13 +6214,13 @@ html.dark .languages-float__item {
 .probsol-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 28px;
+  gap: 24px;
 }
 .probsol-col {
   background: var(--card-bg);
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  padding: 36px 30px;
+  border-radius: 20px;
+  padding: 48px 40px;
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .probsol-col:hover {
@@ -6239,7 +6239,7 @@ html.dark .languages-float__item {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin: 0 0 28px;
+  margin: 0 0 32px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -6258,25 +6258,23 @@ html.dark .languages-float__item {
 .probsol-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 .probsol-item {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  font-size: 14px;
+  gap: 16px;
+  font-size: 15px;
   line-height: 1.55;
   color: var(--text-secondary);
 }
 .probsol-item svg {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
-  margin-top: 3px;
-  padding: 3px;
-  border-radius: 6px;
-  width: 22px;
-  height: 22px;
+  margin-top: 1px;
+  padding: 4px;
+  border-radius: 7px;
 }
 .probsol-item--problem svg {
   color: #f87171;
