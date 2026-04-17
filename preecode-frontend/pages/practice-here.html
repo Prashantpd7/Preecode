@@ -30,6 +30,9 @@
     .ph-btn--save:hover { background: #ea580c; }
     .ph-btn--hint { background: var(--bg-tertiary, #1e2736); color: #a78bfa; border: 1px solid rgba(167,139,250,0.2); }
     .ph-btn--hint:hover { background: rgba(167,139,250,0.08); }
+    .ph-btn--solution { background: var(--bg-tertiary, #1e2736); color: #6b7280; border: 1px solid rgba(107,114,128,0.2); }
+    .ph-btn--solution:hover:not(:disabled) { background: rgba(248,113,113,0.08); color: #f87171; border-color: rgba(248,113,113,0.3); }
+    .ph-btn--solution:disabled { opacity: 0.4; cursor: not-allowed; }
     .ph-timer { font-size: 13px; font-weight: 700; color: var(--text-muted, #6b7280); font-variant-numeric: tabular-nums; background: var(--bg-tertiary, #1e2736); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-subtle, rgba(255,255,255,0.07)); }
 
     /* ── Main layout ── */
@@ -110,6 +113,9 @@
     </button>
     <button class="ph-btn ph-btn--hint" id="hintBtn" disabled>
       <i class="fa-solid fa-lightbulb"></i> Hint
+    </button>
+    <button class="ph-btn ph-btn--solution" id="solutionBtn" disabled>
+      <i class="fa-solid fa-eye"></i> Solution
     </button>
     <span class="ph-timer" id="timerDisplay">00:00</span>
     <button class="ph-btn ph-btn--run" id="runBtn">
