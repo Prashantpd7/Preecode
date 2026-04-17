@@ -554,14 +554,94 @@
   ════════════════════════════════════ -->
   <section id="faq" class="section">
     <div class="max-w-3xl mx-auto px-6">
-      <div class="section-header reveal"><p class="section-label">FAQ</p><h2 class="section-title">Frequently Asked Questions</h2></div>
+      <div class="section-header reveal">
+        <p class="section-label">FAQ</p>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-subtitle">Everything you need to know before getting started.</p>
+      </div>
+
       <div class="faq-container reveal" id="faqList">
-        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Is Preecode free?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>Yes. Preecode is free for individual developers. All core features — session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review — are included at no cost. Team plans will be available in the future.</p></div></div>
-        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Does Preecode access my source code?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>No. Preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p></div></div>
-        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Can teams use Preecode?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>Preecode is currently designed for individual developers. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap.</p></div></div>
-        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>What languages are supported?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>The VS Code extension supports JavaScript, Python, Java, C++, and C. Additional language support is planned.</p></div></div>
-        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>How does automatic tracking work?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>When you solve a problem using the Preecode VS Code extension, the submission metadata — question name, language, time taken, and difficulty — is automatically captured and synced to your dashboard. No manual entry is required.</p></div></div>
-        <div class="faq-item"><button class="faq-question" type="button" aria-expanded="false"><span>Can I use Preecode without the extension?</span><span class="faq-icon">+</span></button><div class="faq-answer"><p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking and the built-in problem environment require the VS Code extension.</p></div></div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>Is Preecode free?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>Yes — Preecode is completely free for individual developers. Session tracking, difficulty analytics, streak monitoring, the VS Code extension, and AI code review are all included at no cost. Team plans are on the roadmap.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>Does Preecode read or store my code?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>No. Preecode never reads, stores, or transmits your source code. The extension only captures session metadata — problem name, language, difficulty, time spent, and submission result. Your code stays entirely on your machine.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>How does automatic session tracking work?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>Once you install the VS Code extension and log in, Preecode detects when you open and run a coding problem. It captures the problem name, language, difficulty, and time spent — then syncs it to your dashboard automatically. No manual logging needed.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>What programming languages are supported?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>The extension currently supports JavaScript, Python, Java, C++, and C. More languages are planned — if yours isn't listed, let us know and we'll prioritize it.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>What does the AI feedback actually tell me?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>The AI reviews your approach and highlights areas to improve — things like time complexity, edge case handling, and code clarity. It also tracks patterns across your sessions, so over time it can surface blind spots specific to you, not just generic tips.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>Can I use Preecode without the VS Code extension?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>You can access the web dashboard and AI chatbot without the extension. However, automatic session tracking requires the VS Code extension — that's where the real value of hands-free logging comes from.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>How is Preecode different from just using LeetCode's built-in stats?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>LeetCode shows you what you solved. Preecode shows you how you're improving. You get time-per-problem trends, difficulty distribution, weak topic detection, streak data, and AI-powered feedback — all in one place, regardless of which platform you practice on.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" type="button" aria-expanded="false">
+            <span>Will there be team or company features?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </button>
+          <div class="faq-answer" role="region">
+            <p>Yes. Team features — shared dashboards, cohort analytics, and admin controls — are on the roadmap. If you're interested in early access for your team or bootcamp, reach out and we'll keep you posted.</p>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
