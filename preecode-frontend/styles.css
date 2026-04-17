@@ -1075,6 +1075,7 @@ input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-rin
   display: flex;
   flex-direction: column;
   gap: 0;
+  border-top: 1px solid var(--border-subtle);
 }
 .faq-item {
   background: transparent;
@@ -1082,16 +1083,23 @@ input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-rin
   border-bottom: 1px solid var(--border-subtle);
   border-radius: 0;
   padding: 0;
+  transition: background 0.2s ease;
 }
 .faq-item:last-child {
   border-bottom: none;
+}
+.faq-item.open {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-bottom: 1px solid transparent;
+  margin-bottom: 4px;
 }
 .faq-question {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
+  padding: 18px 16px;
   background: none;
   border: none;
   color: var(--text-primary);
@@ -1118,12 +1126,13 @@ input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-rin
   line-height: 1;
   color: var(--text-muted);
   flex-shrink: 0;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
   transform-origin: center;
   user-select: none;
 }
 .faq-item.open .faq-icon {
   transform: rotate(45deg);
+  color: var(--accent);
 }
 .faq-answer {
   overflow: hidden;
@@ -1132,10 +1141,10 @@ input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-rin
 }
 .faq-answer p {
   font-size: 14px;
-  line-height: 1.65;
+  line-height: 1.7;
   color: var(--text-secondary);
   margin: 0;
-  padding-bottom: 16px;
+  padding: 0 16px 18px;
 }
 
 /* ── Security Badge Row ── */
