@@ -56,9 +56,9 @@
     // Right: Start Practice CTA + Notifications + Streak + Profile
     '<div class="topbar-right">' +
       // Start Practice CTA button
-      '<a href="#" id="startPracticeBtn" class="topbar-start-practice" title="Start a practice session in VS Code">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>' +
-        'Start Practice' +
+      '<a href="https://marketplace.visualstudio.com/items?itemName=Preecode.preecode" target="_blank" rel="noopener noreferrer" id="startPracticeBtn" class="topbar-start-practice" title="Install Preecode VS Code Extension">' +
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 1.5L20 4.5L22.5 3L24 5.5L20 8.5L20 19.5L24 22.5L22.5 24L20 22.5L3 16.5L1 17.5L0 15.5L2 14L2 9L0 7.5L1 5.5L3 6.5L17.5 1.5ZM18 7L5.5 12L18 17V7Z"/></svg>' +
+        '<span>Start Practice</span>' +
       '</a>' +
       // Notifications
       '<div class="notif-container" id="notifContainer">' +
@@ -132,7 +132,7 @@
     '<a href="/pages/problems.html" class="' + navCls('problems') + '">Problems</a>' +
     '<a href="/pages/resume-upload.html" class="' + navCls('resume-upload') + '">Resume</a>' +
     '<a href="/pages/interview-setup.html" class="' + navCls('interview-setup') + '">Interview</a>' +
-    '<a href="#" id="startPracticeMobile" class="topbar-nav-link" style="color:var(--accent,#f97316);font-weight:600">▶ Start Practice</a>';
+    '<a href="https://marketplace.visualstudio.com/items?itemName=Preecode.preecode" target="_blank" rel="noopener noreferrer" id="startPracticeMobile" class="topbar-nav-link" style="color:var(--accent,#f97316);font-weight:600">▶ Start Practice</a>';
 
   // ── Inject ──
   var shell = document.querySelector('.app-shell');

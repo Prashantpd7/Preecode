@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const OPENROUTER_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
 
 function getOpenRouterApiKey(): string {
 	return String(process.env.OPENROUTER_API_KEY || '').trim();
