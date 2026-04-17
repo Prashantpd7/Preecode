@@ -133,34 +133,48 @@ async function generateQuestion(language, difficulty) {
 
   let languageInstruction = '';
   if (safeLanguage === 'javascript') {
-    languageInstruction = 'Use pure JavaScript only. No TypeScript annotations.';
+    languageInstruction = 'Use pure JavaScript only. No TypeScript annotations. Use console.log for output.';
   } else if (safeLanguage === 'typescript') {
-    languageInstruction = 'Use TypeScript with proper types.';
+    languageInstruction = 'Use TypeScript with proper types. Use console.log for output.';
   } else if (safeLanguage === 'python') {
-    languageInstruction = 'Use Python only. No JavaScript syntax.';
+    languageInstruction = 'Use Python 3 only. Use print() for output.';
+  } else if (safeLanguage === 'java') {
+    languageInstruction = 'Use Java. Include a public class Solution with a main method. Use System.out.println for output.';
+  } else if (safeLanguage === 'cpp') {
+    languageInstruction = 'Use C++17. Include necessary headers. Use cout for output.';
+  } else if (safeLanguage === 'c') {
+    languageInstruction = 'Use C. Include necessary headers. Use printf for output.';
+  } else if (safeLanguage === 'go') {
+    languageInstruction = 'Use Go. Include package main and import fmt. Use fmt.Println for output.';
+  } else if (safeLanguage === 'rust') {
+    languageInstruction = 'Use Rust. Include a main function. Use println! for output.';
   }
 
-  const prompt = `Create one ${safeDifficulty} coding practice question for ${safeLanguage}.
+  const difficultyContext = {
+    easy: 'beginner-friendly, solvable in under 15 minutes, focuses on basic loops, arrays, or string manipulation',
+    medium: 'intermediate level, solvable in 20-35 minutes, involves data structures like hashmaps or recursion',
+    hard: 'advanced level, solvable in 40-60 minutes, involves dynamic programming, graphs, or complex algorithms',
+  }[safeDifficulty] || 'intermediate level';
+
+  const prompt = `You are an expert coding interview coach creating a ${safeDifficulty} practice problem.
 ${languageInstruction}
+Difficulty context: ${difficultyContext}.
 
-Rules:
-- [QUESTION]: 2-3 sentences maximum. State what the function should do. No "Input:", "Output:", "Constraints:", "Examples:" sections. Just a plain description.
-- [HINT]: One sentence only. A non-spoiler nudge toward the approach.
-- [SOLUTION]: Working ${safeLanguage} code. No markdown fences. Must include a function and a single print/console.log call showing a result.
+Generate a single, well-defined coding challenge. The problem must be self-contained and runnable.
 
-Return ONLY this, no other text:
+Return EXACTLY in this format with no extra text:
 
 [QUESTION]
-<2-3 sentence problem description>
+Write a clear 2-4 sentence problem description. State the function name, what it takes as input, and what it should return or print. Include 1-2 concrete examples inline (e.g. "For input [1,2,3], the output should be 6").
 
 [HINT]
-<one sentence hint>
+One sentence hint that nudges toward the approach without giving away the solution.
 
 [SOLUTION]
-<runnable code>`;
+Complete, runnable ${safeLanguage} code that solves the problem. Must include the function definition AND a demonstration call that prints the result. No markdown fences.`;
 
   const messages = [{ role: 'user', content: prompt }];
-  const raw = await generateResponse(messages, { temperature: 0.8, maxTokens: 700 });
+  const raw = await generateResponse(messages, { temperature: 0.75, maxTokens: 800 });
 
   return raw
     .replace(/```[\w]*\n?/g, '')
