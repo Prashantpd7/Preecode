@@ -67,6 +67,70 @@ function stripFences(text) {
   return text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
 }
 
+function extractJson(text) {
+  const cleaned = stripFences(text || '');
+  if (!cleaned) throw new Error('Empty AI response');
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw err;
+    return JSON.parse(match[0]);
+  }
+}
+
+function toScore(value) {
+  if (value === null || value === undefined) return null;
+  const num = typeof value === 'number'
+    ? value
+    : Number(String(value).replace(/[^\d.-]/g, ''));
+  if (!Number.isFinite(num)) return null;
+  return Math.max(0, Math.min(100, Math.round(num)));
+}
+
+function normalizeStringArray(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === 'string' ? item.trim() : String(item)))
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(/[\n,;]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeAnalysis(result) {
+  if (!result || typeof result !== 'object') throw new Error('Invalid shape');
+  const atsScore = toScore(result.atsScore ?? result.ats_score ?? result.ats);
+  const structureScore = toScore(result.structureScore ?? result.structure_score ?? result.structure);
+  const matchScore = toScore(result.matchScore ?? result.match_score ?? result.roleMatch ?? result.role_match);
+  const skills = normalizeStringArray(result.skills);
+  const experience = normalizeStringArray(result.experience);
+  const keywords = normalizeStringArray(result.keywords);
+  const missingSkills = normalizeStringArray(result.missingSkills ?? result.missing_skills);
+  const suggestions = normalizeStringArray(result.suggestions ?? result.recommendations);
+
+  const hasAnyScore = atsScore !== null || structureScore !== null || matchScore !== null;
+  const hasAnyContent = skills.length || experience.length || keywords.length || missingSkills.length || suggestions.length;
+  if (!hasAnyScore && !hasAnyContent) throw new Error('Invalid shape');
+
+  return {
+    skills,
+    experience,
+    keywords,
+    atsScore: atsScore ?? 0,
+    structureScore: structureScore ?? 0,
+    matchScore: matchScore ?? 0,
+    missingSkills,
+    suggestions,
+  };
+}
+
 const FALLBACK_ANALYSIS = {
   skills: [],
   experience: [],
@@ -84,10 +148,8 @@ async function analyzeResume(extractedText, targetRole) {
 
   try {
     const raw = await callAI(prompt);
-    const cleaned = stripFences(raw);
-    const result = JSON.parse(cleaned);
-    if (typeof result.atsScore === 'number') return result;
-    throw new Error('Invalid shape');
+    const result = extractJson(raw);
+    return normalizeAnalysis(result);
   } catch (err) {
     console.error('[resume/service] analyzeResume fallback:', err.message);
     return { ...FALLBACK_ANALYSIS };
