@@ -51,6 +51,7 @@ const practiceRoutes = loadModule('./routes/practiceRoutes', 'Practice Routes');
 const aiRoutes = loadModule('./routes/aiRoutes', 'AI Routes');
 const earlyAccessRoutes = loadModule('./routes/earlyAccessRoutes', 'Early Access Routes');
 const uploadRoutes = loadModule('./routes/uploadRoutes', 'Upload Routes');
+const githubAuthRoutes = loadModule('./routes/githubAuthRoutes', 'GitHub Auth Routes');
 
 console.log('[startup] All modules loaded successfully\n');
 
@@ -66,6 +67,8 @@ const checkEnvVars = () => {
     'JWT_SECRET': !!process.env.JWT_SECRET ? '✓ SET' : '✗ MISSING',
     'FRONTEND_URL': process.env.FRONTEND_URL || 'http://localhost:3000',
     'BACKEND_URL': process.env.BACKEND_URL || 'http://localhost:5001',
+    'GITHUB_CLIENT_ID': !!process.env.GITHUB_CLIENT_ID ? '✓ SET' : '⚠ MISSING',
+    'GITHUB_CLIENT_SECRET': !!process.env.GITHUB_CLIENT_SECRET ? '✓ SET' : '⚠ MISSING',
     'GOOGLE_CLIENT_ID': !!process.env.GOOGLE_CLIENT_ID ? '✓ SET' : '⚠ MISSING',
     'GOOGLE_CLIENT_SECRET': !!process.env.GOOGLE_CLIENT_SECRET ? '✓ SET' : '⚠ MISSING',
     'GOOGLE_CALLBACK_URL': process.env.GOOGLE_CALLBACK_URL || 'auto',
@@ -163,6 +166,7 @@ app.get('/api/health', (_req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/github', githubAuthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/submissions', submissionRoutes);
 app.use('/api/practice', practiceRoutes);
