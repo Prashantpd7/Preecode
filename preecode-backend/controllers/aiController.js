@@ -1,14 +1,12 @@
-const { chat, getHint, reviewCode, generateQuestion } = require('../services/aiService');
+const { chat, getHint, reviewCode, generateQuestion, verifyCodeOutput } = require('../services/aiService');
 
 // POST /api/ai/generate-question
 exports.generatePracticeQuestion = async (req, res, next) => {
   try {
-    const { language, difficulty } = req.body;
-    if (!language) {
-      return res.status(400).json({ message: 'language is required.' });
-    }
-    const result = await generateQuestion(language, difficulty);
-    res.json({ question: result });
+    const { language, difficulty, company } = req.body;
+    if (!language) return res.status(400).json({ message: 'language is required.' });
+    const result = await generateQuestion(language, difficulty, company);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -51,6 +49,20 @@ exports.reviewUserCode = async (req, res, next) => {
     }
     const review = await reviewCode(code, language, problemDescription);
     res.json({ review });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/ai/verify
+exports.verifyCode = async (req, res, next) => {
+  try {
+    const { question, code, output, language } = req.body;
+    if (!question || !code || output === undefined) {
+      return res.status(400).json({ message: 'question, code, and output are required.' });
+    }
+    const result = await verifyCodeOutput(question, code, output, language);
+    res.json(result);
   } catch (error) {
     next(error);
   }

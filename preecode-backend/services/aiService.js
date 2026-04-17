@@ -16,22 +16,19 @@ async function generateResponse(messages, options = {}) {
 
     const requestBody = {
       model: 'openai/gpt-oss-120b:free',
-      messages: messages,
+      messages,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxTokens || 2048,
     };
 
-    const response = await fetch(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openrouterApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openrouterApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -39,16 +36,9 @@ async function generateResponse(messages, options = {}) {
     }
 
     const data = await response.json();
-
-    if (!data.choices || !data.choices[0]) {
-      throw new Error('No response from OpenRouter API');
-    }
-
+    if (!data.choices || !data.choices[0]) throw new Error('No response from OpenRouter API');
     const content = data.choices[0].message?.content;
-    if (!content) {
-      throw new Error('Empty response from OpenRouter API');
-    }
-
+    if (!content) throw new Error('Empty response from OpenRouter API');
     return content;
   } catch (error) {
     console.error('OpenRouter API Error:', error);
@@ -59,9 +49,9 @@ async function generateResponse(messages, options = {}) {
 async function chat(message, context, history = []) {
   const safeHistory = Array.isArray(history)
     ? history
-        .filter((entry) => entry && (entry.role === 'user' || entry.role === 'assistant') && typeof entry.text === 'string')
+        .filter((e) => e && (e.role === 'user' || e.role === 'assistant') && typeof e.text === 'string')
         .slice(-12)
-        .map((entry) => ({ role: entry.role, content: entry.text.trim().slice(0, 2000) }))
+        .map((e) => ({ role: e.role, content: e.text.trim().slice(0, 2000) }))
     : [];
 
   const systemPrompt = [
@@ -69,14 +59,14 @@ async function chat(message, context, history = []) {
     'Answer the user question directly and specifically.',
     'If the user asks for output, compute it step by step from the provided code/context.',
     'Use concise, practical language.',
-    'If context is missing, ask one short clarifying question instead of guessing.'
+    'If context is missing, ask one short clarifying question instead of guessing.',
   ].join(' ');
 
   const messages = [
     { role: 'system', content: systemPrompt },
     ...(context ? [{ role: 'system', content: `Editor context:\n${context}` }] : []),
     ...safeHistory,
-    { role: 'user', content: message }
+    { role: 'user', content: message },
   ];
 
   return generateResponse(messages, { temperature: 0.5 });
@@ -127,57 +117,81 @@ Final Verdict:
   return generateResponse([{ role: 'user', content: prompt }], { temperature: 0.4 });
 }
 
-async function generateQuestion(language, difficulty) {
+// Company list for random assignment
+const COMPANIES = ['Amazon', 'Google', 'Microsoft', 'Meta', 'Apple', 'Netflix', 'Uber', 'Airbnb', 'LinkedIn', 'Adobe'];
+
+async function generateQuestion(language, difficulty, company) {
   const safeLanguage = String(language || 'python').trim().toLowerCase() || 'python';
   const safeDifficulty = String(difficulty || 'medium').trim().toLowerCase();
+  const safeCompany = company || COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
 
-  let languageInstruction = '';
-  if (safeLanguage === 'javascript') {
-    languageInstruction = 'Use pure JavaScript only. No TypeScript annotations. Use console.log for output.';
-  } else if (safeLanguage === 'typescript') {
-    languageInstruction = 'Use TypeScript with proper types. Use console.log for output.';
-  } else if (safeLanguage === 'python') {
-    languageInstruction = 'Use Python 3 only. Use print() for output.';
-  } else if (safeLanguage === 'java') {
-    languageInstruction = 'Use Java. Include a public class Solution with a main method. Use System.out.println for output.';
-  } else if (safeLanguage === 'cpp') {
-    languageInstruction = 'Use C++17. Include necessary headers. Use cout for output.';
-  } else if (safeLanguage === 'c') {
-    languageInstruction = 'Use C. Include necessary headers. Use printf for output.';
-  } else if (safeLanguage === 'go') {
-    languageInstruction = 'Use Go. Include package main and import fmt. Use fmt.Println for output.';
-  } else if (safeLanguage === 'rust') {
-    languageInstruction = 'Use Rust. Include a main function. Use println! for output.';
-  }
+  const langInstructions = {
+    javascript: 'Use pure JavaScript only. No TypeScript. Use console.log for output.',
+    typescript: 'Use TypeScript with proper types. Use console.log for output.',
+    python: 'Use Python 3. Use print() for output.',
+    java: 'Use Java. Include public class Solution with main method. Use System.out.println.',
+    cpp: 'Use C++17. Include needed headers. Use cout for output.',
+    c: 'Use C. Include needed headers. Use printf for output.',
+    go: 'Use Go. Include package main and import fmt. Use fmt.Println.',
+    rust: 'Use Rust. Include main function. Use println!.',
+  };
 
   const difficultyContext = {
-    easy: 'beginner-friendly, solvable in under 15 minutes, focuses on basic loops, arrays, or string manipulation',
-    medium: 'intermediate level, solvable in 20-35 minutes, involves data structures like hashmaps or recursion',
-    hard: 'advanced level, solvable in 40-60 minutes, involves dynamic programming, graphs, or complex algorithms',
+    easy: 'basic loops, arrays, or string manipulation — solvable in under 15 min',
+    medium: 'hashmaps, recursion, or sorting — solvable in 20-30 min',
+    hard: 'dynamic programming, graphs, or trees — solvable in 40-60 min',
   }[safeDifficulty] || 'intermediate level';
 
-  const prompt = `You are a coding interview coach. Generate a single ${safeDifficulty} coding problem for ${safeLanguage}.
-${languageInstruction}
-Difficulty: ${difficultyContext}.
+  const prompt = `You are a coding interview coach at ${safeCompany}.
+Generate ONE short ${safeDifficulty} coding problem in ${safeLanguage} style (${difficultyContext}).
+${langInstructions[safeLanguage] || ''}
 
-Return EXACTLY in this format, nothing else:
+Return ONLY valid JSON, no markdown, no extra text:
+{
+  "company": "${safeCompany}",
+  "title": "Short problem title (3-6 words)",
+  "question": "2-3 sentences max. State the function name, inputs, output, and one inline example.",
+  "hint": "One sentence nudging toward the approach without giving it away.",
+  "solution": "Complete runnable ${safeLanguage} code with function + one demo print call. No markdown fences."
+}`;
 
-[QUESTION]
-2-3 sentences only. State the function name, inputs, and expected output. Include one short example inline.
+  const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.75, maxTokens: 600 });
+  const cleaned = raw.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
 
-[HINT]
-One sentence. Nudge toward the approach without giving it away.
-
-[SOLUTION]
-Complete runnable ${safeLanguage} code. Include the function and one demo call that prints the result. No markdown fences.`;
-
-  const messages = [{ role: 'user', content: prompt }];
-  const raw = await generateResponse(messages, { temperature: 0.75, maxTokens: 500 });
-
-  return raw
-    .replace(/```[\w]*\n?/g, '')
-    .replace(/```/g, '')
-    .trim();
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (!parsed.question || !parsed.solution) throw new Error('Invalid shape');
+    return parsed;
+  } catch {
+    // Fallback: return raw as question text
+    return { company: safeCompany, title: 'Coding Challenge', question: cleaned, hint: '', solution: '' };
+  }
 }
 
-module.exports = { generateResponse, chat, getHint, reviewCode, generateQuestion };
+async function verifyCodeOutput(question, code, output, language) {
+  const prompt = `You are a coding problem verifier. Check if the code output is correct for the given problem.
+
+Problem: ${question}
+User's ${language} code: ${code}
+Code output: ${output}
+
+Return ONLY valid JSON (no markdown):
+{
+  "correct": true or false,
+  "feedback": "1-2 sentence explanation of why correct or what is wrong",
+  "mistakes": ["specific mistake 1", "specific mistake 2"]
+}`;
+
+  try {
+    const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.2, maxTokens: 400 });
+    const cleaned = raw.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleaned);
+    if (typeof result.correct !== 'boolean') throw new Error('Invalid shape');
+    return result;
+  } catch (err) {
+    console.error('[ai/verify] error:', err.message);
+    return { correct: false, feedback: 'Could not verify output. Please check manually.', mistakes: [] };
+  }
+}
+
+module.exports = { generateResponse, chat, getHint, reviewCode, generateQuestion, verifyCodeOutput };

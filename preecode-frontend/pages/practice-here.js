@@ -124,15 +124,15 @@
     document.getElementById('outputStatus').style.display = 'none';
 
     var token = localStorage.getItem('token') || '';
+    var company = document.getElementById('companySelect').value;
     fetch(API_BASE + '/ai/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ language: lang, difficulty: diff }),
+      body: JSON.stringify({ language: lang, difficulty: diff, company: company || undefined }),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        var raw = data.question || data.content || '';
-        parseAndRenderQuestion(raw, lang, diff);
+        parseAndRenderQuestion(data, lang, diff);
         startTimer();
         document.getElementById('hintBtn').disabled = false;
         document.getElementById('solutionBtn').disabled = false;
@@ -147,28 +147,38 @@
       });
   }
 
-  function parseAndRenderQuestion(raw, lang, diff) {
-    var qMatch = raw.match(/\[QUESTION\]([\s\S]*?)(?=\[HINT\]|\[SOLUTION\]|$)/i);
-    var hMatch = raw.match(/\[HINT\]([\s\S]*?)(?=\[QUESTION\]|\[SOLUTION\]|$)/i);
-    var sMatch = raw.match(/\[SOLUTION\]([\s\S]*?)$/i);
-
-    var question = qMatch ? qMatch[1].trim() : raw.trim();
-    var hint = hMatch ? hMatch[1].trim() : '';
-    var solution = sMatch ? sMatch[1].trim() : STARTERS[lang];
+  function parseAndRenderQuestion(data, lang, diff) {
+    // data is now a JSON object from the API
+    var question = (typeof data === 'object' ? data.question : data) || '';
+    var hint     = (typeof data === 'object' ? data.hint     : '') || '';
+    var solution = (typeof data === 'object' ? data.solution : '') || STARTERS[lang];
+    var company  = (typeof data === 'object' ? data.company  : '') || '';
+    var title    = (typeof data === 'object' ? data.title    : '') || extractTitle(question);
 
     currentQuestion = question;
     currentHint = hint;
     currentSolution = solution;
 
-    // Render problem
+    // Render header
     document.getElementById('problemHeader').style.display = 'block';
     var badge = document.getElementById('diffBadge');
     badge.textContent = diff.charAt(0).toUpperCase() + diff.slice(1);
     badge.className = 'ph-problem__badge ph-problem__badge--' + diff;
-    document.getElementById('problemTitle').textContent = extractTitle(question);
+
+    // Company badge
+    var companyBadge = document.getElementById('companyBadge');
+    var companyName  = document.getElementById('companyName');
+    if (company && companyBadge && companyName) {
+      companyName.textContent = company;
+      companyBadge.style.display = 'inline-flex';
+    } else if (companyBadge) {
+      companyBadge.style.display = 'none';
+    }
+
+    document.getElementById('problemTitle').textContent = title;
     document.getElementById('problemBody').innerHTML = '<p>' + escHtml(question).replace(/\n/g, '</p><p>') + '</p>';
 
-    // Set editor to starter (not solution)
+    // Reset editor to starter
     if (editor) editor.setValue(STARTERS[lang]);
   }
 
@@ -296,22 +306,92 @@
     var compileOutput = data.compile_output || '';
     var statusDesc = (data.status && data.status.description) || '';
 
-    if (stdout) {
-      outputBody.className = 'ph-output__body';
-      outputBody.textContent = stdout;
-      outputStatus.className = 'ph-output__status ph-output__status--ok';
-      outputStatus.textContent = 'Accepted';
-    } else if (stderr || compileOutput) {
+    // Show raw output first
+    if (stderr || compileOutput) {
       outputBody.className = 'ph-output__body error';
       outputBody.textContent = stderr || compileOutput;
       outputStatus.className = 'ph-output__status ph-output__status--err';
       outputStatus.textContent = statusDesc || 'Error';
-    } else {
-      outputBody.className = 'ph-output__body';
-      outputBody.textContent = statusDesc || 'No output';
+      hideVerifyPanel();
+      return;
+    }
+
+    outputBody.className = 'ph-output__body';
+    outputBody.textContent = stdout || statusDesc || 'No output';
+    outputStatus.className = 'ph-output__status ph-output__status--run';
+    outputStatus.textContent = 'Verifying...';
+
+    // Only verify if we have a question loaded
+    if (!currentQuestion || !stdout) {
       outputStatus.className = 'ph-output__status ph-output__status--ok';
       outputStatus.textContent = statusDesc || 'Done';
+      hideVerifyPanel();
+      return;
     }
+
+    // Ask AI to verify correctness
+    var token = localStorage.getItem('token') || '';
+    var lang = document.getElementById('langSelect').value;
+    fetch(API_BASE + '/ai/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ question: currentQuestion, code: editor.getValue(), output: stdout, language: lang }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (result) {
+        if (result.correct) {
+          outputStatus.className = 'ph-output__status ph-output__status--ok';
+          outputStatus.textContent = '✓ Correct';
+          showVerifyPanel(true, result.feedback, []);
+        } else {
+          outputStatus.className = 'ph-output__status ph-output__status--err';
+          outputStatus.textContent = '✗ Wrong Answer';
+          showVerifyPanel(false, result.feedback, result.mistakes || []);
+        }
+      })
+      .catch(function () {
+        outputStatus.className = 'ph-output__status ph-output__status--ok';
+        outputStatus.textContent = 'Done';
+      });
+  }
+
+  function showVerifyPanel(correct, feedback, mistakes) {
+    var panel = document.getElementById('verifyPanel');
+    if (!panel) return;
+    panel.className = 'ph-verify-panel ' + (correct ? 'ph-verify-panel--ok' : 'ph-verify-panel--err');
+
+    var html = correct
+      ? '<div class="ph-verify-icon">✓</div><div class="ph-verify-body"><strong>Correct!</strong> ' + escHtml(feedback) + '</div>'
+      : '<div class="ph-verify-icon">✗</div><div class="ph-verify-body"><strong>Wrong Answer.</strong> ' + escHtml(feedback) +
+        (mistakes.length
+          ? '<button class="ph-verify-toggle" id="mistakesToggle">See what you did wrong ▾</button>' +
+            '<ul class="ph-verify-mistakes hidden" id="mistakesList">' +
+            mistakes.map(function (m) { return '<li>' + escHtml(m) + '</li>'; }).join('') +
+            '</ul>'
+          : '') +
+        '</div>';
+
+    panel.innerHTML = html;
+    panel.style.display = 'flex';
+
+    var toggle = document.getElementById('mistakesToggle');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        var list = document.getElementById('mistakesList');
+        if (list.classList.contains('hidden')) {
+          list.classList.remove('hidden');
+          toggle.textContent = 'Hide ▴';
+        } else {
+          list.classList.add('hidden');
+          toggle.textContent = 'See what you did wrong ▾';
+        }
+      });
+    }
+  }
+
+  function hideVerifyPanel() {
+    var panel = document.getElementById('verifyPanel');
+    if (panel) panel.style.display = 'none';
   }
 
   // ── Save Session ──
