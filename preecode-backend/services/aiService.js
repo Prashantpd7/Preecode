@@ -156,25 +156,23 @@ async function generateQuestion(language, difficulty) {
     hard: 'advanced level, solvable in 40-60 minutes, involves dynamic programming, graphs, or complex algorithms',
   }[safeDifficulty] || 'intermediate level';
 
-  const prompt = `You are an expert coding interview coach creating a ${safeDifficulty} practice problem.
+  const prompt = `You are a coding interview coach. Generate a single ${safeDifficulty} coding problem for ${safeLanguage}.
 ${languageInstruction}
-Difficulty context: ${difficultyContext}.
+Difficulty: ${difficultyContext}.
 
-Generate a single, well-defined coding challenge. The problem must be self-contained and runnable.
-
-Return EXACTLY in this format with no extra text:
+Return EXACTLY in this format, nothing else:
 
 [QUESTION]
-Write a clear 2-4 sentence problem description. State the function name, what it takes as input, and what it should return or print. Include 1-2 concrete examples inline (e.g. "For input [1,2,3], the output should be 6").
+2-3 sentences only. State the function name, inputs, and expected output. Include one short example inline.
 
 [HINT]
-One sentence hint that nudges toward the approach without giving away the solution.
+One sentence. Nudge toward the approach without giving it away.
 
 [SOLUTION]
-Complete, runnable ${safeLanguage} code that solves the problem. Must include the function definition AND a demonstration call that prints the result. No markdown fences.`;
+Complete runnable ${safeLanguage} code. Include the function and one demo call that prints the result. No markdown fences.`;
 
   const messages = [{ role: 'user', content: prompt }];
-  const raw = await generateResponse(messages, { temperature: 0.75, maxTokens: 800 });
+  const raw = await generateResponse(messages, { temperature: 0.75, maxTokens: 500 });
 
   return raw
     .replace(/```[\w]*\n?/g, '')

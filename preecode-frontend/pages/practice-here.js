@@ -196,12 +196,26 @@
 
   function runCode() {
     if (!editor) return;
-    var code = editor.getValue();
+    var code = editor.getValue().trim();
     var lang = document.getElementById('langSelect').value;
+
+    // Validate: don't run empty or starter-only code
+    var starter = STARTERS[lang].trim();
+    if (!code || code === starter) {
+      var outputBody = document.getElementById('outputBody');
+      var outputStatus = document.getElementById('outputStatus');
+      outputBody.className = 'ph-output__body error';
+      outputBody.textContent = 'Write some code before running!';
+      outputStatus.style.display = 'inline-block';
+      outputStatus.className = 'ph-output__status ph-output__status--err';
+      outputStatus.textContent = 'No Code';
+      return;
+    }
+
     var langId = LANG_IDS[lang];
     var runBtn = document.getElementById('runBtn');
-    var outputBody = document.getElementById('outputBody');
-    var outputStatus = document.getElementById('outputStatus');
+    outputBody = document.getElementById('outputBody');
+    outputStatus = document.getElementById('outputStatus');
 
     runBtn.disabled = true;
     runBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
@@ -286,7 +300,7 @@
     var diff = document.getElementById('diffSelect').value;
     var mins = Math.floor(timerSeconds / 60);
     var secs = timerSeconds % 60;
-    var timeTaken = mins + 'm ' + secs + 's';
+    var timeTaken = (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
 
     fetch(API_BASE + '/practice', {
       method: 'POST',
