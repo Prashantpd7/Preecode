@@ -27,6 +27,8 @@ module.exports = (err, req, res, next) => {
   res.status(statusCode);
   res.json({
     message: err.message || 'Server Error',
+    code: err.code,
+    details: err.details,
     stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
   });
 };
