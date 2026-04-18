@@ -1,48 +1,270 @@
-const openrouterApiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// Ordered model fallback chain from fastest/cheapest to strongest alternatives.
+const OPENROUTER_MODELS = [
+  'openai/gpt-4o-mini',
+  'openai/gpt-4o',
+  'anthropic/claude-3-haiku'
+];
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
+const REQUEST_TIMEOUT_MS = 12000;
+const MIN_REQUEST_SPACING_MS = 200;
+
+let lastRequestAtMs = 0;
+
+function getOpenRouterApiKey() {
+  return String(process.env.OPENROUTER_API_KEY || '').trim();
+}
+
+const openrouterApiKey = getOpenRouterApiKey();
 
 if (!openrouterApiKey) {
   console.warn('[ai] OPENROUTER_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
 }
 
-async function generateResponse(messages, options = {}) {
-  if (!openrouterApiKey) {
-    const err = new Error('AI is not configured. Set OPENROUTER_API_KEY in backend environment variables.');
-    err.statusCode = 503;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function applyRateLimitDelay() {
+  // Small spacing reduces accidental bursts that can trigger provider rate limits.
+  const now = Date.now();
+  const elapsed = now - lastRequestAtMs;
+  if (elapsed < MIN_REQUEST_SPACING_MS) {
+    await sleep(MIN_REQUEST_SPACING_MS - elapsed);
+  }
+  lastRequestAtMs = Date.now();
+}
+
+function validateMessages(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    const err = new Error('Invalid OpenRouter payload: messages must be a non-empty array.');
+    err.statusCode = 400;
+    err.code = 'INVALID_OPENROUTER_PAYLOAD';
     throw err;
   }
 
+  for (const message of messages) {
+    const isValidRole = message && typeof message.role === 'string' && message.role.trim().length > 0;
+    const isValidContent = message && typeof message.content === 'string' && message.content.trim().length > 0;
+    if (!isValidRole || !isValidContent) {
+      const err = new Error('Invalid OpenRouter payload: each message must include role and content.');
+      err.statusCode = 400;
+      err.code = 'INVALID_OPENROUTER_PAYLOAD';
+      throw err;
+    }
+  }
+}
+
+function validateModel(model) {
+  if (typeof model !== 'string' || model.trim().length === 0) {
+    const err = new Error('Invalid OpenRouter payload: model must be a non-empty string.');
+    err.statusCode = 400;
+    err.code = 'INVALID_OPENROUTER_PAYLOAD';
+    throw err;
+  }
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    console.log('Using OpenRouter API');
-
-    const requestBody = {
-      model: 'openai/gpt-oss-120b:free',
-      messages,
-      temperature: options.temperature || 0.7,
-      max_tokens: options.maxTokens || 2048,
-    };
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openrouterApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`OpenRouter API error: ${errorData.error?.message || 'Unknown error'}`);
+    if (typeof fetch === 'function') {
+      return await fetch(url, { ...options, signal: controller.signal });
     }
 
-    const data = await response.json();
-    if (!data.choices || !data.choices[0]) throw new Error('No response from OpenRouter API');
-    const content = data.choices[0].message?.content;
-    if (!content) throw new Error('Empty response from OpenRouter API');
-    return content;
+    const mod = await import('node-fetch');
+    const nodeFetch = mod.default || mod;
+    return await nodeFetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function buildStructuredError(base) {
+  const err = new Error(base.message);
+  err.name = 'OpenRouterError';
+  err.statusCode = base.statusCode || 502;
+  err.code = base.code || 'OPENROUTER_REQUEST_FAILED';
+  err.details = {
+    model: base.model,
+    attempt: base.attempt,
+    providerStatus: base.providerStatus,
+    retryable: Boolean(base.retryable),
+    responseBody: base.responseBody,
+    cause: base.cause,
+  };
+  return err;
+}
+
+function parseJsonSafely(text) {
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+async function call_openrouter(messages, options = {}) {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey) {
+    const err = new Error('AI is not configured. Set OPENROUTER_API_KEY in backend environment variables.');
+    err.statusCode = 503;
+    err.code = 'OPENROUTER_API_KEY_MISSING';
+    throw err;
+  }
+
+  validateMessages(messages);
+
+  const requestConfig = {
+    temperature: options.temperature ?? 0.7,
+    max_tokens: options.maxTokens ?? 2048,
+  };
+
+  const errors = [];
+
+  // Try each model with exponential retries before moving to the next fallback.
+  for (const model of OPENROUTER_MODELS) {
+    if (!model || typeof model !== 'string') {
+      continue;
+    }
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+      const attemptNumber = attempt + 1;
+      const payload = {
+        model,
+        messages,
+        temperature: requestConfig.temperature,
+        max_tokens: requestConfig.max_tokens,
+      };
+
+      try {
+        validateModel(payload.model);
+        validateMessages(payload.messages);
+        console.log(`[ai] OpenRouter request model=${model} attempt=${attemptNumber}`);
+
+        await applyRateLimitDelay();
+
+        const response = await fetchWithTimeout(
+          OPENROUTER_URL,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          },
+          REQUEST_TIMEOUT_MS
+        );
+
+        const rawBody = await response.text();
+        const parsedBody = parseJsonSafely(rawBody);
+
+        if (!response.ok) {
+          const providerMessage = parsedBody?.error?.message || `OpenRouter HTTP ${response.status}`;
+          const retryable = response.status === 429 || response.status >= 500 || response.status === 408;
+
+          console.error('[ai] OpenRouter non-200 response', {
+            model,
+            attempt: attemptNumber,
+            status: response.status,
+            body: rawBody,
+          });
+
+          errors.push({
+            model,
+            attempt: attemptNumber,
+            status: response.status,
+            message: providerMessage,
+          });
+
+          if (retryable && attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
+            continue;
+          }
+
+          break;
+        }
+
+        const content = parsedBody?.choices?.[0]?.message?.content;
+        if (!content || typeof content !== 'string') {
+          errors.push({
+            model,
+            attempt: attemptNumber,
+            status: response.status,
+            message: 'OpenRouter returned empty content.',
+          });
+          break;
+        }
+
+        return {
+          content,
+          model,
+          raw: parsedBody,
+        };
+      } catch (error) {
+        const isTimeout = error && error.name === 'AbortError';
+        const retryable = isTimeout || (error && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT'));
+
+        console.error('[ai] OpenRouter network/timeout error', {
+          model,
+          attempt: attemptNumber,
+          error: error?.message || String(error),
+        });
+
+        errors.push({
+          model,
+          attempt: attemptNumber,
+          message: isTimeout ? 'OpenRouter request timed out.' : error?.message || 'Network error',
+        });
+
+        if (retryable && attempt < MAX_RETRIES) {
+          await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
+          continue;
+        }
+
+        break;
+      }
+    }
+  }
+
+  const lastError = errors[errors.length - 1] || {};
+  throw buildStructuredError({
+    message: 'OpenRouter request failed after retries and model fallbacks.',
+    statusCode: lastError.status || 502,
+    code: 'OPENROUTER_FALLBACK_EXHAUSTED',
+    model: lastError.model,
+    attempt: lastError.attempt,
+    providerStatus: lastError.status,
+    retryable: true,
+    responseBody: lastError.message,
+    cause: errors,
+  });
+}
+
+async function generateResponse(messages, options = {}) {
+  try {
+    const result = await call_openrouter(messages, options);
+    return result.content;
   } catch (error) {
-    console.error('OpenRouter API Error:', error);
-    throw new Error(`AI service error: ${error.message}`);
+    if (error && error.name === 'OpenRouterError') {
+      throw error;
+    }
+
+    const wrapped = buildStructuredError({
+      message: `AI service error: ${error?.message || 'Unknown error'}`,
+      statusCode: error?.statusCode || 502,
+      code: error?.code || 'OPENROUTER_UNEXPECTED_ERROR',
+      responseBody: error?.message,
+      cause: error,
+      retryable: false,
+    });
+    throw wrapped;
   }
 }
 
@@ -194,4 +416,4 @@ Return ONLY valid JSON (no markdown):
   }
 }
 
-module.exports = { generateResponse, chat, getHint, reviewCode, generateQuestion, verifyCodeOutput };
+module.exports = { call_openrouter, generateResponse, chat, getHint, reviewCode, generateQuestion, verifyCodeOutput };
