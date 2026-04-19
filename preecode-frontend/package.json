@@ -2,7 +2,7 @@
   "name": "preecode-frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "Preecode web dashboard frontend",
+  "description": "Preecode web dashboard frontend with enhanced UI/UX",
   "scripts": {
     "dev": "serve -l 5173 .",
     "start": "serve -l 4173 .",

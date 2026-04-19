@@ -1,3 +1,5 @@
+// Preecode AI Service - OpenRouter API Integration
+// Enhanced AI capabilities with multiple model fallback support
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // Ordered model fallback chain from fastest/cheapest to strongest alternatives.
 const OPENROUTER_MODELS = [

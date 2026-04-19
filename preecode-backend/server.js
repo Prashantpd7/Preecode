@@ -1,3 +1,4 @@
+// Preecode Backend Server - Enhanced with OpenRouter AI Integration
 // Load environment variables first
 require('dotenv').config();
 
