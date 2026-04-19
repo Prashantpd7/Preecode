@@ -2,6 +2,8 @@
 
 AI-powered coding practice and skill-building platform directly inside VS Code.
 
+> 🚀 Now powered by OpenRouter API for enhanced AI capabilities
+
 Preecode helps developers practice consistently, review code with AI assistance, and improve problem-solving skills without leaving their editor. It combines coding workflows, guidance, and progress-oriented tooling in one extension.
 
 Website: https://preecode.vercel.app

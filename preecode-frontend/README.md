@@ -1,6 +1,8 @@
 # preecode – Web Dashboard
 
 > Part of the **preecode** coding practice ecosystem.
+> 
+> ✨ Updated UI with improved user experience
 
 ## What is preecode?
 
