@@ -7447,3 +7447,856 @@ html.dark .languages-float__item {
     padding-right: 0;
   }
 }
+/* ══════════════════════════════════════
+   INTERNAL APP PAGES MOBILE RESPONSIVE STYLES
+══════════════════════════════════════ */
+
+/* ── Dashboard V4 Mobile Optimizations ── */
+@media (max-width: 767px) {
+  .dash-v4 {
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .dash-v4-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .dash-v4-stat {
+    padding: 16px 20px;
+  }
+  
+  .dash-v4-stat__num {
+    font-size: 24px;
+  }
+  
+  .dash-v4-stat__num--xl {
+    font-size: 32px;
+  }
+  
+  .dash-v4-card {
+    padding: 16px 20px;
+  }
+  
+  .dash-v4-card__header {
+    margin-bottom: 12px;
+  }
+  
+  .dash-v4-twocol {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .dash-v4-practice {
+    padding: 20px;
+  }
+  
+  .dash-v4-practice__stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .dash-v4-practice__cta {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .dash-v4-table {
+    font-size: 12px;
+  }
+  
+  .dash-v4-table th,
+  .dash-v4-table td {
+    padding: 8px 12px;
+  }
+  
+  .dash-v4-streak__ring {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .dash-v4-streak__ring-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .dash-v4-streak__milestones {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dash-v4 {
+    padding: 12px;
+    gap: 12px;
+  }
+  
+  .dash-v4-stat {
+    padding: 12px 16px;
+  }
+  
+  .dash-v4-stat__num {
+    font-size: 20px;
+  }
+  
+  .dash-v4-stat__num--xl {
+    font-size: 28px;
+  }
+  
+  .dash-v4-card {
+    padding: 12px 16px;
+  }
+  
+  .dash-v4-practice {
+    padding: 16px;
+  }
+  
+  .dash-v4-practice__stats {
+    gap: 8px;
+  }
+  
+  .dash-v4-streak__ring {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .dash-v4-streak__milestones {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .streak-milestone {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}
+
+/* ── Problems Page Mobile Optimizations ── */
+@media (max-width: 767px) {
+  .page-content {
+    padding: 16px;
+  }
+  
+  .prob-search-input {
+    padding: 12px 16px 12px 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  .prob-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .prob-chip-group {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .prob-chip-group::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .prob-chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  
+  .prob-table-card {
+    padding: 0;
+    border-radius: 12px;
+  }
+  
+  .prob-table {
+    min-width: 500px;
+    font-size: 12px;
+  }
+  
+  .prob-table th,
+  .prob-table td {
+    padding: 8px 12px;
+  }
+  
+  .prob-th-num,
+  .prob-td-num {
+    width: 32px;
+  }
+  
+  .prob-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+  
+  .diff-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-content {
+    padding: 12px;
+  }
+  
+  .prob-search-input {
+    padding: 10px 14px 10px 40px;
+  }
+  
+  .prob-chip {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  .prob-table {
+    min-width: 450px;
+    font-size: 11px;
+  }
+  
+  .prob-table th,
+  .prob-table td {
+    padding: 6px 8px;
+  }
+}
+
+/* ── Practice Here Mobile Optimizations ── */
+@media (max-width: 1023px) {
+  .ph-main {
+    flex-direction: column;
+  }
+  
+  .ph-problem {
+    width: 100%;
+    height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.07));
+  }
+  
+  .ph-editor-wrap {
+    height: 60vh;
+  }
+  
+  .ph-output {
+    height: 150px;
+  }
+}
+
+@media (max-width: 767px) {
+  .ph-topbar {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .ph-topbar__logo {
+    font-size: 14px;
+  }
+  
+  .ph-topbar__title {
+    font-size: 12px;
+  }
+  
+  .ph-topbar__lang select,
+  .ph-topbar__diff select {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .ph-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .ph-timer {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  
+  .ph-problem {
+    height: 35vh;
+  }
+  
+  .ph-problem__header {
+    padding: 12px 16px 8px;
+  }
+  
+  .ph-problem__title {
+    font-size: 14px;
+  }
+  
+  .ph-problem__body {
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+  
+  .ph-editor-wrap {
+    height: 65vh;
+  }
+  
+  .ph-output {
+    height: 120px;
+  }
+  
+  .ph-output__body {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  
+  .ph-hint-box {
+    margin: 8px 16px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ph-topbar {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  
+  .ph-topbar__spacer {
+    display: none;
+  }
+  
+  .ph-btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  
+  .ph-btn span {
+    display: none;
+  }
+  
+  .ph-timer {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  .ph-problem {
+    height: 30vh;
+  }
+  
+  .ph-problem__header {
+    padding: 8px 12px 6px;
+  }
+  
+  .ph-problem__body {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+  
+  .ph-editor-wrap {
+    height: 70vh;
+  }
+  
+  .ph-output {
+    height: 100px;
+  }
+}
+
+/* ── Submissions Page Mobile Optimizations ── */
+@media (max-width: 767px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .stat-item {
+    padding: 12px 16px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+  }
+  
+  .stat-label {
+    font-size: 10px;
+  }
+  
+  .filter-control {
+    min-width: auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .stat-item {
+    padding: 10px 12px;
+  }
+  
+  .stat-value {
+    font-size: 16px;
+  }
+}
+
+/* ── Profile Page Mobile Optimizations ── */
+@media (max-width: 1023px) {
+  .prof-header-inner {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+  }
+  
+  .prof-header-info {
+    align-items: center;
+  }
+  
+  .prof-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .dash-v4-twocol {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .prof-header-card {
+    padding: 16px 20px;
+  }
+  
+  .prof-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+  }
+  
+  .prof-name {
+    font-size: 18px;
+  }
+  
+  .prof-subtitle {
+    font-size: 12px;
+  }
+  
+  .prof-edit-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .prof-tab-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .prof-tab {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  .prof-badges-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .prof-badge {
+    padding: 12px 16px;
+  }
+  
+  .prof-badge-name {
+    font-size: 12px;
+  }
+  
+  .prof-diff-row {
+    gap: 8px;
+  }
+  
+  .prof-diff-name {
+    font-size: 12px;
+    min-width: 60px;
+  }
+  
+  .prof-diff-count {
+    font-size: 12px;
+    min-width: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .prof-header-card {
+    padding: 12px 16px;
+  }
+  
+  .prof-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+  }
+  
+  .prof-name {
+    font-size: 16px;
+  }
+  
+  .prof-tab {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .prof-level-header {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+}
+
+/* ── Interview Pages Mobile Optimizations ── */
+@media (max-width: 767px) {
+  .record-btn {
+    width: 72px;
+    height: 72px;
+  }
+  
+  .interview-question {
+    padding: 16px;
+    font-size: 14px;
+  }
+  
+  .interview-controls {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  
+  .interview-timer {
+    font-size: 16px;
+  }
+  
+  .interview-progress {
+    height: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .record-btn {
+    width: 64px;
+    height: 64px;
+  }
+  
+  .interview-question {
+    padding: 12px;
+    font-size: 13px;
+  }
+  
+  .interview-controls {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  
+  .interview-timer {
+    font-size: 14px;
+  }
+}
+
+/* ── Settings Page Mobile Optimizations ── */
+@media (max-width: 1023px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .settings-nav-item {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 8px 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .settings-nav-item {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .settings-nav-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .settings-avatar {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .settings-form .auth-input {
+    padding: 10px 14px;
+  }
+  
+  .settings-form .auth-btn-primary {
+    padding: 12px;
+  }
+}
+
+/* ── Placement Dashboard Mobile Optimizations ── */
+@media (max-width: 767px) {
+  .readiness-score {
+    font-size: 32px;
+  }
+  
+  .readiness-bar-track {
+    height: 8px;
+  }
+  
+  .placement-metrics {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .placement-card {
+    padding: 16px;
+  }
+  
+  .company-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .readiness-score {
+    font-size: 28px;
+  }
+  
+  .placement-card {
+    padding: 12px;
+  }
+  
+  .company-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .company-item {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+
+/* ── App Shell Mobile Optimizations ── */
+@media (max-width: 767px) {
+  .app-shell {
+    min-height: 100vh;
+    min-height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  .app-main {
+    padding-top: 0;
+  }
+  
+  .page-content {
+    max-width: 100%;
+    padding: 16px;
+  }
+  
+  /* Ensure tables are scrollable on mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better spacing for mobile cards */
+  .app-card {
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+  
+  /* Mobile-friendly buttons */
+  .btn, .ph-btn, .dash-v4-practice__cta {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  /* Improve form controls on mobile */
+  select, input[type="text"], input[type="email"], input[type="password"], textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Better modal sizing on mobile */
+  .modal-panel {
+    margin: 16px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+  
+  /* Improve pagination on mobile */
+  .pagination {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+  }
+  
+  .pagination button {
+    min-width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-content {
+    padding: 12px;
+  }
+  
+  .app-card {
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+  
+  .modal-panel {
+    margin: 8px;
+    max-width: calc(100vw - 16px);
+    border-radius: 12px;
+  }
+  
+  /* Very small screen optimizations */
+  .section-header {
+    font-size: 10px;
+  }
+  
+  .dash-count-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+}
+
+/* ── Mobile Landscape Optimizations ── */
+@media (max-width: 767px) and (orientation: landscape) {
+  .ph-problem {
+    height: 50vh;
+  }
+  
+  .ph-editor-wrap {
+    height: 50vh;
+  }
+  
+  .ph-output {
+    height: 100px;
+  }
+  
+  .dash-v4-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stats-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ── Mobile Performance Optimizations ── */
+@media (max-width: 767px) {
+  /* Reduce animations on mobile for better performance */
+  .dash-v4-anim,
+  .animate-fade-in,
+  .animate-fade-in-1,
+  .animate-fade-in-2 {
+    animation-duration: 0.3s;
+  }
+  
+  /* Optimize transforms for mobile */
+  .app-card:hover,
+  .dash-v4-stat:hover,
+  .prof-badge:hover {
+    transform: none;
+  }
+  
+  /* Simplify shadows on mobile */
+  .app-card,
+  .dash-v4-card,
+  .prob-table-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Reduce backdrop blur on mobile for performance */
+  .modal-overlay,
+  .ea-overlay {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* ── Mobile Accessibility Improvements ── */
+@media (max-width: 767px) {
+  /* Larger touch targets */
+  .prob-chip,
+  .prof-tab,
+  .settings-nav-item,
+  .filter-control {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Better focus indicators */
+  button:focus,
+  a:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  
+  /* Improve text readability */
+  .dash-v4-stat__label,
+  .stat-label,
+  .prof-badge-name {
+    line-height: 1.4;
+  }
+  
+  /* Better spacing for readability */
+  .dash-v4-card__header,
+  .section-header {
+    margin-bottom: 16px;
+  }
+}
+
+/* ── Mobile Dark Mode Adjustments ── */
+@media (max-width: 767px) {
+  /* Ensure good contrast on mobile screens */
+  .dash-v4-stat__num,
+  .stat-value,
+  .prof-name {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+  
+  .dash-v4-stat__label,
+  .stat-label,
+  .prof-subtitle {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  
+  /* Better visibility for mobile */
+  .app-card,
+  .dash-v4-card {
+    border: 1px solid var(--border-subtle);
+    background: var(--card-bg);
+  }
+}

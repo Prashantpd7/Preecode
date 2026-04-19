@@ -2,11 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#ff6b00" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Preecode – Practice Here</title>
   <script src="/theme.js"></script>
   <link rel="stylesheet" href="/styles.css"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <script src="/mobile-enhancements.js" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg-primary, #0d1117); color: var(--text-primary, #e6edf3); font-family: 'Inter', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -92,10 +96,54 @@
     .ph-loading__spinner { width: 36px; height: 36px; border: 3px solid rgba(249,115,22,0.2); border-top-color: #f97316; border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    /* ── Mobile Responsive Styles ── */
+    @media (max-width: 1023px) {
+      .ph-main { flex-direction: column; }
+      .ph-problem { width: 100%; height: 40vh; border-right: none; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.07)); }
+      .ph-editor-wrap { height: 60vh; }
+      .ph-output { height: 150px; }
+    }
+    
+    @media (max-width: 767px) {
+      body { font-size: 12px; }
+      .ph-topbar { padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
+      .ph-topbar__logo { font-size: 14px; }
+      .ph-topbar__title { font-size: 12px; }
+      .ph-topbar__lang select, .ph-topbar__diff select { padding: 4px 8px; font-size: 12px; }
+      .ph-btn { padding: 6px 12px; font-size: 12px; }
+      .ph-timer { font-size: 12px; padding: 4px 8px; }
+      .ph-problem { height: 35vh; }
+      .ph-problem__header { padding: 12px 16px 8px; }
+      .ph-problem__title { font-size: 14px; }
+      .ph-problem__body { padding: 12px 16px; font-size: 12px; }
+      .ph-editor-wrap { height: 65vh; }
+      .ph-output { height: 120px; }
+      .ph-output__body { font-size: 11px; padding: 8px 12px; }
+      .ph-hint-box { margin: 8px 16px; padding: 8px 12px; font-size: 11px; }
+    }
+    
+    @media (max-width: 480px) {
+      .ph-topbar { padding: 6px 8px; gap: 6px; }
+      .ph-topbar__spacer { display: none; }
+      .ph-btn { padding: 5px 8px; font-size: 11px; }
+      .ph-btn i { margin-right: 0; }
+      .ph-btn span { display: none; }
+      .ph-timer { font-size: 11px; padding: 3px 6px; }
+      .ph-problem { height: 30vh; }
+      .ph-problem__header { padding: 8px 12px 6px; }
+      .ph-problem__body { padding: 8px 12px; font-size: 11px; }
+      .ph-editor-wrap { height: 70vh; }
+      .ph-output { height: 100px; }
+      .ph-output__body { padding: 6px 8px; }
+    }
+    
+    @media (max-width: 320px) {
+      .ph-topbar { flex-wrap: wrap; }
+      .ph-topbar__lang, .ph-topbar__diff { order: 10; width: 100%; margin-top: 4px; }
+      .ph-topbar__lang select, .ph-topbar__diff select { width: 100%; }
+      .ph-problem { height: 25vh; }
+      .ph-editor-wrap { height: 75vh; }
+    }
   </style>
 </head>
 <body>
