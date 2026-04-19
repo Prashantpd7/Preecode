@@ -2,16 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#ff6b00" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Preecode – Resume Upload</title>
   <script src="/theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-config.js"></script>
   <link rel="stylesheet" href="/styles.css" />
+  <script src="/mobile-enhancements.js" defer></script>
   <style>
     .drop-zone { border:2px dashed var(--th-border); border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer; transition:border-color .2s, background .2s; }
     .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent,#6366f1); background:rgba(99,102,241,.05); }
     .drop-zone input[type=file] { display:none; }
+    @media (max-width: 767px) {
+      .drop-zone { padding: 24px 16px; }
+    }
+    @media (max-width: 480px) {
+      .drop-zone { padding: 20px 12px; }
+    }
   </style>
 </head>
 <body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">

@@ -2,17 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#ff6b00" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Preecode – Interview Results</title>
   <script src="/theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-config.js"></script>
   <link rel="stylesheet" href="/styles.css" />
+  <script src="/mobile-enhancements.js" defer></script>
   <style>
     .score-circle { width:120px; height:120px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; border:4px solid var(--accent,#6366f1); }
     .accordion-body { display:none; }
     .accordion-body.open { display:block; }
     .metric-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:999px; font-size:.75rem; font-weight:500; }
+    @media (max-width: 767px) {
+      .score-circle { width: 100px; height: 100px; }
+      .metric-pill { font-size: 0.7rem; padding: 1px 8px; }
+    }
+    @media (max-width: 480px) {
+      .score-circle { width: 80px; height: 80px; }
+    }
+  </style>
   </style>
 </head>
 <body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">
