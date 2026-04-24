@@ -19,6 +19,7 @@
   }
 
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+  function escHtml(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s || '')); return d.innerHTML; }
 
   function animateNumber(el, target, duration) {
     if (!el) return;
@@ -202,6 +203,58 @@
         rankBar.style.width = Math.min(progress, 100).toFixed(1) + '%';
       }, 300);
     }
+  }
+
+  // ── Tab Switching ──
+  var tabs = document.querySelectorAll('.prof-tab');
+  var panels = document.querySelectorAll('.prof-tab-panel');
+  var submissionsLoaded = false;
+
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      tabs.forEach(function(t) { t.classList.remove('active'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      tab.classList.add('active');
+      var target = tab.getAttribute('data-tab');
+      var panel = document.getElementById('tab' + target.charAt(0).toUpperCase() + target.slice(1));
+      if (panel) panel.classList.add('active');
+
+      if (target === 'submissions' && !submissionsLoaded) {
+        submissionsLoaded = true;
+        loadSubmissions();
+      }
+    });
+  });
+
+  function loadSubmissions() {
+    var tbody = document.getElementById('profileSubmissionsBody');
+    if (!tbody) return;
+
+    Api.getSubmissions(userId)
+      .then(function(subs) {
+        if (!subs || !subs.length) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-txt-muted">No submissions yet. Start solving problems!</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+        subs.slice(0, 50).forEach(function(s) {
+          var dc = s.difficulty || 'easy';
+          var statusCls = s.status === 'accepted' ? 'color:#4ade80' : 'color:#f87171';
+          var statusLabel = s.status === 'accepted' ? '✓ Accepted' : '✗ Wrong';
+          var date = s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : '--';
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + escHtml(s.problemName || '') + '</td>' +
+            '<td><span class="diff-badge ' + dc + '">' + cap(dc) + '</span></td>' +
+            '<td style="' + statusCls + ';font-weight:500">' + statusLabel + '</td>' +
+            '<td>' + (s.timeTaken || '--') + '</td>' +
+            '<td>' + date + '</td>';
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function() {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-txt-muted">Failed to load submissions.</td></tr>';
+      });
   }
 
   // ── Edit Profile Modal ──

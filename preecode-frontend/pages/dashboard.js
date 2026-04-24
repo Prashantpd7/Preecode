@@ -432,31 +432,49 @@
             '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>' +
           '</div>' +
           '<div class="dash-v4-empty__title">No submissions yet</div>' +
-          '<div class="dash-v4-empty__desc">Your submissions will appear here once you solve your first problem.</div>' +
-          '<a href="/pages/problems.html" class="dash-v4-empty__cta">' +
+          '<div class="dash-v4-empty__desc">Solve your first problem in VS Code to see it tracked here.</div>' +
+          '<a href="#" class="dash-v4-empty__cta" id="solveFirstProblemBtn">' +
             '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>' +
             'Solve First Problem' +
           '</a>' +
         '</div>' +
       '</td></tr>';
+
+      // Wire "Solve First Problem" → VS Code deep link
+      var solveBtn = $('solveFirstProblemBtn');
+      if (solveBtn) {
+        solveBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var token = localStorage.getItem('token') || '';
+          var uri = 'vscode://preecode.preecode/auth?token=' + encodeURIComponent(token) + '&source=dashboard&action=solve';
+          window.location.href = uri;
+          setTimeout(function () {
+            if (document.hasFocus() && window.preecodeNotify) {
+              window.preecodeNotify('Open VS Code and install the Preecode extension to start solving!', 'info');
+            }
+          }, 2000);
+        });
+      }
       return;
     }
 
+    // Render as cards on mobile, table on desktop
     tbody.innerHTML = '';
     subs.forEach(function (sub) {
       var diffClass = sub.difficulty || 'easy';
       var statusClass = sub.status === 'accepted' ? 'accepted' : sub.status === 'tle' ? 'tle' : 'wrong';
       var statusLabel = sub.status === 'accepted' ? 'Accepted' : sub.status === 'tle' ? 'TLE' : 'Wrong Answer';
       var dateStr = sub.submittedAt ? sub.submittedAt.slice(0, 10) : '--';
-      var runtime = sub.solveTime ? sub.solveTime + ' min' : '--';
+      var runtime = sub.timeTaken || (sub.solveTime ? sub.solveTime + ' min' : '--');
 
       var tr = document.createElement('tr');
+      tr.className = 'sub-row';
       tr.innerHTML =
-        '<td>' + escHtml(sub.problemName) + '</td>' +
-        '<td><span class="diff-badge ' + diffClass + '">' + cap(diffClass) + '</span></td>' +
-        '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-        '<td>' + runtime + '</td>' +
-        '<td>' + dateStr + '</td>';
+        '<td data-label="Problem">' + escHtml(sub.problemName) + '</td>' +
+        '<td data-label="Difficulty"><span class="diff-badge ' + diffClass + '">' + cap(diffClass) + '</span></td>' +
+        '<td data-label="Status"><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+        '<td data-label="Time">' + runtime + '</td>' +
+        '<td data-label="Date">' + dateStr + '</td>';
       tbody.appendChild(tr);
     });
   }
@@ -576,6 +594,15 @@
     })
     .then(function (data) {
       renderDashboardData(data);
+      // Notify if total solved increased since last visit
+      try {
+        var lastTotal = parseInt(localStorage.getItem('preecode_last_total') || '0', 10);
+        var newTotal  = data.totalSolved || 0;
+        if (newTotal > lastTotal && lastTotal > 0 && window.preecodeNotify) {
+          window.preecodeNotify('Dashboard updated — ' + newTotal + ' problems solved (+' + (newTotal - lastTotal) + ')!', 'success');
+        }
+        localStorage.setItem('preecode_last_total', newTotal);
+      } catch(e) {}
     })
     .catch(function (err) {
       console.error('Dashboard load failed:', err);
@@ -591,5 +618,29 @@
     });
 
   setupOpenVsCodeButton();
+
+  // ── Start Practice Session → VS Code deep link ──
+  var practiceBtn = document.getElementById('startPracticeSessionBtn');
+  if (practiceBtn) {
+    practiceBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      var token = localStorage.getItem('token') || '';
+      var uri = 'vscode://preecode.preecode/auth?token=' + encodeURIComponent(token) + '&source=dashboard&action=practice';
+      window.location.href = uri;
+      // Fallback: if VS Code doesn't open in 2s, show a notification and stay
+      setTimeout(function () {
+        if (document.hasFocus() && window.preecodeNotify) {
+          window.preecodeNotify('VS Code not detected. Install the Preecode extension to start practicing!', 'warning');
+        }
+      }, 2000);
+    });
+  }
+
+  // ── Mock notification on first dashboard load (dev/test) ──
+  // setTimeout(function () {
+  //   if (window.preecodeNotify) {
+  //     window.preecodeNotify('🎉 Welcome back! Your dashboard is up to date.', 'success');
+  //   }
+  // }, 1500);
 
 })();

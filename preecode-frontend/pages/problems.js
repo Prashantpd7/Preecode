@@ -154,8 +154,22 @@
           '<svg class="w-12 h-12" style="color:var(--accent);opacity:0.6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>',
           'Start your coding journey',
           'Solve your first problem to see it tracked here.',
-          [{ label: 'Go to Dashboard', href: '/pages/dashboard.html', primary: true }]
+          [{ label: 'Start Coding in VS Code', href: '#', primary: true }]
         ) + '</td></tr>';
+
+        // Wire up Start Coding button → VSCode deep link
+        var startCodingBtn = tbody.querySelector('.prob-empty-btn-primary');
+        if (startCodingBtn) {
+          startCodingBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var token = localStorage.getItem('token') || '';
+            var uri = 'vscode://preecode.preecode/auth' + (token ? '?token=' + encodeURIComponent(token) + '&source=problems' : '');
+            window.location.href = uri;
+            setTimeout(function() {
+              if (document.hasFocus()) window.location.href = '/pages/dashboard.html';
+            }, 2000);
+          });
+        }
       }
 
       if (paginationEl) paginationEl.style.display = 'none';
@@ -180,13 +194,31 @@
         : '<span class="prob-status-unsolved"></span>';
 
       var tr = document.createElement('tr');
-      tr.className = p.solved ? 'prob-row solved' : 'prob-row';
+      tr.className = (p.solved ? 'prob-row solved' : 'prob-row') + ' prob-row-clickable';
+      tr.style.cursor = 'pointer';
+      tr.title = 'Start coding: ' + p.name;
       tr.innerHTML =
         '<td class="prob-td-num">' + (start + i + 1) + '</td>' +
         '<td class="prob-td-title">' + escHtml(p.name) + '</td>' +
         '<td><span class="diff-badge ' + dc + '">' + cap(dc) + '</span></td>' +
         '<td>' + tags + '</td>' +
         '<td class="prob-td-status">' + statusHtml + '</td>';
+
+      // Click → launch VSCode with problem context
+      tr.addEventListener('click', function() {
+        var token = localStorage.getItem('token') || '';
+        var uri = 'vscode://preecode.preecode/auth?token=' + encodeURIComponent(token) +
+          '&problem=' + encodeURIComponent(p.name) +
+          '&difficulty=' + encodeURIComponent(p.difficulty) +
+          '&source=problems';
+        window.location.href = uri;
+        setTimeout(function() {
+          if (document.hasFocus()) {
+            if (window.preecodeNotify) window.preecodeNotify('Opening "' + p.name + '" in VS Code…', 'info');
+          }
+        }, 1500);
+      });
+
       tbody.appendChild(tr);
     });
 
