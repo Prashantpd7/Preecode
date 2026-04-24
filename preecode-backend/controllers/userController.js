@@ -102,15 +102,6 @@ exports.createUser = async (req, res, next) => {
       username: user.username,
       email: user.email,
       avatar: user.avatar || '',
-      plan: user.plan,
-      subscriptionStatus: user.subscriptionStatus,
-      foundingBadgeLevel: user.foundingBadgeLevel,
-      hasShared: user.hasShared,
-      earlyAccessEndDate: user.earlyAccessEndDate,
-      earlyAccessMonthsGranted: user.earlyAccessMonthsGranted,
-      certificateId: user.certificateId,
-      isNewUser: true,
-      token: generateToken(user._id, user.tokenVersion || 0),
     });
   } catch (error) {
     next(error);
@@ -121,23 +112,6 @@ exports.createUser = async (req, res, next) => {
 exports.getUser = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select('-password -__v');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-    await ensureAvatar(user);
-    res.json(user);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get current authenticated user
-exports.getMe = async (req, res, next) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated.' });
-    }
-    const user = await User.findById(req.user._id).select('-password -__v');
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }

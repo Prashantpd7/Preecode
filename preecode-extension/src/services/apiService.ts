@@ -1,19 +1,11 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-const DEFAULT_BACKEND_URL = 'https://preecode.onrender.com';
+const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
 const QUESTION_REQUEST_TIMEOUT_MS = 35_000;
 
 function normalizeBaseUrl(url: string): string {
     return String(url || '').trim().replace(/\/$/, '');
-}
-
-export function isDevHost(): boolean {
-    return (
-        vscode.env.appName.includes('Extension Development Host') ||
-        process.env.VSCODE_DEV === 'true' ||
-        process.env.VSCODE_DEBUG_MODE === 'true'
-    );
 }
 
 export function getBackendUrl(): string {
@@ -22,10 +14,10 @@ export function getBackendUrl(): string {
         return normalizeBaseUrl(configured);
     }
 
-    // When running the extension in a development environment,
-    // prefer a local backend so dev testing uses migrated code.
-    if (isDevHost()) {
-        return 'http://localhost:5001';
+    const envConfigured = process.env.PREECODE_BACKEND_URL?.trim();
+    if (envConfigured) {
+        // Keep local debugging explicit: only use an env override when the developer opted in.
+        return normalizeBaseUrl(envConfigured);
     }
 
     return DEFAULT_BACKEND_URL;
@@ -33,7 +25,8 @@ export function getBackendUrl(): string {
 
 export function getFrontendUrl(): string {
     const configured = vscode.workspace.getConfiguration('preecode').get<string>('frontendUrl');
-    return normalizeBaseUrl(configured || 'https://preecode.vercel.app');
+    const envConfigured = process.env.PREECODE_FRONTEND_URL?.trim();
+    return normalizeBaseUrl(configured || envConfigured || 'https://preecode.vercel.app');
 }
 
 export function getApiBase(): string {

@@ -1,5 +1,4 @@
 {
-	// Preecode Extension TypeScript Configuration
 	"compilerOptions": {
 		"module": "Node16",
 		"target": "ES2022",

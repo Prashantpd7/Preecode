@@ -2,8 +2,8 @@
   "name": "preecode",
   "publisher": "Preecode",
   "displayName": "Preecode",
-  "description": "AI-powered coding practice and skill-building platform inside VS Code with OpenRouter integration.",
-  "version": "0.1.6",
+  "description": "AI-powered coding practice and skill-building platform inside VS Code.",
+  "version": "0.1.7",
   "main": "./out/extension.js",
   "icon": "icon.png",
   "license": "MIT",
@@ -40,7 +40,7 @@
       "properties": {
         "preecode.backendUrl": {
           "type": "string",
-          "default": "https://preecode.onrender.com",
+          "default": "https://preecode-backend.onrender.com",
           "description": "Base URL of the Preecode backend service."
         },
         "preecode.frontendUrl": {

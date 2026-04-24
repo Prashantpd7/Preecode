@@ -2,8 +2,6 @@
 
 AI-powered coding practice and skill-building platform inside VS Code.
 
-> 🎯 Enhanced with OpenRouter API integration for better AI responses
-
 ## Overview
 
 Preecode helps you practice consistently, review code with AI assistance, and improve problem-solving skills without leaving VS Code. It combines coding workflows, guidance, and progress-oriented tooling in one extension.

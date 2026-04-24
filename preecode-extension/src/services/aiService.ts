@@ -1,4 +1,7 @@
-import { call_openrouter, OpenRouterMessage } from './openrouterClient';
+import * as vscode from 'vscode';
+
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const OPENROUTER_MODEL = 'openai/gpt-oss-120b';
 
 function getOpenRouterApiKey(): string {
     const apiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
@@ -100,19 +103,33 @@ ${safeLanguage === 'python' ? `- For Python: Add execution block as:
 - Do not include any markdown or explanations.
 `;
 
-        const messages: OpenRouterMessage[] = [
-            {
-                role: 'user',
-                content: prompt
-            }
-        ];
-
-        const result = await call_openrouter(messages, {
-            temperature: 0.9,
-            max_tokens: 1500,
+        console.log('Using OpenRouter API');
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openrouterApiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: OPENROUTER_MODEL,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.9,
+                max_tokens: 1500,
+            }),
         });
 
-        let rawText = result.content || '';
+        if (!response.ok) {
+            const errorData: any = await response.json();
+            throw new Error(`OpenRouter API error: ${errorData.error?.message || 'Unknown error'}`);
+        }
+
+        const data: any = await response.json();
+        let rawText = data.choices?.[0]?.message?.content || '';
 
         rawText = rawText
         .replace(/```[\w]*\n?/g, "")

@@ -21,32 +21,26 @@ router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPassword);
 
-// Return current authenticated user
-router.get('/me', auth, checkEarlyAccess, (req, res, next) => {
-  return require('../controllers/userController').getMe(req, res, next);
+// Authenticated routes
+router.get('/me', auth, async (req, res, next) => {
+	try {
+		if (!req.user) {
+			return res.status(401).json({ message: 'Not authenticated.' });
+		}
+		res.json(req.user);
+	} catch (error) {
+		next(error);
+	}
 });
-
-// Update user profile
-router.put('/profile/update', auth, (req, res, next) => {
-	console.log('[users] PUT /api/users/profile/update from', req.ip, 'bodyKeys=', Object.keys(req.body));
-	return updateProfile(req, res, next);
-});
-
-// Change password (authenticated)
-router.put('/change-password', auth, changePassword);
-
-// Delete account (authenticated)
-router.delete('/account', auth, deleteAccount);
-
-// Logout all devices (authenticated)
-router.post('/logout-all', auth, logoutAllDevices);
-
-// Update notification preferences
-router.put('/notifications', auth, updateNotificationPrefs);
-
-router.post('/logout', auth, logoutUser);
 
 router.get('/stats/:id', auth, checkEarlyAccess, validateObjectId, getStats);
 router.get('/:id', auth, checkEarlyAccess, validateObjectId, getUser);
+
+router.put('/:id', auth, validateObjectId, updateProfile);
+router.post('/logout', auth, logoutUser);
+router.post('/change-password', auth, changePassword);
+router.delete('/:id', auth, validateObjectId, deleteAccount);
+router.post('/logout-all-devices', auth, logoutAllDevices);
+router.put('/notification-prefs', auth, updateNotificationPrefs);
 
 module.exports = router;

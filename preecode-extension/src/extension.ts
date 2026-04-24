@@ -1,4 +1,3 @@
-// Preecode VS Code Extension - AI-Powered Coding Practice Platform
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as vscode from 'vscode';

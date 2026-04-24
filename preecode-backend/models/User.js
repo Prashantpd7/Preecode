@@ -8,18 +8,6 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   firstName: { type: String },
   lastName: { type: String },
-  provider: { type: String, enum: ['local', 'google', 'github'], default: 'local' },
-  providerId: { type: String },
-  avatar: { type: String },
-  totalSolved: { type: Number, default: 0 },
-  easySolved: { type: Number, default: 0 },
-  mediumSolved: { type: Number, default: 0 },
-  hardSolved: { type: Number, default: 0 },
-
-  // Password reset OTP fields
-  resetOtp: { type: String },
-  resetOtpExpires: { type: Date },
-
   // Early Access & Plan fields
   plan: { type: String, enum: ['free', 'pro'], default: 'pro' },
   subscriptionStatus: { type: String, enum: ['active', 'inactive'], default: 'active' },
