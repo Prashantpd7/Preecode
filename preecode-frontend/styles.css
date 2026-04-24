@@ -7453,125 +7453,251 @@ html.dark .languages-float__item {
 
 /* ── Dashboard V4 Mobile Optimizations ── */
 @media (max-width: 767px) {
+  /* Hide unnecessary elements on mobile */
+  .mobile-hide {
+    display: none !important;
+  }
+  
+  /* Force mobile layout */
   .dash-v4 {
-    padding: 16px;
-    gap: 16px;
+    padding: 12px !important;
+    gap: 12px !important;
   }
   
   .dash-v4-stats {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
   }
   
   .dash-v4-stat {
-    padding: 16px 20px;
+    padding: 12px 16px !important;
+    min-height: auto !important;
+  }
+  
+  .dash-v4-stat__label {
+    font-size: 10px !important;
+    margin-bottom: 6px !important;
   }
   
   .dash-v4-stat__num {
-    font-size: 24px;
+    font-size: 20px !important;
   }
   
   .dash-v4-stat__num--xl {
-    font-size: 32px;
+    font-size: 24px !important;
+  }
+  
+  .dash-v4-stat__unit {
+    font-size: 11px !important;
+  }
+  
+  .dash-v4-stat__trend {
+    font-size: 9px !important;
+    margin-top: 4px !important;
   }
   
   .dash-v4-card {
-    padding: 16px 20px;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
   }
   
   .dash-v4-card__header {
-    margin-bottom: 12px;
+    margin-bottom: 8px !important;
   }
   
-  .dash-v4-twocol {
-    grid-template-columns: 1fr;
-    gap: 16px;
+  .dash-v4-card__title {
+    font-size: 11px !important;
   }
   
+  /* Practice section mobile */
   .dash-v4-practice {
-    padding: 20px;
+    padding: 12px 16px !important;
   }
   
-  .dash-v4-practice__stats {
-    grid-template-columns: 1fr;
-    gap: 12px;
-    text-align: center;
+  .dash-v4-practice__stats.mobile-simple {
+    display: flex !important;
+    justify-content: space-around !important;
+    gap: 8px !important;
+    text-align: center !important;
+  }
+  
+  .dash-v4-practice__stat {
+    flex: 1 !important;
+  }
+  
+  .dash-v4-practice__val {
+    font-size: 16px !important;
+  }
+  
+  .dash-v4-practice__lbl {
+    font-size: 10px !important;
   }
   
   .dash-v4-practice__cta {
-    padding: 12px 20px;
-    font-size: 14px;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
   }
   
-  .dash-v4-table {
-    font-size: 12px;
+  /* Streak section mobile */
+  .dash-v4-streak__mobile {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
   }
   
-  .dash-v4-table th,
-  .dash-v4-table td {
-    padding: 8px 12px;
+  .dash-v4-streak__current {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    background: var(--bg-tertiary) !important;
+    border-radius: 8px !important;
   }
   
-  .dash-v4-streak__ring {
-    width: 100px;
-    height: 100px;
+  .dash-v4-streak__flame {
+    font-size: 24px !important;
   }
   
-  .dash-v4-streak__ring-row {
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
+  .dash-v4-streak__info {
+    flex: 1 !important;
   }
   
-  .dash-v4-streak__milestones {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+  .dash-v4-streak__val {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    color: var(--accent) !important;
+    display: block !important;
+  }
+  
+  .dash-v4-streak__lbl {
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+  }
+  
+  .dash-v4-streak__best-mobile {
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+  }
+  
+  .dash-v4-streak__best-val {
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+  }
+  
+  .dash-v4-streak__milestones.mobile-simple {
+    display: flex !important;
+    gap: 8px !important;
+    justify-content: center !important;
+  }
+  
+  .streak-milestone {
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+    border-radius: 6px !important;
+    background: var(--bg-tertiary) !important;
+    border: 1px solid var(--border-subtle) !important;
+    text-align: center !important;
+    flex: 1 !important;
+  }
+  
+  .streak-milestone-icon {
+    display: block !important;
+    font-size: 14px !important;
+    margin-bottom: 2px !important;
+  }
+  
+  /* Table mobile */
+  .mobile-table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 8px !important;
+  }
+  
+  .mobile-table {
+    min-width: 300px !important;
+    font-size: 11px !important;
+  }
+  
+  .mobile-table th,
+  .mobile-table td {
+    padding: 6px 8px !important;
+    white-space: nowrap !important;
+  }
+  
+  .mobile-table th {
+    font-size: 10px !important;
+    background: var(--bg-tertiary) !important;
+  }
+  
+  /* Hide complex elements on mobile */
+  .dash-v4-twocol {
+    display: none !important;
+  }
+  
+  #rankSection {
+    display: none !important;
+  }
+  
+  /* Simplify animations on mobile */
+  .dash-v4-anim {
+    animation-duration: 0.2s !important;
   }
 }
 
 @media (max-width: 480px) {
   .dash-v4 {
-    padding: 12px;
-    gap: 12px;
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+  
+  .dash-v4-stats {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
   }
   
   .dash-v4-stat {
-    padding: 12px 16px;
+    padding: 10px 12px !important;
   }
   
   .dash-v4-stat__num {
-    font-size: 20px;
+    font-size: 18px !important;
   }
   
   .dash-v4-stat__num--xl {
-    font-size: 28px;
+    font-size: 22px !important;
   }
   
   .dash-v4-card {
-    padding: 12px 16px;
+    padding: 10px 12px !important;
   }
   
   .dash-v4-practice {
-    padding: 16px;
+    padding: 10px 12px !important;
   }
   
-  .dash-v4-practice__stats {
-    gap: 8px;
+  .dash-v4-practice__stats.mobile-simple {
+    flex-direction: column !important;
+    gap: 6px !important;
   }
   
-  .dash-v4-streak__ring {
-    width: 80px;
-    height: 80px;
+  .dash-v4-streak__current {
+    padding: 8px !important;
+    gap: 8px !important;
   }
   
-  .dash-v4-streak__milestones {
-    grid-template-columns: 1fr;
-    gap: 6px;
+  .dash-v4-streak__milestones.mobile-simple {
+    flex-direction: column !important;
+    gap: 4px !important;
   }
   
-  .streak-milestone {
-    padding: 8px 12px;
-    font-size: 11px;
+  .mobile-table {
+    font-size: 10px !important;
+  }
+  
+  .mobile-table th,
+  .mobile-table td {
+    padding: 4px 6px !important;
   }
 }
 
@@ -8298,5 +8424,677 @@ html.dark .languages-float__item {
   .dash-v4-card {
     border: 1px solid var(--border-subtle);
     background: var(--card-bg);
+  }
+}
+/* ══════════════════════════════════════
+   CRITICAL MOBILE FIXES FOR INTERNAL APP PAGES
+══════════════════════════════════════ */
+
+/* ── Force Mobile Layout for App Shell ── */
+@media (max-width: 767px) {
+  .app-shell {
+    min-height: 100vh !important;
+    min-height: calc(var(--vh, 1vh) * 100) !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  .app-main {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+  
+  /* Force mobile topbar styles */
+  .topbar {
+    padding: 8px 16px !important;
+    min-height: 56px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .topbar-left {
+    gap: 12px !important;
+  }
+  
+  .topbar-right {
+    gap: 8px !important;
+  }
+  
+  /* Hide desktop navigation on mobile */
+  .topbar-nav {
+    display: none !important;
+  }
+  
+  /* Show mobile hamburger */
+  .topbar-hamburger {
+    display: flex !important;
+  }
+  
+  /* Mobile start practice button */
+  .topbar-start-practice {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+    border-radius: 16px !important;
+  }
+  
+  .topbar-start-practice span {
+    display: none !important;
+  }
+  
+  /* Mobile badges */
+  .topbar-plan-badge,
+  .topbar-streak-badge {
+    padding: 4px 8px !important;
+    font-size: 10px !important;
+    border-radius: 16px !important;
+  }
+  
+  /* Mobile avatar */
+  .topbar-avatar,
+  .topbar-dropdown-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 12px !important;
+  }
+  
+  /* Mobile dropdown positioning */
+  .topbar-dropdown {
+    width: calc(100vw - 32px) !important;
+    right: 16px !important;
+    left: 16px !important;
+    max-width: none !important;
+  }
+}
+
+/* ── Dashboard Mobile Fixes ── */
+@media (max-width: 767px) {
+  .dash-v4 {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+  
+  .dash-v4-stats {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  
+  .dash-v4-stat {
+    padding: 16px 20px !important;
+  }
+  
+  .dash-v4-stat__num {
+    font-size: 24px !important;
+  }
+  
+  .dash-v4-stat__num--xl {
+    font-size: 28px !important;
+  }
+  
+  .dash-v4-card {
+    padding: 16px 20px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .dash-v4-twocol {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  .dash-v4-practice {
+    padding: 16px 20px !important;
+  }
+  
+  .dash-v4-practice__stats {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    text-align: center !important;
+  }
+  
+  .dash-v4-practice__cta {
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+  
+  .dash-v4-table {
+    font-size: 12px !important;
+    min-width: 500px !important;
+  }
+  
+  .dash-v4-table th,
+  .dash-v4-table td {
+    padding: 8px 12px !important;
+  }
+  
+  .dash-v4-streak__ring {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  
+  .dash-v4-streak__ring-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  
+  .dash-v4-streak__milestones {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+  
+  .streak-milestone {
+    padding: 6px 8px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* ── Problems Page Mobile Fixes ── */
+@media (max-width: 767px) {
+  .page-content {
+    padding: 12px !important;
+    max-width: 100% !important;
+  }
+  
+  .prob-search-input {
+    padding: 12px 16px 12px 44px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  .prob-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  
+  .prob-chip-group {
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .prob-chip-group::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  .prob-chip {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+  
+  .prob-table-card {
+    padding: 0 !important;
+    border-radius: 12px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .prob-table {
+    min-width: 500px !important;
+    font-size: 12px !important;
+  }
+  
+  .prob-table th,
+  .prob-table td {
+    padding: 8px 12px !important;
+  }
+  
+  .prob-th-num,
+  .prob-td-num {
+    width: 32px !important;
+  }
+  
+  .prob-tag {
+    font-size: 10px !important;
+    padding: 1px 6px !important;
+  }
+  
+  .diff-badge {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+  }
+}
+
+/* ── Profile Page Mobile Fixes ── */
+@media (max-width: 767px) {
+  .prof-header-card {
+    padding: 16px 20px !important;
+  }
+  
+  .prof-header-inner {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 16px !important;
+  }
+  
+  .prof-avatar {
+    width: 56px !important;
+    height: 56px !important;
+    font-size: 20px !important;
+  }
+  
+  .prof-name {
+    font-size: 18px !important;
+  }
+  
+  .prof-subtitle {
+    font-size: 12px !important;
+  }
+  
+  .prof-edit-btn {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+  }
+  
+  .prof-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  
+  .prof-tab-bar {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  
+  .prof-tab {
+    flex: 1 !important;
+    min-width: 120px !important;
+    padding: 8px 16px !important;
+    font-size: 12px !important;
+  }
+  
+  .prof-badges-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  
+  .prof-badge {
+    padding: 12px 16px !important;
+  }
+  
+  .prof-badge-name {
+    font-size: 12px !important;
+  }
+  
+  .prof-diff-row {
+    gap: 8px !important;
+  }
+  
+  .prof-diff-name {
+    font-size: 12px !important;
+    min-width: 60px !important;
+  }
+  
+  .prof-diff-count {
+    font-size: 12px !important;
+    min-width: 20px !important;
+  }
+  
+  .prof-level-header {
+    flex-direction: column !important;
+    gap: 4px !important;
+    text-align: center !important;
+  }
+}
+
+/* ── Submissions Page Mobile Fixes ── */
+@media (max-width: 767px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  
+  .stat-item {
+    padding: 12px 16px !important;
+  }
+  
+  .stat-value {
+    font-size: 18px !important;
+  }
+  
+  .stat-label {
+    font-size: 10px !important;
+  }
+  
+  .filter-control {
+    min-width: auto !important;
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  .app-card {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+  }
+}
+
+/* ── Settings Page Mobile Fixes ── */
+@media (max-width: 1023px) {
+  .settings-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  
+  .settings-nav {
+    position: static !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    gap: 8px !important;
+    padding-bottom: 4px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .settings-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  .settings-nav-item {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 8px 16px !important;
+  }
+}
+
+/* ── General Mobile Table Fixes ── */
+@media (max-width: 767px) {
+  .app-table,
+  .dash-v4-table,
+  .prob-table {
+    font-size: 12px !important;
+  }
+  
+  .app-table th,
+  .app-table td,
+  .dash-v4-table th,
+  .dash-v4-table td,
+  .prob-table th,
+  .prob-table td {
+    padding: 8px 12px !important;
+  }
+  
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: thin !important;
+  }
+  
+  /* Better scrollbar for mobile */
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 4px !important;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: var(--border-subtle) !important;
+  }
+  
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: var(--text-muted) !important;
+    border-radius: 2px !important;
+  }
+}
+
+/* ── Mobile Form Improvements ── */
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  select,
+  textarea {
+    min-height: 44px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px 16px !important;
+  }
+  
+  button,
+  .btn,
+  .ph-btn,
+  .dash-v4-practice__cta {
+    min-height: 44px !important;
+    touch-action: manipulation !important;
+  }
+  
+  .modal-panel {
+    margin: 16px !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100vh - 32px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* ── Mobile Performance Optimizations ── */
+@media (max-width: 767px) {
+  /* Reduce animations for better performance */
+  .dash-v4-anim,
+  .animate-fade-in,
+  .animate-fade-in-1,
+  .animate-fade-in-2 {
+    animation-duration: 0.3s !important;
+  }
+  
+  /* Disable hover effects on mobile */
+  .app-card:hover,
+  .dash-v4-stat:hover,
+  .prof-badge:hover,
+  .landing-card:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  
+  /* Simplify shadows for performance */
+  .app-card,
+  .dash-v4-card,
+  .prob-table-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  /* Reduce backdrop blur for performance */
+  .topbar,
+  .modal-overlay,
+  .ea-overlay {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+}
+
+/* ── Very Small Screens (480px and below) ── */
+@media (max-width: 480px) {
+  .topbar {
+    padding: 6px 12px !important;
+    min-height: 52px !important;
+  }
+  
+  .page-content {
+    padding: 8px !important;
+  }
+  
+  .dash-v4 {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+  
+  .dash-v4-card {
+    padding: 12px 16px !important;
+  }
+  
+  .dash-v4-stat {
+    padding: 12px 16px !important;
+  }
+  
+  .dash-v4-stat__num {
+    font-size: 20px !important;
+  }
+  
+  .dash-v4-stat__num--xl {
+    font-size: 24px !important;
+  }
+  
+  .stats-row {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+  
+  .stat-item {
+    padding: 10px 12px !important;
+  }
+  
+  .stat-value {
+    font-size: 16px !important;
+  }
+  
+  .prof-header-card {
+    padding: 12px 16px !important;
+  }
+  
+  .prof-avatar {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 18px !important;
+  }
+  
+  .prof-name {
+    font-size: 16px !important;
+  }
+  
+  .prof-tab {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+  }
+  
+  .modal-panel {
+    margin: 8px !important;
+    max-width: calc(100vw - 16px) !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ── Ultra Small Screens (320px and below) ── */
+@media (max-width: 320px) {
+  .topbar {
+    padding: 4px 8px !important;
+    min-height: 48px !important;
+  }
+  
+  .topbar-start-practice span,
+  .topbar-plan-badge span,
+  .topbar-streak-badge span {
+    display: none !important;
+  }
+  
+  .page-content {
+    padding: 6px !important;
+  }
+  
+  .dash-v4 {
+    padding: 6px !important;
+    gap: 6px !important;
+  }
+  
+  .dash-v4-card {
+    padding: 8px 12px !important;
+  }
+  
+  .dash-v4-stat {
+    padding: 8px 12px !important;
+  }
+  
+  .section-header {
+    font-size: 10px !important;
+  }
+  
+  .dash-count-badge {
+    font-size: 10px !important;
+    padding: 1px 6px !important;
+  }
+}
+
+/* ── Force Mobile Layout on Touch Devices ── */
+@media (hover: none) and (pointer: coarse) {
+  .topbar-nav {
+    display: none !important;
+  }
+  
+  .topbar-hamburger {
+    display: flex !important;
+  }
+  
+  .app-card:hover,
+  .dash-v4-stat:hover,
+  .prof-badge:hover {
+    transform: none !important;
+  }
+  
+  button,
+  .btn,
+  a[role="button"] {
+    min-height: 44px !important;
+  }
+}
+
+/* ── Landscape Mobile Optimizations ── */
+@media (max-width: 767px) and (orientation: landscape) {
+  .dash-v4-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .stats-row {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  
+  .prof-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Critical Mobile Accessibility ── */
+@media (max-width: 767px) {
+  /* Ensure all interactive elements are touch-friendly */
+  .prob-chip,
+  .prof-tab,
+  .settings-nav-item,
+  .filter-control,
+  .topbar-dropdown-item {
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  /* Better focus indicators */
+  button:focus,
+  a:focus,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--accent) !important;
+    outline-offset: 2px !important;
+  }
+  
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden !important;
+  }
+  
+  /* Better text selection */
+  * {
+    -webkit-tap-highlight-color: rgba(255, 161, 22, 0.2) !important;
+  }
+  
+  /* Improve readability */
+  .dash-v4-stat__label,
+  .stat-label,
+  .prof-badge-name {
+    line-height: 1.4 !important;
+  }
+  
+  /* Better spacing for readability */
+  .dash-v4-card__header,
+  .section-header {
+    margin-bottom: 16px !important;
   }
 }
