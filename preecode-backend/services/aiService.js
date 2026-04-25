@@ -7,9 +7,9 @@ const OPENROUTER_MODELS = [
   'openai/gpt-4o',
   'anthropic/claude-3-haiku'
 ];
-const MAX_RETRIES = 3;
-const RETRY_DELAYS_MS = [1000, 2000, 4000];
-const REQUEST_TIMEOUT_MS = 12000;
+const MAX_RETRIES = 1;
+const RETRY_DELAYS_MS = [1000];
+const REQUEST_TIMEOUT_MS = 25000;
 const MIN_REQUEST_SPACING_MS = 200;
 
 let lastRequestAtMs = 0;

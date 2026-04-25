@@ -167,7 +167,15 @@
           body: formData,
         });
 
-        const data = await res.json();
+        const contentType = res.headers.get('content-type');
+        let data = {};
+        if (contentType && contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          console.error('Non-JSON response:', text.substring(0, 200));
+          throw new Error('Server returned an invalid response. Please try again later.');
+        }
         
         console.log('Upload response:', { status: res.status, data });
 
