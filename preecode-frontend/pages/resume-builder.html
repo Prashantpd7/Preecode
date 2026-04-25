@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Preecode – Resume Builder</title>
+  <script src="/theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/tailwind-config.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/mobile-enhancements.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    .form-group { margin-bottom: 1rem; }
+    .form-input {
+      width: 100%; bg-th-surface border border-th-border rounded-lg px-3 py-2.5 text-txt text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors
+    }
+    
+    /* Resume Preview Styles */
+    #resumePreview {
+      background: white;
+      color: black;
+      width: 210mm;
+      min-height: 297mm;
+      padding: 20mm;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin: 0 auto;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      transform-origin: top center;
+    }
+    #resumePreview h1 { font-size: 24pt; font-weight: bold; margin-bottom: 5px; color: #111; text-transform: uppercase; letter-spacing: 1px; }
+    #resumePreview .contact-info { font-size: 10pt; color: #555; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; }
+    #resumePreview .section-title { font-size: 14pt; font-weight: bold; border-bottom: 2px solid #333; margin-top: 15px; margin-bottom: 10px; padding-bottom: 3px; color: #222; text-transform: uppercase; }
+    #resumePreview .item-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+    #resumePreview .item-title { font-weight: bold; font-size: 11pt; color: #000; }
+    #resumePreview .item-subtitle { font-style: italic; font-size: 10pt; color: #444; }
+    #resumePreview .item-date { font-size: 10pt; color: #666; }
+    #resumePreview .item-desc { font-size: 10pt; color: #333; line-height: 1.4; margin-bottom: 10px; }
+    #resumePreview ul { list-style-type: disc; padding-left: 20px; margin-top: 3px; }
+    #resumePreview li { margin-bottom: 3px; }
+    
+    .builder-section {
+      border: 1px solid var(--th-border);
+      border-radius: 8px;
+      margin-bottom: 15px;
+      overflow: hidden;
+    }
+    .builder-section-header {
+      background: var(--th-surface);
+      padding: 12px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .builder-section-content {
+      padding: 16px;
+      display: none;
+    }
+    .builder-section.active .builder-section-content { display: block; }
+    .builder-section.active .builder-section-header svg { transform: rotate(180deg); }
+    
+    @media (max-width: 1024px) {
+      #resumePreviewWrapper { overflow-x: auto; }
+      #resumePreview { transform: scale(0.8); margin-left: -10%; margin-top: -10%; }
+    }
+  </style>
+</head>
+<body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">
+  <div class="app-shell min-h-screen relative z-10">
+    <div class="app-main flex-1 flex flex-col">
+      <div class="page-content flex-1 p-4 md:p-7 max-w-[1400px] w-full mx-auto opacity-0 animate-fade-in">
+        
+        <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-xl font-semibold text-txt">Resume Builder</h1>
+            <p class="text-txt-muted mt-1">Create a professional ATS-friendly resume from scratch.</p>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="window.location.href='/pages/resume-upload.html'" class="px-4 py-2 rounded-lg border border-th-border text-txt hover:bg-th-surface transition-colors">Back</button>
+            <button id="saveBtn" class="dash-v4-practice__cta flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2">
+              Save Resume
+            </button>
+            <button id="downloadBtn" class="dash-v4-practice__cta flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 bg-green-600 hover:bg-green-700 border-none text-white">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Download PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Toast / Errors -->
+        <div id="toast" class="hidden mb-4 p-3 rounded-lg text-sm transition-all duration-300"></div>
+
+        <div class="flex flex-col lg:flex-row gap-6">
+          
+          <!-- Editor Column -->
+          <div class="lg:w-1/3 flex flex-col gap-4" id="editorCol">
+            
+            <div class="builder-section active" id="sec-personal">
+              <div class="builder-section-header" onclick="toggleSection('sec-personal')">
+                <span>1. Personal Information</span>
+                <svg class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+              <div class="builder-section-content flex flex-col gap-3">
+                <input type="text" id="pi-name" placeholder="Full Name" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none" oninput="updatePreview()" />
+                <input type="email" id="pi-email" placeholder="Email Address" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none" oninput="updatePreview()" />
+                <input type="text" id="pi-phone" placeholder="Phone Number" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none" oninput="updatePreview()" />
+                <input type="text" id="pi-location" placeholder="Location (City, Country)" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none" oninput="updatePreview()" />
+                <input type="text" id="pi-linkedin" placeholder="LinkedIn URL (Optional)" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none" oninput="updatePreview()" />
+                <input type="text" id="pi-github" placeholder="GitHub URL (Optional)" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none" oninput="updatePreview()" />
+              </div>
+            </div>
+
+            <div class="builder-section" id="sec-summary">
+              <div class="builder-section-header" onclick="toggleSection('sec-summary')">
+                <span>2. Professional Summary</span>
+                <svg class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+              <div class="builder-section-content flex flex-col gap-3">
+                <textarea id="summary-text" rows="4" placeholder="Brief summary of your professional background and goals..." class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none resize-y" oninput="updatePreview()"></textarea>
+              </div>
+            </div>
+
+            <div class="builder-section" id="sec-experience">
+              <div class="builder-section-header" onclick="toggleSection('sec-experience')">
+                <span>3. Experience</span>
+                <svg class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+              <div class="builder-section-content flex flex-col gap-3" id="experienceList">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="px-4 pb-4">
+                <button onclick="addExperience()" class="text-accent text-sm font-medium hover:underline flex items-center gap-1">+ Add Experience</button>
+              </div>
+            </div>
+
+            <div class="builder-section" id="sec-education">
+              <div class="builder-section-header" onclick="toggleSection('sec-education')">
+                <span>4. Education</span>
+                <svg class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+              <div class="builder-section-content flex flex-col gap-3" id="educationList">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="px-4 pb-4">
+                <button onclick="addEducation()" class="text-accent text-sm font-medium hover:underline flex items-center gap-1">+ Add Education</button>
+              </div>
+            </div>
+
+            <div class="builder-section" id="sec-projects">
+              <div class="builder-section-header" onclick="toggleSection('sec-projects')">
+                <span>5. Projects</span>
+                <svg class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+              <div class="builder-section-content flex flex-col gap-3" id="projectsList">
+                <!-- Dynamically populated -->
+              </div>
+              <div class="px-4 pb-4">
+                <button onclick="addProject()" class="text-accent text-sm font-medium hover:underline flex items-center gap-1">+ Add Project</button>
+              </div>
+            </div>
+
+            <div class="builder-section" id="sec-skills">
+              <div class="builder-section-header" onclick="toggleSection('sec-skills')">
+                <span>6. Skills</span>
+                <svg class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </div>
+              <div class="builder-section-content flex flex-col gap-3">
+                <textarea id="skills-text" rows="3" placeholder="JavaScript, React, Node.js, Python, SQL (comma separated)" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt focus:ring-2 focus:ring-accent/50 outline-none resize-y" oninput="updatePreview()"></textarea>
+              </div>
+            </div>
+
+          </div>
+          
+          <!-- Preview Column -->
+          <div class="lg:w-2/3 bg-th-surface border border-th-border rounded-xl p-4 flex justify-center" id="resumePreviewWrapper" style="background:#e5e7eb;">
+            <div id="resumePreview">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/api.js"></script>
+  <script src="/layout/layout.js"></script>
+  <script src="/layout/chatbot.js"></script>
+  <script src="/layout/early-access.js"></script>
+  <script>
+    let resumeData = {
+      _id: null,
+      personalInfo: {},
+      summary: '',
+      experience: [],
+      education: [],
+      projects: [],
+      skills: []
+    };
+
+    function toggleSection(id) {
+      document.querySelectorAll('.builder-section').forEach(sec => {
+        if (sec.id === id) sec.classList.toggle('active');
+        else sec.classList.remove('active');
+      });
+    }
+
+    function generateId() { return Math.random().toString(36).substr(2, 9); }
+
+    // Forms generators
+    function addExperience() {
+      const id = generateId();
+      resumeData.experience.push({ id, company: '', role: '', location: '', startDate: '', endDate: '', description: '' });
+      renderForms();
+    }
+    
+    function addEducation() {
+      const id = generateId();
+      resumeData.education.push({ id, institution: '', degree: '', fieldOfStudy: '', startDate: '', endDate: '', score: '' });
+      renderForms();
+    }
+
+    function addProject() {
+      const id = generateId();
+      resumeData.projects.push({ id, name: '', link: '', description: '' });
+      renderForms();
+    }
+
+    function removeExp(id) { resumeData.experience = resumeData.experience.filter(e => e.id !== id); renderForms(); }
+    function removeEdu(id) { resumeData.education = resumeData.education.filter(e => e.id !== id); renderForms(); }
+    function removeProj(id) { resumeData.projects = resumeData.projects.filter(e => e.id !== id); renderForms(); }
+
+    function updateData(collection, id, field, value) {
+      const item = resumeData[collection].find(e => e.id === id);
+      if (item) item[field] = value;
+      updatePreview();
+    }
+
+    function renderForms() {
+      // Experience
+      const expList = document.getElementById('experienceList');
+      expList.innerHTML = resumeData.experience.map(e => `
+        <div class="border border-th-border p-3 rounded bg-th-bg relative mb-2">
+          <button onclick="removeExp('${e.id}')" class="absolute top-2 right-2 text-red-500 hover:text-red-700">✕</button>
+          <input type="text" placeholder="Company" value="${e.company}" oninput="updateData('experience', '${e.id}', 'company', this.value)" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 mb-2 text-sm text-txt outline-none" />
+          <input type="text" placeholder="Role/Title" value="${e.role}" oninput="updateData('experience', '${e.id}', 'role', this.value)" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 mb-2 text-sm text-txt outline-none" />
+          <div class="flex gap-2 mb-2">
+            <input type="text" placeholder="Start (e.g. Jan 2020)" value="${e.startDate}" oninput="updateData('experience', '${e.id}', 'startDate', this.value)" class="w-1/2 bg-th-surface border border-th-border rounded px-2 py-1.5 text-sm text-txt outline-none" />
+            <input type="text" placeholder="End (e.g. Present)" value="${e.endDate}" oninput="updateData('experience', '${e.id}', 'endDate', this.value)" class="w-1/2 bg-th-surface border border-th-border rounded px-2 py-1.5 text-sm text-txt outline-none" />
+          </div>
+          <textarea placeholder="Description (bullet points separated by new lines)" oninput="updateData('experience', '${e.id}', 'description', this.value)" rows="3" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 text-sm text-txt outline-none">${e.description}</textarea>
+        </div>
+      `).join('');
+
+      // Education
+      const eduList = document.getElementById('educationList');
+      eduList.innerHTML = resumeData.education.map(e => `
+        <div class="border border-th-border p-3 rounded bg-th-bg relative mb-2">
+          <button onclick="removeEdu('${e.id}')" class="absolute top-2 right-2 text-red-500 hover:text-red-700">✕</button>
+          <input type="text" placeholder="Institution" value="${e.institution}" oninput="updateData('education', '${e.id}', 'institution', this.value)" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 mb-2 text-sm text-txt outline-none" />
+          <input type="text" placeholder="Degree (e.g. B.S. Computer Science)" value="${e.degree}" oninput="updateData('education', '${e.id}', 'degree', this.value)" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 mb-2 text-sm text-txt outline-none" />
+          <div class="flex gap-2 mb-2">
+            <input type="text" placeholder="Start" value="${e.startDate}" oninput="updateData('education', '${e.id}', 'startDate', this.value)" class="w-1/2 bg-th-surface border border-th-border rounded px-2 py-1.5 text-sm text-txt outline-none" />
+            <input type="text" placeholder="End" value="${e.endDate}" oninput="updateData('education', '${e.id}', 'endDate', this.value)" class="w-1/2 bg-th-surface border border-th-border rounded px-2 py-1.5 text-sm text-txt outline-none" />
+          </div>
+        </div>
+      `).join('');
+
+      // Projects
+      const projList = document.getElementById('projectsList');
+      projList.innerHTML = resumeData.projects.map(e => `
+        <div class="border border-th-border p-3 rounded bg-th-bg relative mb-2">
+          <button onclick="removeProj('${e.id}')" class="absolute top-2 right-2 text-red-500 hover:text-red-700">✕</button>
+          <input type="text" placeholder="Project Name" value="${e.name}" oninput="updateData('projects', '${e.id}', 'name', this.value)" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 mb-2 text-sm text-txt outline-none" />
+          <input type="text" placeholder="Link/URL" value="${e.link}" oninput="updateData('projects', '${e.id}', 'link', this.value)" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 mb-2 text-sm text-txt outline-none" />
+          <textarea placeholder="Description (bullet points separated by new lines)" oninput="updateData('projects', '${e.id}', 'description', this.value)" rows="3" class="w-full bg-th-surface border border-th-border rounded px-2 py-1.5 text-sm text-txt outline-none">${e.description}</textarea>
+        </div>
+      `).join('');
+
+      updatePreview();
+    }
+
+    function formatBullets(text) {
+      if (!text) return '';
+      const lines = text.split('\\n').filter(l => l.trim() !== '');
+      if (lines.length === 1 && !text.includes('\\n')) return text;
+      return '<ul>' + lines.map(l => '<li>' + l.replace(/^[-•*]\\s*/, '').trim() + '</li>').join('') + '</ul>';
+    }
+
+    function updatePreview() {
+      // Gather inputs
+      resumeData.personalInfo.fullName = document.getElementById('pi-name').value;
+      resumeData.personalInfo.email = document.getElementById('pi-email').value;
+      resumeData.personalInfo.phone = document.getElementById('pi-phone').value;
+      resumeData.personalInfo.location = document.getElementById('pi-location').value;
+      resumeData.personalInfo.linkedin = document.getElementById('pi-linkedin').value;
+      resumeData.personalInfo.github = document.getElementById('pi-github').value;
+      
+      resumeData.summary = document.getElementById('summary-text').value;
+      resumeData.skills = document.getElementById('skills-text').value.split(',').map(s => s.trim()).filter(s => s);
+
+      const preview = document.getElementById('resumePreview');
+      
+      let html = '';
+      const pi = resumeData.personalInfo;
+      
+      // Header
+      if (pi.fullName) html += '<h1 style="text-align:center;">' + pi.fullName + '</h1>';
+      
+      let contacts = [];
+      if (pi.location) contacts.push(pi.location);
+      if (pi.phone) contacts.push(pi.phone);
+      if (pi.email) contacts.push(pi.email);
+      if (pi.linkedin) contacts.push(pi.linkedin);
+      if (pi.github) contacts.push(pi.github);
+      
+      if (contacts.length > 0) {
+        html += '<div class="contact-info" style="justify-content:center;">' + contacts.map(c => '<span>' + c + '</span>').join(' | ') + '</div>';
+      }
+
+      // Summary
+      if (resumeData.summary) {
+        html += '<div class="section-title">Summary</div>';
+        html += '<div class="item-desc">' + resumeData.summary + '</div>';
+      }
+
+      // Experience
+      if (resumeData.experience.length > 0) {
+        html += '<div class="section-title">Experience</div>';
+        resumeData.experience.forEach(exp => {
+          if (!exp.company && !exp.role) return;
+          html += '<div class="item-header">';
+          html += '<div><span class="item-title">' + (exp.role || '') + '</span>' + (exp.company ? ', <span class="item-subtitle">' + exp.company + '</span>' : '') + '</div>';
+          if (exp.startDate || exp.endDate) {
+            html += '<div class="item-date">' + (exp.startDate || '') + ' - ' + (exp.endDate || '') + '</div>';
+          }
+          html += '</div>';
+          if (exp.description) {
+            html += '<div class="item-desc">' + formatBullets(exp.description) + '</div>';
+          }
+        });
+      }
+
+      // Projects
+      if (resumeData.projects.length > 0) {
+        html += '<div class="section-title">Projects</div>';
+        resumeData.projects.forEach(proj => {
+          if (!proj.name) return;
+          html += '<div class="item-header">';
+          html += '<div><span class="item-title">' + proj.name + '</span>' + (proj.link ? ' | <a href="'+proj.link+'" style="color:#000;text-decoration:none;font-size:10pt;">'+proj.link+'</a>' : '') + '</div>';
+          html += '</div>';
+          if (proj.description) {
+            html += '<div class="item-desc">' + formatBullets(proj.description) + '</div>';
+          }
+        });
+      }
+
+      // Education
+      if (resumeData.education.length > 0) {
+        html += '<div class="section-title">Education</div>';
+        resumeData.education.forEach(edu => {
+          if (!edu.institution) return;
+          html += '<div class="item-header">';
+          html += '<div><span class="item-title">' + edu.institution + '</span>' + (edu.degree ? ', <span class="item-subtitle">' + edu.degree + '</span>' : '') + '</div>';
+          if (edu.startDate || edu.endDate) {
+            html += '<div class="item-date">' + (edu.startDate || '') + ' - ' + (edu.endDate || '') + '</div>';
+          }
+          html += '</div>';
+        });
+      }
+
+      // Skills
+      if (resumeData.skills.length > 0) {
+        html += '<div class="section-title">Skills</div>';
+        html += '<div class="item-desc"><b>Technical Skills: </b>' + resumeData.skills.join(', ') + '</div>';
+      }
+
+      preview.innerHTML = html || '<div style="text-align:center; color:#999; margin-top:50px;">Start typing to preview your resume...</div>';
+    }
+
+    function showToast(msg, isError=false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'mb-4 p-3 rounded-lg text-sm transition-all duration-300 block ' + (isError ? 'bg-red-500/10 border border-red-500/30 text-red-400' : 'bg-green-500/10 border border-green-500/30 text-green-400');
+      setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+    }
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return showToast('Please login to save.', true);
+      
+      const btn = document.getElementById('saveBtn');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(API_BASE + '/v2/resume/build', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify(resumeData)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save');
+        resumeData._id = data.resume._id;
+        showToast('Resume saved successfully!');
+      } catch(err) {
+        showToast(err.message, true);
+      } finally {
+        btn.textContent = 'Save Resume';
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const element = document.getElementById('resumePreview');
+      const opt = {
+        margin:       0,
+        filename:     (resumeData.personalInfo.fullName || 'Resume').replace(/\\s+/g, '_') + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      
+      // hide dummy text if any
+      if (element.textContent.includes('Start typing to preview')) return showToast('Resume is empty.', true);
+      
+      html2pdf().set(opt).from(element).save();
+    });
+
+    // Initialize with one empty experience
+    addExperience();
+    addEducation();
+  </script>
+</body>
+</html>
