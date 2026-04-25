@@ -221,35 +221,69 @@
     opacity: 0.8 !important;
   }
   
-  /* Tables */
-  .mobile-table-wrapper {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    border-radius: 8px !important;
-    background: rgba(255,255,255,0.02) !important;
+  /* Stacked Card Tables for Mobile */
+  .mobile-table-wrapper, .overflow-x-auto {
+    overflow-x: visible !important;
+    background: transparent !important;
   }
   
-  .mobile-table {
+  .mobile-table, .prob-table, .app-table {
+    display: block !important;
     width: 100% !important;
-    min-width: 300px !important;
-    font-size: 11px !important;
-    border-collapse: collapse !important;
+    min-width: 0 !important;
+    border: none !important;
   }
   
-  .mobile-table th {
-    padding: 8px 12px !important;
-    font-size: 10px !important;
+  .mobile-table thead, .prob-table thead, .app-table thead {
+    display: none !important;
+  }
+  
+  .mobile-table tbody, .prob-table tbody, .app-table tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+  
+  .mobile-table tr, .prob-table tr, .app-table tr {
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--bg-secondary, rgba(255,255,255,0.03)) !important;
+    border: 1px solid var(--border-subtle, rgba(255,255,255,0.1)) !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    padding: 12px 16px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+  }
+  
+  .mobile-table td, .prob-table td, .app-table td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border: none !important;
+    padding: 8px 0 !important;
+    white-space: normal !important;
+    text-align: right !important;
+    font-size: 13px !important;
+  }
+  
+  .mobile-table td::before, .prob-table td::before, .app-table td::before {
+    content: attr(data-label);
     font-weight: 600 !important;
+    color: var(--text-muted, #a1a1aa) !important;
     text-transform: uppercase !important;
+    font-size: 10px !important;
     letter-spacing: 0.05em !important;
-    background: rgba(255,255,255,0.05) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    text-align: left !important;
+    margin-right: 12px !important;
+    flex-shrink: 0 !important;
   }
   
-  .mobile-table td {
-    padding: 8px 12px !important;
+  .mobile-table td:not(:last-child), .prob-table td:not(:last-child), .app-table td:not(:last-child) {
     border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-    white-space: nowrap !important;
+  }
+  
+  /* Reset min-width constraints */
+  table.min-w-\[560px\] {
+    min-width: 0 !important;
   }
   
   /* Hide elements on mobile */

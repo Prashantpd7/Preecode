@@ -198,11 +198,11 @@
       tr.style.cursor = 'pointer';
       tr.title = 'Start coding: ' + p.name;
       tr.innerHTML =
-        '<td class="prob-td-num">' + (start + i + 1) + '</td>' +
-        '<td class="prob-td-title">' + escHtml(p.name) + '</td>' +
-        '<td><span class="diff-badge ' + dc + '">' + cap(dc) + '</span></td>' +
-        '<td>' + tags + '</td>' +
-        '<td class="prob-td-status">' + statusHtml + '</td>';
+        '<td class="prob-td-num" data-label="#">' + (start + i + 1) + '</td>' +
+        '<td class="prob-td-title" data-label="Title">' + escHtml(p.name) + '</td>' +
+        '<td data-label="Difficulty"><span class="diff-badge ' + dc + '">' + cap(dc) + '</span></td>' +
+        '<td data-label="Tags">' + tags + '</td>' +
+        '<td class="prob-td-status" data-label="Status">' + statusHtml + '</td>';
 
       // Click → launch VSCode with problem context
       tr.addEventListener('click', function() {
