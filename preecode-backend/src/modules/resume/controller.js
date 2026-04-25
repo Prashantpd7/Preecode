@@ -64,21 +64,60 @@ async function uploadResume(req, res) {
     const { targetRole } = req.body;
     const userId = req.user._id;
 
-    if (!req.file) return res.status(400).json({ error: 'file is required' });
-    if (!targetRole) return res.status(400).json({ error: 'targetRole is required' });
+    console.log('[resume/upload] Request received:', {
+      userId: userId.toString(),
+      targetRole,
+      hasFile: !!req.file,
+      fileName: req.file?.originalname
+    });
+
+    if (!req.file) {
+      console.error('[resume/upload] No file in request');
+      return res.status(400).json({ error: 'Resume file is required' });
+    }
+    
+    if (!targetRole) {
+      console.error('[resume/upload] No target role provided');
+      return res.status(400).json({ error: 'Target role is required' });
+    }
 
     const ext = path.extname(req.file.originalname).toLowerCase();
+    console.log('[resume/upload] File extension:', ext);
+
     let extractedText = '';
     try {
+      console.log('[resume/upload] Extracting text from file...');
       extractedText = await extractText(req.file.path, ext);
+      console.log('[resume/upload] Text extracted, length:', extractedText.length);
+      
+      if (!extractedText || extractedText.trim().length < 50) {
+        console.error('[resume/upload] Extracted text too short');
+        return res.status(400).json({ 
+          error: 'Could not extract enough text from resume. Please ensure the file is not corrupted or empty.' 
+        });
+      }
     } catch (parseErr) {
-      console.warn('[resume/controller] text extraction failed:', parseErr.message);
+      console.error('[resume/upload] Text extraction failed:', parseErr);
+      return res.status(400).json({ 
+        error: 'Failed to read resume file. Please ensure it is a valid PDF, DOCX, or TXT file.' 
+      });
     }
 
     // AI analysis
-    const analysis = await analyzeResume(extractedText, targetRole);
+    console.log('[resume/upload] Starting AI analysis...');
+    let analysis;
+    try {
+      analysis = await analyzeResume(extractedText, targetRole);
+      console.log('[resume/upload] AI analysis complete');
+    } catch (aiErr) {
+      console.error('[resume/upload] AI analysis failed:', aiErr);
+      return res.status(500).json({ 
+        error: 'AI analysis failed: ' + (aiErr.message || 'Please try again later.') 
+      });
+    }
 
     // Save Resume document
+    console.log('[resume/upload] Saving resume to database...');
     const resume = await Resume.create({
       userId,
       fileName: req.file.originalname,
@@ -92,6 +131,7 @@ async function uploadResume(req, res) {
     });
 
     // Save ResumeScore document
+    console.log('[resume/upload] Saving resume score...');
     const score = await ResumeScore.create({
       resumeId: resume._id,
       userId,
@@ -100,6 +140,8 @@ async function uploadResume(req, res) {
       missingSkills: analysis.missingSkills || [],
       suggestions: analysis.suggestions || [],
     });
+
+    console.log('[resume/upload] Upload successful, resumeId:', resume._id.toString());
 
     return res.status(201).json({
       resumeId: resume._id,
@@ -110,8 +152,10 @@ async function uploadResume(req, res) {
       suggestions: score.suggestions,
     });
   } catch (err) {
-    console.error('[resume/controller] uploadResume:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('[resume/controller] uploadResume error:', err);
+    return res.status(500).json({ 
+      error: 'Internal server error: ' + (err.message || 'Please try again later.') 
+    });
   }
 }
 

@@ -140,10 +140,26 @@
         const token  = localStorage.getItem('token');
         const userId = localStorage.getItem('preecode_uid');
 
+        if (!token) {
+          showError('Please log in to upload resume.');
+          return;
+        }
+
+        if (!userId) {
+          showError('User ID not found. Please log in again.');
+          return;
+        }
+
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('userId', userId);
         formData.append('targetRole', targetRole);
+
+        console.log('Uploading resume:', {
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          targetRole: targetRole
+        });
 
         const res = await fetch(API_BASE + '/v2/resume/upload', {
           method: 'POST',
@@ -152,11 +168,23 @@
         });
 
         const data = await res.json();
-        if (!res.ok) { showError(data.error || 'Upload failed.'); return; }
+        
+        console.log('Upload response:', { status: res.status, data });
+
+        if (!res.ok) { 
+          showError(data.error || data.message || 'Upload failed. Please try again.'); 
+          return; 
+        }
+
+        if (!data.resumeId) {
+          showError('Resume uploaded but no ID returned. Please try again.');
+          return;
+        }
 
         window.location.href = '/pages/resume-analysis.html?id=' + data.resumeId;
       } catch (err) {
-        showError('Network error. Please try again.');
+        console.error('Upload error:', err);
+        showError('Network error: ' + (err.message || 'Please check your connection and try again.'));
       } finally {
         analyzeBtn.disabled = false;
         analyzeBtnText.textContent = 'Analyze Resume';

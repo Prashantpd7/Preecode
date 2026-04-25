@@ -8,7 +8,7 @@ function stripFences(text) {
 // ── Deep resume analysis via OpenRouter ──────────────────────────────────────
 async function analyzeResume(extractedText, targetRole) {
   if (!extractedText || extractedText.trim().length < 50) {
-    throw new Error('Resume text is too short to analyze. Please upload a valid resume.');
+    throw new Error('Resume text is too short to analyze. Please upload a valid resume with more content.');
   }
 
   const prompt = `You are an expert ATS system and senior technical recruiter.
@@ -38,14 +38,47 @@ Evaluate and return ONLY valid JSON (no markdown, no explanation):
 Be strict and realistic with scores. A score of 90+ means the resume is exceptional.`;
 
   try {
+    console.log('[resume/service] Calling AI service for analysis...');
     const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.3, maxTokens: 1500 });
+    
+    if (!raw || typeof raw !== 'string') {
+      throw new Error('AI service returned invalid response');
+    }
+
+    console.log('[resume/service] AI response received, parsing JSON...');
     const cleaned = stripFences(raw);
-    const result = JSON.parse(cleaned);
-    if (typeof result.atsScore !== 'number') throw new Error('Invalid response shape');
+    
+    let result;
+    try {
+      result = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error('[resume/service] JSON parse error:', parseErr.message);
+      console.error('[resume/service] Raw response:', raw.substring(0, 500));
+      throw new Error('AI returned invalid JSON format. Please try again.');
+    }
+
+    // Validate response structure
+    if (typeof result.atsScore !== 'number' || 
+        typeof result.structureScore !== 'number' || 
+        typeof result.matchScore !== 'number') {
+      console.error('[resume/service] Invalid response structure:', result);
+      throw new Error('AI response missing required scores');
+    }
+
+    if (!Array.isArray(result.skills)) result.skills = [];
+    if (!Array.isArray(result.experience)) result.experience = [];
+    if (!Array.isArray(result.keywords)) result.keywords = [];
+    if (!Array.isArray(result.missingSkills)) result.missingSkills = [];
+    if (!Array.isArray(result.suggestions)) result.suggestions = [];
+
+    console.log('[resume/service] Analysis successful');
     return result;
   } catch (err) {
     console.error('[resume/service] analyzeResume error:', err.message);
-    throw new Error('Resume analysis failed. Please try again.');
+    if (err.message.includes('AI')) {
+      throw err; // Re-throw AI-specific errors
+    }
+    throw new Error('Resume analysis failed. Please try again or contact support if the issue persists.');
   }
 }
 
