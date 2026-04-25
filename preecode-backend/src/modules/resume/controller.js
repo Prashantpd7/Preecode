@@ -379,17 +379,21 @@ const BuiltResume = require('./builtResumeModel');
 async function saveBuiltResume(req, res) {
   try {
     const userId = req.user._id;
-    const data = req.body;
+    const data = { ...req.body };
     let resume;
+    
     if (data._id) {
-      resume = await BuiltResume.findOneAndUpdate({ _id: data._id, userId }, { ...data, updatedAt: Date.now() }, { new: true });
+      const id = data._id;
+      delete data._id;
+      resume = await BuiltResume.findOneAndUpdate({ _id: id, userId }, { ...data, updatedAt: Date.now() }, { new: true });
     } else {
+      delete data._id;
       resume = await BuiltResume.create({ ...data, userId });
     }
     res.json({ message: 'Resume saved', resume });
   } catch (err) {
     console.error('[resume/builder] Error:', err);
-    res.status(500).json({ error: 'Failed to save resume' });
+    res.status(500).json({ error: 'Failed to save resume: ' + err.message });
   }
 }
 
