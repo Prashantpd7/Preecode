@@ -4,109 +4,191 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="theme-color" content="#ff6b00" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Preecode – Resume Upload</title>
+  <title>Preecode – Resume</title>
   <script src="/theme.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/tailwind-config.js"></script>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/mobile-enhancements.js" defer></script>
   <style>
-    .drop-zone { border:2px dashed var(--th-border); border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer; transition:border-color .2s, background .2s; }
-    .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent,#6366f1); background:rgba(99,102,241,.05); }
-    .drop-zone input[type=file] { display:none; }
-    @media (max-width: 767px) {
-      .drop-zone { padding: 24px 16px; }
+    .drop-zone {
+      border: 2px dashed var(--th-border);
+      border-radius: 10px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
     }
-    @media (max-width: 480px) {
-      .drop-zone { padding: 20px 12px; }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent, #ff6b00);
+      background: rgba(255,107,0,.04);
     }
+    .drop-zone input[type=file] { display: none; }
+
+    .resume-card {
+      background: var(--th-surface, rgba(255,255,255,.04));
+      border: 1px solid var(--th-border, rgba(255,255,255,.1));
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .resume-card:hover {
+      border-color: var(--accent, #ff6b00);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255,107,0,.12);
+    }
+    .resume-card__icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+    .resume-card__tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 99px;
+      margin-bottom: 10px;
+      width: fit-content;
+    }
+    .resume-card__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--txt);
+      margin-bottom: 6px;
+    }
+    .resume-card__desc {
+      font-size: 12px;
+      color: var(--txt-muted);
+      line-height: 1.55;
+      margin-bottom: 16px;
+    }
+    .resume-card__features {
+      list-style: none;
+      padding: 0; margin: 0 0 18px 0;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .resume-card__features li {
+      font-size: 11px;
+      color: var(--txt-muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .resume-card__cta {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      border: none;
+    }
+    .cta-primary {
+      background: linear-gradient(135deg, #ff6b00, #ff9a00);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(255,107,0,.3);
+    }
+    .cta-primary:hover { box-shadow: 0 6px 20px rgba(255,107,0,.4); transform: translateY(-1px); }
+    .cta-outline {
+      background: transparent;
+      color: var(--accent, #ff6b00);
+      border: 1.5px solid var(--accent, #ff6b00);
+    }
+    .cta-outline:hover { background: rgba(255,107,0,.07); }
   </style>
 </head>
 <body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">
 
   <div class="app-shell min-h-screen relative z-10">
     <div class="app-main flex-1 flex flex-col">
-      <div class="page-content flex-1 p-4 md:p-7 max-w-[1200px] w-full mx-auto opacity-0 animate-fade-in">
+      <div class="page-content flex-1 p-4 md:p-7 max-w-[960px] w-full mx-auto opacity-0 animate-fade-in">
 
-        <div class="mb-10 text-center">
-          <h1 class="text-3xl md:text-4xl font-bold text-txt mb-3">Resume Analysis & Builder</h1>
-          <p class="text-txt-muted text-base max-w-2xl mx-auto">Choose to upload your existing resume for a deep AI-powered ATS analysis, or build a perfectly formatted, professional resume from scratch.</p>
+        <!-- Page header -->
+        <div class="mb-8">
+          <h1 class="text-2xl font-bold text-txt">Resume</h1>
+          <p class="text-txt-muted text-xs mt-1">Build from scratch or upload your existing resume for AI analysis.</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 max-w-5xl mx-auto">
-          
-          <!-- Option 1: Create from Scratch -->
-          <div class="dash-v4-card flex flex-col justify-between hover:border-accent transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group">
-            <div class="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="relative z-10 p-2">
-              <div class="w-14 h-14 bg-accent/10 rounded-2xl flex items-center justify-center mb-6 text-accent">
-                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89 1.13l-2.8.87a.25.25 0 01-.314-.314l.87-2.8a4.5 4.5 0 011.13-1.89l13.04-13.042z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 7.125L16.862 4.487" />
-                </svg>
-              </div>
-              <h2 class="text-2xl font-bold text-txt mb-3">Create from Scratch</h2>
-              <p class="text-txt-muted text-base mb-6 leading-relaxed">Use our step-by-step interactive builder to craft an ATS-optimized, beautifully formatted resume in minutes.</p>
-              
-              <ul class="text-sm text-txt-muted space-y-3 mb-8">
-                <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Real-time live preview</li>
-                <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> ATS-compliant templates</li>
-                <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> 1-Click PDF export</li>
-              </ul>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
+
+          <!-- Card 1: Create -->
+          <div class="resume-card">
+            <div class="resume-card__icon" style="background:rgba(255,107,0,.12);">
+              <svg class="w-5 h-5" style="color:#ff6b00" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+              </svg>
             </div>
-            
-            <button onclick="window.location.href='/pages/resume-builder.html'" class="dash-v4-practice__cta flex items-center justify-center gap-2 w-full relative z-10 text-base py-3">
+            <div class="resume-card__tag" style="background:rgba(255,107,0,.1);color:#ff6b00;">
+              ✦ Builder
+            </div>
+            <div class="resume-card__title">Create Resume</div>
+            <div class="resume-card__desc">Step-by-step builder with live preview. Download a polished, ATS-ready PDF instantly.</div>
+            <ul class="resume-card__features">
+              <li><svg class="w-3 h-3 flex-shrink-0" style="color:#22c55e" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>Live preview as you type</li>
+              <li><svg class="w-3 h-3 flex-shrink-0" style="color:#22c55e" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>ATS-optimized format</li>
+              <li><svg class="w-3 h-3 flex-shrink-0" style="color:#22c55e" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>1-click PDF download</li>
+            </ul>
+            <button onclick="window.location.href='/pages/resume-builder.html'" class="resume-card__cta cta-primary">
               Open Builder
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
             </button>
           </div>
 
-          <!-- Option 2: Upload Existing -->
-          <div class="dash-v4-card flex flex-col relative group">
-            <div class="p-2 mb-4">
-              <div class="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 text-blue-500">
-                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                </svg>
-              </div>
-              <h2 class="text-2xl font-bold text-txt mb-3">Upload & Analyze</h2>
-              <p class="text-txt-muted text-base mb-6 leading-relaxed">Already have a resume? Upload it to get deep AI feedback, a match score, and specific improvement suggestions for your target role.</p>
+          <!-- Card 2: Upload & Analyze -->
+          <div class="resume-card">
+            <div class="resume-card__icon" style="background:rgba(99,102,241,.12);">
+              <svg class="w-5 h-5" style="color:#818cf8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
             </div>
+            <div class="resume-card__tag" style="background:rgba(99,102,241,.1);color:#818cf8;">
+              ✦ AI Analysis
+            </div>
+            <div class="resume-card__title">Upload & Analyze</div>
+            <div class="resume-card__desc">Get deep AI feedback, an ATS score, and actionable improvement tips for your target role.</div>
 
             <!-- Error banner -->
-            <div id="errorBanner" class="hidden mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm"></div>
+            <div id="errorBanner" class="hidden mb-3 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs"></div>
 
-            <form id="uploadForm" class="flex flex-col gap-5 flex-1 justify-end mt-auto">
-              <!-- Drop zone -->
+            <form id="uploadForm" class="flex flex-col gap-3 flex-1">
               <div class="drop-zone" id="dropZone">
                 <input type="file" id="fileInput" accept=".pdf,.docx,.txt" />
-                <svg class="w-8 h-8 mx-auto text-txt-muted mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg class="w-6 h-6 mx-auto mb-1.5 text-txt-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
-                <p class="text-txt font-medium text-sm">Drop file or <span class="text-accent underline cursor-pointer" id="browseLink">browse</span></p>
-                <p class="text-xs text-txt-muted mt-1">PDF, DOCX, TXT</p>
-                <p class="text-sm text-accent font-medium mt-2 hidden" id="fileName"></p>
+                <p class="text-txt text-xs font-medium">Drop file or <span class="text-accent underline cursor-pointer" id="browseLink">browse</span></p>
+                <p class="text-xs text-txt-muted mt-0.5">PDF, DOCX, TXT · max 5 MB</p>
+                <p class="text-xs font-medium mt-1.5 hidden" id="fileName" style="color:#ff6b00;"></p>
               </div>
 
-              <!-- Target role -->
-              <div>
-                <label class="block text-xs font-medium text-txt-muted mb-1.5 uppercase tracking-wider">Target Role</label>
-                <select id="targetRole" class="w-full bg-th-surface border border-th-border rounded-lg px-4 py-3 text-txt text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors cursor-pointer appearance-none">
-                  <option value="">— Select a Role —</option>
-                  <option value="Frontend Developer">Frontend Developer</option>
-                  <option value="Backend Developer">Backend Developer</option>
-                  <option value="Full Stack Developer">Full Stack Developer</option>
-                  <option value="SDE">Software Engineer (SDE)</option>
-                  <option value="AI/ML Engineer">AI/ML Engineer</option>
-                </select>
-              </div>
+              <select id="targetRole" class="w-full bg-th-surface border border-th-border rounded-lg px-3 py-2 text-txt text-xs focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors cursor-pointer">
+                <option value="">— Select target role —</option>
+                <option value="Frontend Developer">Frontend Developer</option>
+                <option value="Backend Developer">Backend Developer</option>
+                <option value="Full Stack Developer">Full Stack Developer</option>
+                <option value="SDE">Software Engineer (SDE)</option>
+                <option value="AI/ML Engineer">AI / ML Engineer</option>
+              </select>
 
-              <!-- Submit -->
-              <button type="submit" id="analyzeBtn" class="w-full flex items-center justify-center gap-2 whitespace-nowrap px-4 py-3 bg-th-surface border border-accent text-accent hover:bg-accent hover:text-white transition-colors rounded-lg font-semibold mt-2">
+              <button type="submit" id="analyzeBtn" class="resume-card__cta cta-outline mt-auto">
                 <span id="analyzeBtnText">Analyze Resume</span>
-                <svg id="analyzeSpinner" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg id="analyzeSpinner" class="hidden w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                 </svg>
@@ -134,16 +216,11 @@
 
     browseLink.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('click', (e) => { if (e.target !== browseLink) fileInput.click(); });
-
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files[0]) setFile(fileInput.files[0]);
-    });
-
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
     dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('drag-over');
+      e.preventDefault(); dropZone.classList.remove('drag-over');
       if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
     });
 
@@ -156,45 +233,29 @@
 
     document.getElementById('uploadForm').addEventListener('submit', async function (e) {
       e.preventDefault();
-      const targetRole = document.getElementById('targetRole').value;
-      const errorBanner = document.getElementById('errorBanner');
-      const analyzeBtn  = document.getElementById('analyzeBtn');
+      const targetRole     = document.getElementById('targetRole').value;
+      const analyzeBtn     = document.getElementById('analyzeBtn');
       const analyzeBtnText = document.getElementById('analyzeBtnText');
       const analyzeSpinner = document.getElementById('analyzeSpinner');
-
-      errorBanner.classList.add('hidden');
+      document.getElementById('errorBanner').classList.add('hidden');
 
       if (!selectedFile) { showError('Please select a resume file.'); return; }
       if (!targetRole)   { showError('Please select a target role.'); return; }
 
       analyzeBtn.disabled = true;
-      analyzeBtnText.textContent = 'Analyzing with AI…';
+      analyzeBtnText.textContent = 'Analyzing…';
       analyzeSpinner.classList.remove('hidden');
 
       try {
         const token  = localStorage.getItem('token');
         const userId = localStorage.getItem('preecode_uid');
-
-        if (!token) {
-          showError('Please log in to upload resume.');
-          return;
-        }
-
-        if (!userId) {
-          showError('User ID not found. Please log in again.');
-          return;
-        }
+        if (!token)  { showError('Please log in to upload resume.'); return; }
+        if (!userId) { showError('User ID not found. Please log in again.'); return; }
 
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('userId', userId);
         formData.append('targetRole', targetRole);
-
-        console.log('Uploading resume:', {
-          fileName: selectedFile.name,
-          fileSize: selectedFile.size,
-          targetRole: targetRole
-        });
 
         const res = await fetch(API_BASE + '/v2/resume/upload', {
           method: 'POST',
@@ -207,26 +268,14 @@
         if (contentType && contentType.includes('application/json')) {
           data = await res.json();
         } else {
-          const text = await res.text();
-          console.error('Non-JSON response:', text.substring(0, 200));
           throw new Error('Server returned an invalid response. Please try again later.');
         }
-        
-        console.log('Upload response:', { status: res.status, data });
 
-        if (!res.ok) { 
-          showError(data.error || data.message || 'Upload failed. Please try again.'); 
-          return; 
-        }
-
-        if (!data.resumeId) {
-          showError('Resume uploaded but no ID returned. Please try again.');
-          return;
-        }
+        if (!res.ok) { showError(data.error || data.message || 'Upload failed. Please try again.'); return; }
+        if (!data.resumeId) { showError('Resume uploaded but no ID returned. Please try again.'); return; }
 
         window.location.href = '/pages/resume-analysis.html?id=' + data.resumeId;
       } catch (err) {
-        console.error('Upload error:', err);
         showError('Network error: ' + (err.message || 'Please check your connection and try again.'));
       } finally {
         analyzeBtn.disabled = false;
