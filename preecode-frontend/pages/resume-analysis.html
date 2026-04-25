@@ -131,7 +131,17 @@
     fetch(API_BASE + '/v2/resume/analysis/' + resumeId, {
       headers: { Authorization: 'Bearer ' + token }
     })
-    .then(r => r.json())
+    .then(r => {
+      // Check if response is JSON before parsing
+      const contentType = r.headers.get('content-type');
+      if (!r.ok) {
+        throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+      }
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response. Please try again or contact support.');
+      }
+      return r.json();
+    })
     .then(data => {
       document.getElementById('skeleton').classList.add('hidden');
       document.getElementById('analysisContent').classList.remove('hidden');
@@ -184,7 +194,10 @@
       // Use in interview link
       document.getElementById('useInInterviewBtn').href = '/pages/interview-setup.html?resumeId=' + resumeId;
     })
-    .catch(() => showError('Failed to load analysis.'));
+    .catch(err => {
+      console.error('Resume analysis error:', err);
+      showError(err.message || 'Failed to load analysis. Please try again.');
+    });
 
     function showError(msg) {
       document.getElementById('skeleton').classList.add('hidden');

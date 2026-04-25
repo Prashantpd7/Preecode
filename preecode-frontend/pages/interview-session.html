@@ -126,9 +126,24 @@
   (function () {
     const params = new URLSearchParams(window.location.search);
     const interviewId = params.get('id');
-    if (!interviewId) { showError('No interview ID found.'); return; }
+    
+    console.log('[interview-session] Page loaded, interviewId:', interviewId);
+    
+    if (!interviewId) { 
+      console.error('[interview-session] No interview ID found');
+      showError('No interview ID found. Please start a new interview.'); 
+      return; 
+    }
 
     const token = localStorage.getItem('token');
+    
+    console.log('[interview-session] Token check:', { hasToken: !!token });
+    
+    if (!token) {
+      console.error('[interview-session] No token found');
+      showError('Please log in to continue.');
+      return;
+    }
 
     // State
     let currentQuestion = null;
@@ -143,24 +158,36 @@
 
     // Load first question from session storage (set by setup page via redirect)
     const stored = sessionStorage.getItem('interview_' + interviewId);
+    console.log('[interview-session] Session storage check:', { hasStored: !!stored });
+    
     if (stored) {
       try {
         const data = JSON.parse(stored);
+        console.log('[interview-session] Session data parsed:', { 
+          hasFirstQuestion: !!data.firstQuestion, 
+          totalQuestions: data.totalQuestions 
+        });
         currentQuestion = data.firstQuestion;
         totalQuestions  = data.totalQuestions || 5;
         questionNumber  = 1;
         renderQuestion();
-      } catch (_) { fetchFallback(); }
+      } catch (parseErr) { 
+        console.error('[interview-session] Session data parse error:', parseErr);
+        fetchFallback(); 
+      }
     } else {
+      console.warn('[interview-session] No session data found');
       fetchFallback();
     }
 
     function fetchFallback() {
       // If no session data, show error (user should come from setup page)
+      console.error('[interview-session] Fallback triggered - session expired');
       showError('Session expired. Please start a new interview.');
     }
 
     function renderQuestion() {
+      console.log('[interview-session] Rendering question:', questionNumber);
       document.getElementById('loadingState').classList.add('hidden');
       document.getElementById('sessionLayout').classList.remove('hidden');
       document.getElementById('questionText').textContent = currentQuestion.question || currentQuestion;
@@ -193,12 +220,20 @@
     document.getElementById('recordBtn').addEventListener('click', async function () {
       if (!isRecording) {
         try {
+          console.log('[interview-session] Requesting microphone access...');
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('[interview-session] Microphone access granted');
+          
           mediaRecorder = new MediaRecorder(stream);
           audioChunks = [];
-          mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+          mediaRecorder.ondataavailable = (e) => {
+            console.log('[interview-session] Audio chunk received:', e.data.size, 'bytes');
+            audioChunks.push(e.data);
+          };
           mediaRecorder.onstop = () => {
+            console.log('[interview-session] Recording stopped, total chunks:', audioChunks.length);
             recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            console.log('[interview-session] Blob created, size:', recordedBlob.size, 'bytes');
             enableSubmit();
           };
           mediaRecorder.start();
@@ -207,10 +242,13 @@
           this.classList.add('recording');
           document.getElementById('recordStatus').textContent = 'Recording…';
           startTimer();
+          console.log('[interview-session] Recording started');
         } catch (err) {
-          showError('Microphone access denied. Please allow microphone access.');
+          console.error('[interview-session] Microphone access error:', err);
+          showError('Microphone access denied. Please allow microphone access in your browser settings.');
         }
       } else {
+        console.log('[interview-session] Stopping recording...');
         stopRecording();
       }
     });
@@ -219,6 +257,7 @@
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        console.log('[interview-session] MediaRecorder stopped');
       }
       isRecording = false;
       clearInterval(timerInterval);
@@ -229,12 +268,14 @@
     }
 
     function enableSubmit() {
+      console.log('[interview-session] Enabling submit button');
       const btn = document.getElementById('submitBtn');
       btn.disabled = false;
       btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 
     function resetRecording() {
+      console.log('[interview-session] Resetting recording state');
       recordedBlob = null;
       isRecording = false;
       audioChunks = [];
@@ -262,8 +303,17 @@
 
     // ── Submit answer ──
     document.getElementById('submitBtn').addEventListener('click', async function () {
-      if (!recordedBlob) return;
-      if (isRecording) stopRecording();
+      if (!recordedBlob) {
+        console.error('[interview-session] No recorded blob');
+        showError('Please record your answer first.');
+        return;
+      }
+      if (isRecording) {
+        console.log('[interview-session] Still recording, stopping...');
+        stopRecording();
+      }
+
+      console.log('[interview-session] Submitting answer...');
 
       this.disabled = true;
       document.getElementById('submitBtnText').textContent = 'Submitting…';
@@ -271,34 +321,52 @@
 
       try {
         // Convert blob to base64
+        console.log('[interview-session] Converting audio to base64...');
         const audioBase64 = await blobToBase64(recordedBlob);
+        console.log('[interview-session] Base64 conversion complete, length:', audioBase64.length);
+
+        const payload = {
+          interviewId,
+          questionText: currentQuestion.question || currentQuestion,
+          audioBase64,
+        };
+
+        console.log('[interview-session] Sending answer to API...');
 
         const res = await fetch(API_BASE + '/v2/interview/answer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({
-            interviewId,
-            questionText: currentQuestion.question || currentQuestion,
-            audioBase64,
-          }),
+          body: JSON.stringify(payload),
         });
 
-        const data = await res.json();
-        if (!res.ok) { showError(data.error || 'Failed to submit answer.'); return; }
+        console.log('[interview-session] Response status:', res.status);
 
+        const data = await res.json();
+        console.log('[interview-session] Response data:', data);
+
+        if (!res.ok) { 
+          console.error('[interview-session] API error:', data.error);
+          showError(data.error || 'Failed to submit answer. Please try again.'); 
+          return; 
+        }
+
+        console.log('[interview-session] Answer submitted successfully');
         showToast(data.feedback ? data.feedback.slice(0, 120) + '…' : 'Answer submitted!', 'success');
 
         if (data.sessionComplete) {
+          console.log('[interview-session] Session complete, redirecting to results...');
           setTimeout(() => {
             window.location.href = '/pages/interview-results.html?id=' + interviewId;
           }, 1800);
         } else {
+          console.log('[interview-session] Moving to next question:', data.questionNumber);
           currentQuestion = data.nextQuestion;
           questionNumber  = data.questionNumber;
           setTimeout(renderQuestion, 1800);
         }
       } catch (err) {
-        showError('Network error. Please try again.');
+        console.error('[interview-session] Network error:', err);
+        showError('Network error. Please check your connection and try again.');
       } finally {
         document.getElementById('submitBtnText').textContent = 'Submit Answer';
         document.getElementById('submitSpinner').classList.add('hidden');
@@ -308,13 +376,21 @@
     function blobToBase64(blob) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
+        reader.onloadend = () => {
+          const base64 = reader.result.split(',')[1];
+          console.log('[interview-session] Blob to base64 complete');
+          resolve(base64);
+        };
+        reader.onerror = (err) => {
+          console.error('[interview-session] Blob to base64 error:', err);
+          reject(err);
+        };
         reader.readAsDataURL(blob);
       });
     }
 
     function showError(msg) {
+      console.error('[interview-session] Showing error:', msg);
       const b = document.getElementById('errorBanner');
       b.textContent = msg;
       b.classList.remove('hidden');
@@ -322,6 +398,7 @@
     }
 
     function showToast(msg, type) {
+      console.log('[interview-session] Showing toast:', type, msg);
       const t = document.getElementById('toast');
       t.textContent = msg;
       t.className = 'toast ' + type;

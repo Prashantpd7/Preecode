@@ -219,16 +219,26 @@
       topbarRight.style.gap = '8px';
     }
 
-    // Hide navigation on mobile (hamburger menu will show)
+    // CRITICAL: Hide navigation on mobile (hamburger menu will show)
     const topbarNav = document.querySelector('.topbar-nav');
     if (topbarNav && window.innerWidth < 768) {
-      topbarNav.style.display = 'none';
+      topbarNav.style.setProperty('display', 'none', 'important');
+      topbarNav.style.visibility = 'hidden';
+      topbarNav.style.opacity = '0';
+      topbarNav.style.pointerEvents = 'none';
     }
 
-    // Show hamburger menu
+    // CRITICAL: Show hamburger menu on mobile
     const hamburger = document.querySelector('.topbar-hamburger');
-    if (hamburger) {
-      hamburger.style.display = 'flex';
+    if (hamburger && window.innerWidth < 768) {
+      hamburger.style.setProperty('display', 'flex', 'important');
+      hamburger.style.visibility = 'visible';
+      hamburger.style.opacity = '1';
+      hamburger.style.pointerEvents = 'auto';
+      hamburger.style.width = '44px';
+      hamburger.style.height = '44px';
+      hamburger.style.alignItems = 'center';
+      hamburger.style.justifyContent = 'center';
     }
 
     // Force dropdown to full width on mobile
@@ -236,6 +246,21 @@
     if (dropdown) {
       dropdown.style.width = 'calc(100vw - 32px)';
       dropdown.style.right = '16px';
+    }
+    
+    // Ensure mobile menu is properly styled
+    const mobileMenu = document.querySelector('.topbar-mobile-menu');
+    if (mobileMenu) {
+      mobileMenu.style.setProperty('display', 'flex', 'important');
+      mobileMenu.style.flexDirection = 'column';
+      mobileMenu.style.background = 'var(--bg-topbar)';
+      mobileMenu.style.borderBottom = '1px solid var(--border-subtle)';
+      mobileMenu.style.padding = '8px 16px 12px';
+      
+      // When hidden class is present, hide it
+      if (mobileMenu.classList.contains('hidden')) {
+        mobileMenu.style.setProperty('display', 'none', 'important');
+      }
     }
   }
 
@@ -401,10 +426,16 @@
         
         .topbar-nav {
           display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
         
         .topbar-hamburger {
           display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: auto !important;
           width: 44px !important;
           height: 44px !important;
         }
@@ -558,7 +589,27 @@
     init();
   }
 
-  // Also initialize after a short delay to ensure all other scripts have loaded
+  // Also initialize after a short delay to ensure layout.js has injected elements
   setTimeout(init, 100);
+  setTimeout(init, 300); // Second pass to catch late injections
+  
+  // Watch for topbar injection and re-apply styles
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.addedNodes.length) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.classList && (node.classList.contains('topbar') || node.classList.contains('topbar-mobile-menu'))) {
+            setTimeout(init, 50); // Re-apply styles when topbar is injected
+          }
+        });
+      }
+    });
+  });
+  
+  // Start observing the document for topbar injection
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 
 })();

@@ -98,10 +98,20 @@
       const startBtnText = document.getElementById('startBtnText');
       const startSpinner = document.getElementById('startSpinner');
 
+      console.log('[interview-setup] Form submitted:', { role, difficulty, useResume });
+
       errorBanner.classList.add('hidden');
 
-      if (!role)       { showError('Please select a role.'); return; }
-      if (!difficulty) { showError('Please select a difficulty.'); return; }
+      if (!role) { 
+        console.error('[interview-setup] No role selected');
+        showError('Please select a role.'); 
+        return; 
+      }
+      if (!difficulty) { 
+        console.error('[interview-setup] No difficulty selected');
+        showError('Please select a difficulty.'); 
+        return; 
+      }
 
       startBtn.disabled = true;
       startBtnText.textContent = 'Generating…';
@@ -111,22 +121,49 @@
         const token  = localStorage.getItem('token');
         const userId = localStorage.getItem('preecode_uid');
 
+        console.log('[interview-setup] Token and userId:', { hasToken: !!token, hasUserId: !!userId });
+
+        if (!token) {
+          console.error('[interview-setup] No token found');
+          showError('Please log in to start an interview.');
+          return;
+        }
+
+        if (!userId) {
+          console.error('[interview-setup] No userId found');
+          showError('User session expired. Please log in again.');
+          return;
+        }
+
         // Optionally fetch latest resumeId
         let resumeId = window.__prefilledResumeId || null;
         if (!resumeId && useResume) {
           try {
+            console.log('[interview-setup] Fetching resume list...');
             const rRes = await fetch(API_BASE + '/v2/resume/list/' + userId, {
               headers: { Authorization: 'Bearer ' + token }
             });
             if (rRes.ok) {
               const resumes = await rRes.json();
-              if (resumes.length > 0) resumeId = resumes[0]._id;
+              console.log('[interview-setup] Resumes found:', resumes.length);
+              if (resumes.length > 0) {
+                resumeId = resumes[0]._id;
+                console.log('[interview-setup] Using resume:', resumeId);
+              } else {
+                console.warn('[interview-setup] No resumes found');
+              }
+            } else {
+              console.warn('[interview-setup] Resume fetch failed:', rRes.status);
             }
-          } catch (_) {}
+          } catch (resumeErr) {
+            console.warn('[interview-setup] Resume fetch error:', resumeErr);
+          }
         }
 
         const body = { role, difficulty };
         if (resumeId) body.resumeId = resumeId;
+
+        console.log('[interview-setup] Starting interview with:', body);
 
         const res = await fetch(API_BASE + '/v2/interview/start', {
           method: 'POST',
@@ -134,8 +171,24 @@
           body: JSON.stringify(body),
         });
 
+        console.log('[interview-setup] Response status:', res.status);
+
         const data = await res.json();
-        if (!res.ok) { showError(data.error || 'Failed to start interview.'); return; }
+        console.log('[interview-setup] Response data:', data);
+
+        if (!res.ok) { 
+          console.error('[interview-setup] API error:', data.error);
+          showError(data.error || 'Failed to start interview.'); 
+          return; 
+        }
+
+        if (!data.interviewId) {
+          console.error('[interview-setup] No interviewId in response');
+          showError('Invalid response from server. Please try again.');
+          return;
+        }
+
+        console.log('[interview-setup] Interview started successfully:', data.interviewId);
 
         // Store first question in sessionStorage for the session page
         sessionStorage.setItem('interview_' + data.interviewId, JSON.stringify({
@@ -143,9 +196,11 @@
           totalQuestions: data.totalQuestions,
         }));
 
+        console.log('[interview-setup] Redirecting to session page...');
         window.location.href = '/pages/interview-session.html?id=' + data.interviewId;
       } catch (err) {
-        showError('Network error. Please try again.');
+        console.error('[interview-setup] Network error:', err);
+        showError('Network error. Please check your connection and try again.');
       } finally {
         startBtn.disabled = false;
         startBtnText.textContent = 'Generate Questions & Start';
@@ -153,6 +208,7 @@
       }
 
       function showError(msg) {
+        console.error('[interview-setup] Showing error:', msg);
         errorBanner.textContent = msg;
         errorBanner.classList.remove('hidden');
       }
