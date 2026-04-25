@@ -86,6 +86,13 @@
 
             <!-- Right: Recording panel -->
             <div class="dash-v4-card flex flex-col items-center justify-center gap-5 min-w-[220px]">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="cameraToggle" class="w-4 h-4 text-accent border-th-border rounded focus:ring-accent" />
+                <label for="cameraToggle" class="text-xs text-txt font-medium cursor-pointer">Enable Camera</label>
+              </div>
+              <div id="videoContainer" class="hidden w-full aspect-video bg-black rounded-lg overflow-hidden shadow-inner">
+                <video id="webcamVideo" class="w-full h-full object-cover" autoplay muted playsinline></video>
+              </div>
               <p class="text-xs text-txt-muted uppercase tracking-wider font-medium" id="recordStatus">Ready to record</p>
 
               <!-- Record button -->
@@ -220,20 +227,34 @@
     document.getElementById('recordBtn').addEventListener('click', async function () {
       if (!isRecording) {
         try {
-          console.log('[interview-session] Requesting microphone access...');
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          console.log('[interview-session] Microphone access granted');
+          const useVideo = document.getElementById('cameraToggle').checked;
+          console.log('[interview-session] Requesting media access...', { audio: true, video: useVideo });
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: useVideo });
+          console.log('[interview-session] Media access granted');
           
+          if (useVideo) {
+            const videoEl = document.getElementById('webcamVideo');
+            videoEl.srcObject = stream;
+            document.getElementById('videoContainer').classList.remove('hidden');
+          }
+
           mediaRecorder = new MediaRecorder(stream);
           audioChunks = [];
           mediaRecorder.ondataavailable = (e) => {
-            console.log('[interview-session] Audio chunk received:', e.data.size, 'bytes');
+            console.log('[interview-session] Audio/Video chunk received:', e.data.size, 'bytes');
             audioChunks.push(e.data);
           };
           mediaRecorder.onstop = () => {
             console.log('[interview-session] Recording stopped, total chunks:', audioChunks.length);
-            recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            // Even if video is used, we send the file as mp4/webm. 
+            // Currently backend expects audioBase64, but we can send the recorded blob.
+            recordedBlob = new Blob(audioChunks, { type: useVideo ? 'video/webm' : 'audio/wav' });
             console.log('[interview-session] Blob created, size:', recordedBlob.size, 'bytes');
+            
+            const videoEl = document.getElementById('webcamVideo');
+            videoEl.srcObject = null;
+            document.getElementById('videoContainer').classList.add('hidden');
+            
             enableSubmit();
           };
           mediaRecorder.start();

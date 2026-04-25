@@ -144,7 +144,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Body parsing & cookies
-app.use(express.json({ limit: '10mb' })); // increased for audio base64 payloads
+app.use(express.json({ limit: '50mb' })); // increased for video base64 payloads
 app.use(cookieParser());
 app.use(passport.initialize());
 
