@@ -86,11 +86,7 @@
 
             <!-- Right: Recording panel -->
             <div class="dash-v4-card flex flex-col items-center justify-center gap-5 min-w-[220px]">
-              <div class="flex items-center gap-2">
-                <input type="checkbox" id="cameraToggle" class="w-4 h-4 text-accent border-th-border rounded focus:ring-accent" />
-                <label for="cameraToggle" class="text-xs text-txt font-medium cursor-pointer">Enable Camera</label>
-              </div>
-              <div id="videoContainer" class="hidden w-full aspect-video bg-black rounded-lg overflow-hidden shadow-inner">
+              <div id="videoContainer" class="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-inner">
                 <video id="webcamVideo" class="w-full h-full object-cover" autoplay muted playsinline></video>
               </div>
               <p class="text-xs text-txt-muted uppercase tracking-wider font-medium" id="recordStatus">Ready to record</p>
@@ -162,6 +158,44 @@
     let elapsedSeconds  = 0;
     let isRecording     = false;
     let recordedBlob    = null;
+    let finalTranscript = '';
+    let recognition     = null;
+    let globalStream    = null;
+
+    // Start camera immediately on load
+    async function startCompulsoryCamera() {
+      try {
+        console.log('[interview-session] Requesting compulsory camera access...');
+        globalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        console.log('[interview-session] Media access granted globally');
+        const videoEl = document.getElementById('webcamVideo');
+        videoEl.srcObject = globalStream;
+      } catch (err) {
+        console.error('[interview-session] Camera access denied:', err);
+        showError('Camera and microphone access is required for the interview. Please allow permissions and refresh the page.');
+      }
+    }
+    
+    // Initialize Speech Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+      };
+      recognition.onerror = (e) => console.warn('[speech-recognition] error:', e.error);
+    } else {
+      console.warn('Speech recognition not supported in this browser.');
+    }
 
     // Load first question from session storage (set by setup page via redirect)
     const stored = sessionStorage.getItem('interview_' + interviewId);
@@ -194,6 +228,9 @@
     }
 
     function renderQuestion() {
+      if (!globalStream) {
+        startCompulsoryCamera();
+      }
       console.log('[interview-session] Rendering question:', questionNumber);
       document.getElementById('loadingState').classList.add('hidden');
       document.getElementById('sessionLayout').classList.remove('hidden');
@@ -226,19 +263,18 @@
     // ── Recording ──
     document.getElementById('recordBtn').addEventListener('click', async function () {
       if (!isRecording) {
+        if (!globalStream) {
+          showError('Camera access is required before recording.');
+          return;
+        }
+
         try {
-          const useVideo = document.getElementById('cameraToggle').checked;
-          console.log('[interview-session] Requesting media access...', { audio: true, video: useVideo });
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: useVideo });
-          console.log('[interview-session] Media access granted');
-          
-          if (useVideo) {
-            const videoEl = document.getElementById('webcamVideo');
-            videoEl.srcObject = stream;
-            document.getElementById('videoContainer').classList.remove('hidden');
+          finalTranscript = '';
+          if (recognition) {
+            try { recognition.start(); } catch(e) {}
           }
 
-          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder = new MediaRecorder(globalStream);
           audioChunks = [];
           mediaRecorder.ondataavailable = (e) => {
             console.log('[interview-session] Audio/Video chunk received:', e.data.size, 'bytes');
@@ -246,14 +282,9 @@
           };
           mediaRecorder.onstop = () => {
             console.log('[interview-session] Recording stopped, total chunks:', audioChunks.length);
-            // Even if video is used, we send the file as mp4/webm. 
-            // Currently backend expects audioBase64, but we can send the recorded blob.
-            recordedBlob = new Blob(audioChunks, { type: useVideo ? 'video/webm' : 'audio/wav' });
+            // We send the file as mp4/webm. 
+            recordedBlob = new Blob(audioChunks, { type: 'video/webm' });
             console.log('[interview-session] Blob created, size:', recordedBlob.size, 'bytes');
-            
-            const videoEl = document.getElementById('webcamVideo');
-            videoEl.srcObject = null;
-            document.getElementById('videoContainer').classList.add('hidden');
             
             enableSubmit();
           };
@@ -275,9 +306,12 @@
     });
 
     function stopRecording() {
+      if (recognition) {
+        try { recognition.stop(); } catch(e) {}
+      }
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        // Do NOT stop the global stream tracks here because we want the camera preview to remain on screen!
         console.log('[interview-session] MediaRecorder stopped');
       }
       isRecording = false;
@@ -350,6 +384,7 @@
           interviewId,
           questionText: currentQuestion.question || currentQuestion,
           audioBase64,
+          transcription: finalTranscript.trim() || undefined
         };
 
         console.log('[interview-session] Sending answer to API...');
