@@ -72,13 +72,9 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    if (typeof fetch === 'function') {
-      return await fetch(url, { ...options, signal: controller.signal });
-    }
-
-    const mod = await import('node-fetch');
-    const nodeFetch = mod.default || mod;
-    return await nodeFetch(url, { ...options, signal: controller.signal });
+    // Use dynamic import for node-fetch v3 (ESM)
+    const { default: fetch } = await import('node-fetch');
+    return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timeoutId);
   }
