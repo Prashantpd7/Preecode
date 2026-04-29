@@ -120,7 +120,7 @@ async function call_openrouter(messages, options = {}) {
 
   const requestConfig = {
     temperature: options.temperature ?? 0.7,
-    max_tokens: options.maxTokens ?? 2048,
+    max_tokens: options.maxTokens ?? 1024, // Reduced from 2048 to stay within credit limits
   };
 
   const errors = [];
@@ -154,6 +154,8 @@ async function call_openrouter(messages, options = {}) {
             headers: {
               Authorization: `Bearer ${apiKey}`,
               'Content-Type': 'application/json',
+              'HTTP-Referer': process.env.BACKEND_URL || 'http://localhost:5001',
+              'X-Title': 'Preecode'
             },
             body: JSON.stringify(payload),
           },
