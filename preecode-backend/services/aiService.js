@@ -1,8 +1,9 @@
 // Preecode AI Service - OpenRouter API Integration
 // Enhanced AI capabilities with multiple model fallback support
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// Ordered model fallback chain from fastest/cheapest to strongest alternatives.
+// Ordered model fallback chain - using free models first
 const OPENROUTER_MODELS = [
+  'nvidia/nemotron-3-super-120b-a12b:free',
   'openai/gpt-4o-mini',
   'openai/gpt-4o',
   'anthropic/claude-3-haiku'
