@@ -1,17 +1,19 @@
 // Preecode AI Service - OpenRouter API Integration
 // Enhanced AI capabilities with multiple model fallback support
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// Ordered model fallback chain - using free models first
+// Ordered model fallback chain - prioritizing FREE models
 const OPENROUTER_MODELS = [
-  'nvidia/nemotron-3-super-120b-a12b:free',
-  'openai/gpt-4o-mini',
-  'openai/gpt-4o',
-  'anthropic/claude-3-haiku'
+  'google/gemini-2.0-flash-exp:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'microsoft/phi-3-mini-128k-instruct:free',
+  'google/gemini-flash-1.5:free',
+  'qwen/qwen-2-7b-instruct:free',
+  'openai/gpt-4o-mini', // Paid fallback
 ];
-const MAX_RETRIES = 1;
-const RETRY_DELAYS_MS = [1000];
-const REQUEST_TIMEOUT_MS = 25000;
-const MIN_REQUEST_SPACING_MS = 200;
+const MAX_RETRIES = 2;
+const RETRY_DELAYS_MS = [500, 1500];
+const REQUEST_TIMEOUT_MS = 30000;
+const MIN_REQUEST_SPACING_MS = 100;
 
 let lastRequestAtMs = 0;
 
@@ -121,7 +123,7 @@ async function call_openrouter(messages, options = {}) {
 
   const requestConfig = {
     temperature: options.temperature ?? 0.7,
-    max_tokens: options.maxTokens ?? 1024, // Reduced from 2048 to stay within credit limits
+    max_tokens: options.maxTokens ?? 512, // Reduced to 512 for better compatibility
   };
 
   const errors = [];
@@ -168,13 +170,14 @@ async function call_openrouter(messages, options = {}) {
 
         if (!response.ok) {
           const providerMessage = parsedBody?.error?.message || `OpenRouter HTTP ${response.status}`;
-          const retryable = response.status === 429 || response.status >= 500 || response.status === 408;
+          const retryable = response.status === 429 || response.status >= 500 || response.status === 408 || response.status === 402;
 
           console.error('[ai] OpenRouter non-200 response', {
             model,
             attempt: attemptNumber,
             status: response.status,
-            body: rawBody,
+            error: providerMessage,
+            body: rawBody.substring(0, 500), // Log first 500 chars
           });
 
           errors.push({
@@ -184,7 +187,14 @@ async function call_openrouter(messages, options = {}) {
             message: providerMessage,
           });
 
+          // For 402 (insufficient credits), skip to next model immediately
+          if (response.status === 402) {
+            console.log(`[ai] Model ${model} requires credits, trying next model...`);
+            break;
+          }
+
           if (retryable && attempt < MAX_RETRIES) {
+            console.log(`[ai] Retrying in ${RETRY_DELAYS_MS[attempt]}ms...`);
             await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
             continue;
           }
@@ -194,6 +204,13 @@ async function call_openrouter(messages, options = {}) {
 
         const content = parsedBody?.choices?.[0]?.message?.content;
         if (!content || typeof content !== 'string') {
+          console.error('[ai] Empty content received', {
+            model,
+            attempt: attemptNumber,
+            status: response.status,
+            hasChoices: !!parsedBody?.choices,
+            choicesLength: parsedBody?.choices?.length,
+          });
           errors.push({
             model,
             attempt: attemptNumber,
@@ -203,6 +220,7 @@ async function call_openrouter(messages, options = {}) {
           break;
         }
 
+        console.log(`[ai] ✅ Success with model ${model} on attempt ${attemptNumber}`);
         return {
           content,
           model,
