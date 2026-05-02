@@ -135,12 +135,12 @@ var Api = {
   },
 
   // AI Chat
-  chatWithAI: function (message, context) {
+  chatWithAI: function (message, context, history) {
     return fetch(API_BASE + '/ai/chat', {
       method: 'POST',
       headers: Api._authHeaders({ 'Content-Type': 'application/json' }),
       credentials: 'include',
-      body: JSON.stringify({ message: message, context: context }),
+      body: JSON.stringify({ message: message, context: context, history: history || [] }),
     }).then(function (res) {
       if (!res.ok) return res.json().then(function (d) { throw new Error(d.message || 'AI chat failed'); });
       return res.json();

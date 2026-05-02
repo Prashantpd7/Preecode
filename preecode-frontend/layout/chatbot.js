@@ -241,7 +241,12 @@
 
     conversationContext.push({ role: 'user', content: msg });
 
-    Api.chatWithAI(msg, { context: conversationContext })
+    // Convert context to history format for backend
+    var history = conversationContext.map(function(item) {
+      return { role: item.role === 'bot' ? 'assistant' : 'user', text: item.content };
+    });
+
+    Api.chatWithAI(msg, { context: conversationContext }, history)
       .then(function (data) {
         loadDiv.classList.remove('loading');
         loadDiv.innerHTML = '';
