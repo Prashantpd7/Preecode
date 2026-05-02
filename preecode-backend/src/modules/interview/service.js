@@ -19,17 +19,21 @@ Generate exactly 5 interview questions for a ${difficulty}-level ${role} candida
 Rules:
 - Mix technical, behavioural, and situational questions appropriate for the role and difficulty.
 - Each question must have 4-6 expectedKeywords that a strong answer should contain.
-- Return ONLY a valid JSON array, no markdown, no explanation.
+- Return ONLY a valid JSON array, no markdown, no explanation, no extra text.
+- Start directly with [ and end with ]
 
 Format:
 [
   { "question": "...", "expectedKeywords": ["kw1", "kw2", "kw3", "kw4"] },
-  ...
+  { "question": "...", "expectedKeywords": ["kw1", "kw2", "kw3", "kw4"] },
+  { "question": "...", "expectedKeywords": ["kw1", "kw2", "kw3", "kw4"] },
+  { "question": "...", "expectedKeywords": ["kw1", "kw2", "kw3", "kw4"] },
+  { "question": "...", "expectedKeywords": ["kw1", "kw2", "kw3", "kw4"] }
 ]`;
 
   try {
     console.log('[interview/service] Calling AI service...');
-    const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.7, maxTokens: 1200 });
+    const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.7, maxTokens: 1500 });
     
     if (!raw || typeof raw !== 'string') {
       console.error('[interview/service] Invalid AI response type:', typeof raw);
@@ -37,7 +41,14 @@ Format:
     }
 
     console.log('[interview/service] AI response received, length:', raw.length);
-    const cleaned = stripFences(raw);
+    let cleaned = stripFences(raw).trim();
+    
+    // Extract JSON array if there's extra text
+    const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    }
+    
     console.log('[interview/service] Cleaned response, length:', cleaned.length);
 
     let questions;
@@ -45,7 +56,7 @@ Format:
       questions = JSON.parse(cleaned);
     } catch (parseErr) {
       console.error('[interview/service] JSON parse error:', parseErr.message);
-      console.error('[interview/service] Raw response:', raw.slice(0, 500));
+      console.error('[interview/service] Cleaned response:', cleaned.slice(0, 500));
       throw new Error('Failed to parse AI response as JSON');
     }
 

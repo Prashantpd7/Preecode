@@ -17,14 +17,14 @@ Analyze the following resume for a ${targetRole} position and provide a thorough
 Resume:
 ${extractedText.slice(0, 4000)}
 
-Evaluate and return ONLY valid JSON (no markdown, no explanation):
+Evaluate and return ONLY valid JSON (no markdown, no explanation, no extra text):
 {
   "skills": ["list of technical and soft skills found in the resume"],
   "experience": ["list of roles/positions/companies mentioned"],
   "keywords": ["important keywords present that are relevant to ${targetRole}"],
-  "atsScore": <0-100, how well the resume passes ATS filters for ${targetRole}>,
-  "structureScore": <0-100, quality of resume structure, formatting, and readability>,
-  "matchScore": <0-100, how well the candidate matches a ${targetRole} role>,
+  "atsScore": 75,
+  "structureScore": 80,
+  "matchScore": 70,
   "missingSkills": ["important skills for ${targetRole} that are absent from the resume"],
   "suggestions": [
     "specific actionable suggestion 1",
@@ -35,25 +35,32 @@ Evaluate and return ONLY valid JSON (no markdown, no explanation):
   ]
 }
 
-Be strict and realistic with scores. A score of 90+ means the resume is exceptional.`;
+Be strict and realistic with scores. A score of 90+ means the resume is exceptional.
+Return ONLY the JSON object, starting with { and ending with }`;
 
   try {
     console.log('[resume/service] Calling AI service for analysis...');
-    const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.3, maxTokens: 1500 });
+    const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.3, maxTokens: 2000 });
     
     if (!raw || typeof raw !== 'string') {
       throw new Error('AI service returned invalid response');
     }
 
     console.log('[resume/service] AI response received, parsing JSON...');
-    const cleaned = stripFences(raw);
+    let cleaned = stripFences(raw).trim();
+    
+    // Extract JSON object if there's extra text
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    }
     
     let result;
     try {
       result = JSON.parse(cleaned);
     } catch (parseErr) {
       console.error('[resume/service] JSON parse error:', parseErr.message);
-      console.error('[resume/service] Raw response:', raw.substring(0, 500));
+      console.error('[resume/service] Cleaned response:', cleaned.substring(0, 500));
       throw new Error('AI returned invalid JSON format. Please try again.');
     }
 
