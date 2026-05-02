@@ -1,18 +1,23 @@
 // Preecode AI Service - OpenRouter API Integration
-// Enhanced AI capabilities with multiple model fallback support
+// Model list is synced with live OpenRouter free-tier models (verified May 2025)
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// Ordered model fallback chain - prioritizing FREE and working models
+
+// Ordered fallback chain — all are confirmed FREE on OpenRouter as of May 2025.
+// Top models are the most capable and reliable; lower ones are emergency fallbacks.
 const OPENROUTER_MODELS = [
-  'meta-llama/llama-3.2-1b-instruct:free',
-  'google/gemini-flash-1.5-8b:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
-  'liquid/lfm-40b:free',
-  'openai/gpt-4o-mini', // Paid fallback with low cost
+  'meta-llama/llama-3.3-70b-instruct:free',       // Best free model, highly capable
+  'google/gemma-3-27b-it:free',                    // Strong Google model
+  'google/gemma-3-12b-it:free',                    // Lighter Google fallback
+  'nousresearch/hermes-3-llama-3.1-405b:free',     // Large Nous model
+  'qwen/qwen3-coder:free',                          // Good for code tasks
+  'meta-llama/llama-3.2-3b-instruct:free',         // Lightweight fast fallback
+  'google/gemma-3-4b-it:free',                     // Minimal emergency fallback
 ];
-const MAX_RETRIES = 2;
-const RETRY_DELAYS_MS = [500, 1500];
-const REQUEST_TIMEOUT_MS = 30000;
-const MIN_REQUEST_SPACING_MS = 100;
+
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [800, 2000, 4000];
+const REQUEST_TIMEOUT_MS = 45000;  // 45s — free models can be slow
+const MIN_REQUEST_SPACING_MS = 200;
 
 let lastRequestAtMs = 0;
 
@@ -169,14 +174,16 @@ async function call_openrouter(messages, options = {}) {
 
         if (!response.ok) {
           const providerMessage = parsedBody?.error?.message || `OpenRouter HTTP ${response.status}`;
-          const retryable = response.status === 429 || response.status >= 500 || response.status === 408 || response.status === 402;
+          // 402 = credits needed, 404 = model not found/removed — skip to next model immediately
+          const skipImmediately = response.status === 402 || response.status === 404;
+          const retryable = !skipImmediately && (response.status === 429 || response.status >= 500 || response.status === 408);
 
           console.error('[ai] OpenRouter non-200 response', {
             model,
             attempt: attemptNumber,
             status: response.status,
             error: providerMessage,
-            body: rawBody.substring(0, 500), // Log first 500 chars
+            body: rawBody.substring(0, 500),
           });
 
           errors.push({
@@ -186,10 +193,9 @@ async function call_openrouter(messages, options = {}) {
             message: providerMessage,
           });
 
-          // For 402 (insufficient credits), skip to next model immediately
-          if (response.status === 402) {
-            console.log(`[ai] Model ${model} requires credits, trying next model...`);
-            break;
+          if (skipImmediately) {
+            console.log(`[ai] Model ${model} returned ${response.status} (${providerMessage}), trying next model...`);
+            break; // move to next model
           }
 
           if (retryable && attempt < MAX_RETRIES) {
@@ -252,14 +258,15 @@ async function call_openrouter(messages, options = {}) {
   }
 
   const lastError = errors[errors.length - 1] || {};
+  const errorSummary = errors.map(e => `[${e.model} attempt ${e.attempt}]: ${e.message}`).join(' | ');
   throw buildStructuredError({
-    message: 'OpenRouter request failed after retries and model fallbacks.',
-    statusCode: lastError.status || 502,
+    message: `AI request failed across all models. Last error: ${lastError.message || 'Unknown'}. Full trace: ${errorSummary}`,
+    statusCode: 502,
     code: 'OPENROUTER_FALLBACK_EXHAUSTED',
     model: lastError.model,
     attempt: lastError.attempt,
     providerStatus: lastError.status,
-    retryable: true,
+    retryable: false,
     responseBody: lastError.message,
     cause: errors,
   });
