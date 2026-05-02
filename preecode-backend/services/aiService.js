@@ -1,14 +1,13 @@
 // Preecode AI Service - OpenRouter API Integration
 // Enhanced AI capabilities with multiple model fallback support
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// Ordered model fallback chain - prioritizing FREE models
+// Ordered model fallback chain - prioritizing FREE and working models
 const OPENROUTER_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'microsoft/phi-3-mini-128k-instruct:free',
-  'google/gemini-flash-1.5:free',
-  'qwen/qwen-2-7b-instruct:free',
-  'openai/gpt-4o-mini', // Paid fallback
+  'meta-llama/llama-3.2-1b-instruct:free',
+  'google/gemini-flash-1.5-8b:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'liquid/lfm-40b:free',
+  'openai/gpt-4o-mini', // Paid fallback with low cost
 ];
 const MAX_RETRIES = 2;
 const RETRY_DELAYS_MS = [500, 1500];
