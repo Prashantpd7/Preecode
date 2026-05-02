@@ -1,8 +1,19 @@
 const express = require('express');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
+
+// Rate limiting for auth endpoints - prevent brute force attacks
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per 15 minutes per IP
+  message: { message: 'Too many authentication attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful logins
+});
 
 // Validate critical environment variables
 const validateEnvVars = () => {
@@ -183,7 +194,7 @@ router.get('/redirect-complete', (req, res) => {
 
 /* ================= GOOGLE OAUTH START ================= */
 
-router.get('/google', (req, res, next) => {
+router.get('/google', authLimiter, (req, res, next) => {
   console.log('[auth] GET /api/auth/google - Starting Google OAuth flow');
   console.log('[auth] Query params - redirect:', req.query.redirect || 'none');
 
