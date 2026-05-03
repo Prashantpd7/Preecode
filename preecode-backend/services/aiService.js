@@ -1,17 +1,11 @@
 // Preecode AI Service - OpenRouter API Integration
-// Model list is synced with live OpenRouter free-tier models (verified May 2025)
+// Using single reliable model configuration
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Ordered fallback chain — all are confirmed FREE on OpenRouter as of May 2025.
-// Top models are the most capable and reliable; lower ones are emergency fallbacks.
+// Single model configuration - nvidia/nemotron-3-super-120b-a12b:free
+// No fallback models to ensure consistent behavior
 const OPENROUTER_MODELS = [
-  'meta-llama/llama-3.3-70b-instruct:free',       // Best free model, highly capable
-  'google/gemma-3-27b-it:free',                    // Strong Google model
-  'google/gemma-3-12b-it:free',                    // Lighter Google fallback
-  'nousresearch/hermes-3-llama-3.1-405b:free',     // Large Nous model
-  'qwen/qwen3-coder:free',                          // Good for code tasks
-  'meta-llama/llama-3.2-3b-instruct:free',         // Lightweight fast fallback
-  'google/gemma-3-4b-it:free',                     // Minimal emergency fallback
+  'nvidia/nemotron-3-super-120b-a12b:free',  // NVIDIA Nemotron - reliable free model
 ];
 
 const MAX_RETRIES = 3;

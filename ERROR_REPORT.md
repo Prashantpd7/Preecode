@@ -36,13 +36,14 @@
 - Password Reset: 3 attempts per hour per IP
 - Prevents brute force attacks
 
-### 5. ✅ **OpenRouter API Integration** [FIXED]
+### 5. ✅ **OpenRouter API Integration** [FIXED - UPDATED MAY 2026]
 **Location:** `preecode-backend/services/aiService.js`  
-**Status:** ✅ FIXED - Multiple free model fallbacks implemented  
+**Status:** ✅ FIXED - Single reliable model configuration  
 **Solution:** 
-- Prioritizes free models (meta-llama, google/gemini, liquid, nousresearch)
-- Automatic fallback to paid models only if free models fail
-- Handles 402 errors (insufficient credits) gracefully
+- Uses nvidia/nemotron-3-super-120b-a12b:free as the primary model
+- Removed all fallback models that were causing provider errors
+- Simplified configuration for consistent, reliable AI responses
+- Eliminates cascade failures across multiple models
 
 ### 6. ✅ **Conversation Memory** [FIXED]
 **Location:** `preecode-frontend/layout/chatbot.js`, `preecode-frontend/api.js`  
