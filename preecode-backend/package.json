@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
+    "@vectorize-io/hindsight-client": "^0.7.2",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",

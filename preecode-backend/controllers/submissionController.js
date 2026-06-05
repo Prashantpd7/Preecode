@@ -1,5 +1,6 @@
 const Submission = require('../models/Submission');
 const User = require('../models/User');
+const { saveMemory } = require('../services/hindsightService');
 
 // Add submission and update user stats
 exports.addSubmission = async (req, res, next) => {
@@ -11,6 +12,7 @@ exports.addSubmission = async (req, res, next) => {
     const statusRaw = String(req.body.status || '').toLowerCase();
     const topic = (req.body.topic || 'General').trim();
     const timeTaken = (req.body.timeTaken || '00:00').trim();
+    const language = (req.body.language || 'unknown').trim();
 
     let difficulty = 'easy';
     if (difficultyRaw === 'medium' || difficultyRaw === 'hard' || difficultyRaw === 'easy') {
@@ -30,14 +32,16 @@ exports.addSubmission = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
-    const submission = await Submission.create({ 
-      userId, 
-      problemName, 
-      difficulty, 
+    const submission = await Submission.create({
+      userId,
+      problemName,
+      difficulty,
       status,
       topic,
-      timeTaken
+      timeTaken,
+      language
     });
+
     // Update stats if accepted
     if (status === 'accepted') {
       user.totalSolved += 1;
@@ -46,6 +50,25 @@ exports.addSubmission = async (req, res, next) => {
       if (difficulty === 'hard') user.hardSolved += 1;
       await user.save();
     }
+
+    // Save memory for submission (fire and forget)
+    saveMemory({
+      user_id: String(userId),
+      memory_type: 'submission',
+      content: `Submission: ${problemName} (${status})`,
+      metadata: {
+        problemName,
+        language,
+        difficulty,
+        topic,
+        status,
+        timeTaken,
+        problemDescription: req.body.problemDescription || ''
+      }
+    }).catch(err => {
+      console.error("[SUBMISSION_MEMORY] Failed to save submission memory:", err.message);
+    });
+
     res.status(201).json(submission);
   } catch (error) {
     next(error);
