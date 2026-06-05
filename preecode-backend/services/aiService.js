@@ -17,7 +17,7 @@ async function generateResponse(messages, options = {}) {
     console.log('Using OpenRouter API');
 
     const requestBody = {
-      model: 'meta-llama/llama-3.2-3b-instruct:free',
+      model: 'qwen/qwen3-32b:free',
       messages: messages,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxTokens || 700,
