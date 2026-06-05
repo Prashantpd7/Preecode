@@ -7,6 +7,7 @@ const isHindsightConfigured = () => {
 };
 
 async function saveMemory(memoryData) {
+  console.log("🔥 HINDSIGHT saveMemory CALLED", memoryData);
   if (!isHindsightConfigured()) {
     console.warn("[HINDSIGHT] Memory saving skipped: API key not configured");
     return null;

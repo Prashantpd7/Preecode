@@ -10,6 +10,7 @@ exports.generatePracticeQuestion = async (req, res, next) => {
     const result = await generateQuestion(language, difficulty, topic);
     res.json({ question: result });
   } catch (error) {
+    console.error('[CONTROLLER_ERROR]', error.message);
     next(error);
   }
 };
