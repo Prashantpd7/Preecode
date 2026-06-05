@@ -103,7 +103,12 @@ function sendChat() {
 }
 
 function updateTitles(userName) {
-  const title = `${userName}'s Preecode AI`;
+  const rawName = String(userName || '').trim();
+  const beforeAt = rawName.includes('@') ? rawName.split('@')[0] : rawName;
+  const firstSegment = beforeAt.split(/[._\-\s]+/).find(Boolean) || beforeAt;
+  const cleaned = firstSegment.replace(/\d+/g, '').replace(/[^a-zA-Z]/g, '');
+  const displayName = cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase() : 'User';
+  const title = `${displayName}'s Preecode AI`;
   if (elements.profileTitle) elements.profileTitle.textContent = title;
   if (elements.menuProfileTitle) elements.menuProfileTitle.textContent = title;
 }

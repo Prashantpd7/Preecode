@@ -23,6 +23,22 @@ type UserLookupResult =
   | { kind: 'invalid' }
   | { kind: 'error' };
 
+function formatDisplayFirstName(rawValue: string | null | undefined): string {
+  const value = String(rawValue || '').trim();
+  if (!value) {
+    return 'User';
+  }
+
+  const beforeAt = value.includes('@') ? value.split('@')[0] : value;
+  const firstSegment = beforeAt.split(/[._\-\s]+/).find(Boolean) || beforeAt;
+  const cleaned = firstSegment.replace(/\d+/g, '').replace(/[^a-zA-Z]/g, '');
+  if (!cleaned) {
+    return 'User';
+  }
+
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+}
+
 export class AuthManager implements vscode.UriHandler {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -65,13 +81,14 @@ export class AuthManager implements vscode.UriHandler {
     await saveToken(this.context, token);
     const lookup = await this.fetchCurrentUser(token);
     const user = lookup.kind === 'ok' ? lookup.user : { id: '', username: 'User', email: '', avatar: '' };
+    const displayName = formatDisplayFirstName(user.username || user.email);
     await this.context.workspaceState.update('preecode.cachedUser', user);
     preecodeStore.setState((state) => ({
       ...state,
       user: {
         isAuthenticated: true,
         userId: user.id || null,
-        username: user.username || 'User',
+        username: displayName,
         email: user.email || null,
         avatarUrl: user.avatar || null,
         token
@@ -108,12 +125,13 @@ export class AuthManager implements vscode.UriHandler {
 
     const cached = this.context.workspaceState.get<CachedUser>('preecode.cachedUser');
     if (cached?.id) {
+      const displayName = formatDisplayFirstName(cached.username || cached.email);
       preecodeStore.setState((state) => ({
         ...state,
         user: {
           isAuthenticated: true,
           userId: cached.id,
-          username: cached.username || 'User',
+          username: displayName,
           email: cached.email || null,
           avatarUrl: cached.avatar || null,
           token
@@ -141,13 +159,14 @@ export class AuthManager implements vscode.UriHandler {
 
     if (lookup.kind === 'ok') {
       const user = lookup.user;
+      const displayName = formatDisplayFirstName(user.username || user.email);
       await this.context.workspaceState.update('preecode.cachedUser', user);
       preecodeStore.setState((state) => ({
         ...state,
         user: {
           isAuthenticated: true,
           userId: user.id,
-          username: user.username,
+          username: displayName,
           email: user.email,
           avatarUrl: user.avatar || null,
           token
@@ -185,13 +204,14 @@ export class AuthManager implements vscode.UriHandler {
     await saveToken(this.context, token);
     const lookup = await this.fetchCurrentUser(token);
     const user = lookup.kind === 'ok' ? lookup.user : { id: '', username: 'User', email: '', avatar: '' };
+    const displayName = formatDisplayFirstName(user.username || user.email);
     await this.context.workspaceState.update('preecode.cachedUser', user);
     preecodeStore.setState((state) => ({
       ...state,
       user: {
         isAuthenticated: true,
         userId: user.id || null,
-        username: user.username || 'User',
+        username: displayName,
         email: user.email || null,
         avatarUrl: user.avatar || null,
         token
