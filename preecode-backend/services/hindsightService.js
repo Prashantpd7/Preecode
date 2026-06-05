@@ -1,9 +1,28 @@
+const { HindsightClient } = require('@vectorize-io/hindsight-client');
+
 const HINDSIGHT_API_KEY = process.env.HINDSIGHT_API_KEY;
 const HINDSIGHT_BASE_URL = process.env.HINDSIGHT_BASE_URL || "https://api.hindsight.vectorize.io";
 const HINDSIGHT_MEMORY_BANK = process.env.HINDSIGHT_MEMORY_BANK || "Preecode Memory";
 
+let hindsightClient = null;
+
 const isHindsightConfigured = () => {
   return !!HINDSIGHT_API_KEY;
+};
+
+const getHindsightClient = () => {
+  if (!hindsightClient && isHindsightConfigured()) {
+    try {
+      hindsightClient = new HindsightClient({
+        baseUrl: HINDSIGHT_BASE_URL,
+        apiKey: HINDSIGHT_API_KEY
+      });
+    } catch (err) {
+      console.error("[HINDSIGHT] Failed to initialize client:", err.message);
+      return null;
+    }
+  }
+  return hindsightClient;
 };
 
 async function saveMemory(memoryData) {
@@ -14,32 +33,35 @@ async function saveMemory(memoryData) {
   }
 
   try {
-    const payload = {
-      ...memoryData,
-      memory_bank: HINDSIGHT_MEMORY_BANK,
-      timestamp: new Date().toISOString()
-    };
-
-    const response = await fetch(
-      `${HINDSIGHT_BASE_URL}/v1/retain`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HINDSIGHT_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload),
-        timeout: 5000
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[HINDSIGHT] API error (${response.status}):`, errorText);
+    const client = getHindsightClient();
+    if (!client) {
+      console.warn("[HINDSIGHT] Client not initialized");
       return null;
     }
 
-    const result = await response.json();
+    const content = `[${memoryData.memory_type}] ${memoryData.content}`;
+
+    // Convert all metadata values to strings (Hindsight API requirement)
+    const stringMetadata = {};
+    if (memoryData.metadata) {
+      for (const [key, value] of Object.entries(memoryData.metadata)) {
+        stringMetadata[key] = String(value);
+      }
+    }
+
+    const result = await client.retain(
+      HINDSIGHT_MEMORY_BANK,
+      content,
+      {
+        metadata: {
+          ...stringMetadata,
+          user_id: String(memoryData.user_id),
+          memory_type: String(memoryData.memory_type),
+          timestamp: new Date().toISOString()
+        }
+      }
+    );
+
     console.log(`[HINDSIGHT MEMORY SAVED] Type: ${memoryData.memory_type || 'unknown'}, UserId: ${memoryData.user_id || 'unknown'}`);
     return result;
   } catch (err) {
@@ -55,29 +77,19 @@ async function getUserMemories(userId) {
   }
 
   try {
-    const response = await fetch(
-      `${HINDSIGHT_BASE_URL}/v1/recall`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HINDSIGHT_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          memory_bank: HINDSIGHT_MEMORY_BANK
-        }),
-        timeout: 5000
-      }
-    );
-
-    if (!response.ok) {
-      console.error(`[HINDSIGHT] Recall API error (${response.status})`);
+    const client = getHindsightClient();
+    if (!client) {
+      console.warn("[HINDSIGHT] Client not initialized");
       return [];
     }
 
-    const result = await response.json();
-    return result.memories || [];
+    const query = `memories for user ${userId}`;
+    const results = await client.recall(
+      HINDSIGHT_MEMORY_BANK,
+      query
+    );
+
+    return results || [];
   } catch (err) {
     console.error("[HINDSIGHT] Memory retrieval failed:", err.message);
     return [];
@@ -91,30 +103,19 @@ async function searchUserMemories(userId, query) {
   }
 
   try {
-    const response = await fetch(
-      `${HINDSIGHT_BASE_URL}/v1/recall`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HINDSIGHT_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          query: query,
-          memory_bank: HINDSIGHT_MEMORY_BANK
-        }),
-        timeout: 5000
-      }
-    );
-
-    if (!response.ok) {
-      console.error(`[HINDSIGHT] Search API error (${response.status})`);
+    const client = getHindsightClient();
+    if (!client) {
+      console.warn("[HINDSIGHT] Client not initialized");
       return [];
     }
 
-    const result = await response.json();
-    return result.memories || [];
+    const searchQuery = `user ${userId}: ${query}`;
+    const results = await client.recall(
+      HINDSIGHT_MEMORY_BANK,
+      searchQuery
+    );
+
+    return results || [];
   } catch (err) {
     console.error("[HINDSIGHT] Memory search failed:", err.message);
     return [];
