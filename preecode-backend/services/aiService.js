@@ -4,6 +4,8 @@ const openrouterApiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
 
 if (!openrouterApiKey) {
   console.warn('[ai] OPENROUTER_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
+} else {
+  console.log('[AI] OPENROUTER_API_KEY loaded, first 10 chars:', openrouterApiKey.substring(0, 10) + '...');
 }
 
 async function generateResponse(messages, options = {}) {
@@ -14,14 +16,19 @@ async function generateResponse(messages, options = {}) {
   }
 
   try {
-    console.log('Using OpenRouter API');
+    console.log('[AI] Using OpenRouter API');
 
     const requestBody = {
-      model: 'qwen/qwen3-32b:free',
+      model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
       messages: messages,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxTokens || 700,
     };
+
+    console.log('[AI_REQUEST] Model:', requestBody.model);
+    console.log('[AI_REQUEST] Messages count:', messages.length);
+    console.log('[AI_REQUEST] Endpoint: https://openrouter.ai/api/v1/chat/completions');
+    console.log('[AI_REQUEST] Headers: Content-Type=application/json, Authorization=Bearer <key>');
 
     const response = await fetch(
       'https://openrouter.ai/api/v1/chat/completions',
@@ -35,8 +42,11 @@ async function generateResponse(messages, options = {}) {
       }
     );
 
+    console.log('[AI_RESPONSE] Status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json();
+      console.log('[AI_RESPONSE] Error body:', JSON.stringify(errorData));
       throw new Error(`OpenRouter API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
