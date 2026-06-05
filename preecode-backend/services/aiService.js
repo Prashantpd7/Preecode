@@ -1,3 +1,5 @@
+const { saveMemory } = require('./hindsightService');
+
 const openrouterApiKey = String(process.env.OPENROUTER_API_KEY || '').trim();
 
 if (!openrouterApiKey) {
@@ -15,7 +17,7 @@ async function generateResponse(messages, options = {}) {
     console.log('Using OpenRouter API');
 
     const requestBody = {
-      model: 'deepseek/deepseek-r1:free',
+      model: 'meta-llama/llama-2-70b-chat:free',
       messages: messages,
       temperature: options.temperature || 0.7,
       max_tokens: options.maxTokens || 700,
@@ -127,7 +129,7 @@ Final Verdict:
   return generateResponse([{ role: 'user', content: prompt }], { temperature: 0.4 });
 }
 
-async function generateQuestion(language, difficulty) {
+async function generateQuestion(language, difficulty, user = null) {
   const safeLanguage = String(language || 'python').trim().toLowerCase() || 'python';
   const safeDifficulty = String(difficulty || 'medium').trim().toLowerCase();
 
@@ -161,6 +163,21 @@ Return ONLY this, no other text:
 
   const messages = [{ role: 'user', content: prompt }];
   const raw = await generateResponse(messages, { temperature: 0.8, maxTokens: 700 });
+
+  // Save memory for question generation (fire and forget)
+  if (user) {
+    saveMemory({
+      user_id: String(user._id),
+      memory_type: 'question_generated',
+      content: `Generated ${safeDifficulty} ${safeLanguage} question`,
+      metadata: {
+        language: safeLanguage,
+        difficulty: safeDifficulty
+      }
+    }).catch(err => {
+      console.error("[QUESTION_MEMORY] Failed to save question memory:", err.message);
+    });
+  }
 
   return raw
     .replace(/```[\w]*\n?/g, '')

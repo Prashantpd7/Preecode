@@ -1,4 +1,5 @@
 const Practice = require('../models/Practice');
+const { saveMemory } = require('../services/hindsightService');
 
 // Save a practice session
 exports.addPractice = async (req, res, next) => {
@@ -20,6 +21,26 @@ exports.addPractice = async (req, res, next) => {
       language,
       date,
     });
+
+    // Save memory for practice session (fire and forget)
+    saveMemory({
+      user_id: String(req.user._id),
+      memory_type: 'practice_session',
+      content: `Practice session: ${language} ${difficulty} in ${topic}`,
+      metadata: {
+        language,
+        difficulty,
+        topic,
+        hintsUsed: hintsUsed || 0,
+        solutionViewed: solutionViewed || false,
+        timeTaken,
+        aiRating: aiRating || 0,
+        question
+      }
+    }).catch(err => {
+      console.error("[PRACTICE_MEMORY] Failed to save practice memory:", err.message);
+    });
+
     res.status(201).json(practice);
   } catch (error) {
     next(error);
