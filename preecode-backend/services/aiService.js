@@ -1,11 +1,13 @@
 // Preecode AI Service - OpenRouter API Integration
-// Using single reliable model configuration
+// Using models with better reliability and quota management
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Single model configuration - nvidia/nemotron-3-super-120b-a12b:free
-// No fallback models to ensure consistent behavior
+// Model priority list - tries each in order until one works
+// NOTE: If free-tier models exhaust daily limits, the API will reject requests.
+// To fix: (1) Add credits to OpenRouter account, (2) Use a paid model, (3) Configure Ollama fallback
 const OPENROUTER_MODELS = [
-  'nvidia/nemotron-3-super-120b-a12b:free',  // NVIDIA Nemotron - reliable free model
+  'nvidia/nemotron-3-super-120b-a12b:free',  // Primary: NVIDIA Nemotron - reliable free model
+  'mistral/mistral-7b-instruct-v0.2:free',    // Fallback: Mistral 7B - lightweight alternative
 ];
 
 const MAX_RETRIES = 3;
@@ -29,9 +31,10 @@ function getOpenRouterApiKeys() {
 function getOpenRouterApiKey() {
   const keys = getOpenRouterApiKeys();
   if (keys.length === 0) return '';
-  
+
   // Rotate through available keys
   const key = keys[currentKeyIndex % keys.length];
+  console.log(`[ai] Using API key: ${key.substring(0, 15)}...${key.substring(key.length - 4)}`);
   return key;
 }
 
@@ -49,6 +52,8 @@ if (openrouterApiKeys.length === 0) {
   console.warn('[ai] OPENROUTER_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
 } else {
   console.log(`[ai] Loaded ${openrouterApiKeys.length} OpenRouter API key(s) for rotation`);
+  console.log(`[ai] Models configured: ${OPENROUTER_MODELS.join(', ')}`);
+  console.log(`[ai] OpenRouter URL: ${OPENROUTER_URL}`);
 }
 
 function sleep(ms) {
