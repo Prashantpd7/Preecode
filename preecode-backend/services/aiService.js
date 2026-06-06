@@ -8,8 +8,7 @@ console.log("OPENROUTER KEY:", process.env.OPENROUTER_API_KEY?.slice(0, 20));
 // NOTE: If free-tier models exhaust daily limits, the API will reject requests.
 // To fix: (1) Add credits to OpenRouter account, (2) Use a paid model, (3) Configure Ollama fallback
 const OPENROUTER_MODELS = [
-  'nvidia/nemotron-3-super-120b-a12b:free',  // Primary: NVIDIA Nemotron - reliable free model
-  'mistral/mistral-7b-instruct-v0.2:free',    // Fallback: Mistral 7B - lightweight alternative
+  'openrouter/free'
 ];
 
 const MAX_RETRIES = 3;
