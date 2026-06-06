@@ -25,7 +25,13 @@ exports.generatePracticeQuestion = async (req, res, next) => {
       console.error("[QUESTION_MEMORY] Failed to save question memory:", err.message);
     });
 
-    res.json({ question: result });
+    res.json({
+      question: result.question || '',
+      title: result.title || '',
+      hint: result.hint || '',
+      solution: result.solution || '',
+      company: result.company || ''
+    });
   } catch (error) {
     console.error('[CONTROLLER_ERROR]', error.message);
     next(error);

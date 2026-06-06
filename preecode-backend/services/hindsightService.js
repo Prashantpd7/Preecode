@@ -62,10 +62,10 @@ async function saveMemory(memoryData) {
       }
     );
 
-    console.log(`[HINDSIGHT MEMORY SAVED] Type: ${memoryData.memory_type || 'unknown'}, UserId: ${memoryData.user_id || 'unknown'}`);
+    console.log(`[HINDSIGHT MEMORY SAVED] Type: ${memoryData.memory_type || 'unknown'}, UserId: ${memoryData.user_id || 'unknown'}`, JSON.stringify(result).substring(0, 300));
     return result;
   } catch (err) {
-    console.error("[HINDSIGHT] Memory save failed:", err.message);
+    console.error("[HINDSIGHT] Memory save failed:", err.message, "| statusCode:", err.statusCode, "| details:", err.details || '');
     return null;
   }
 }
