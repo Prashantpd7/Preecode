@@ -2,6 +2,8 @@
 // Using models with better reliability and quota management
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+console.log("OPENROUTER KEY:", process.env.OPENROUTER_API_KEY?.slice(0, 20));
+
 // Model priority list - tries each in order until one works
 // NOTE: If free-tier models exhaust daily limits, the API will reject requests.
 // To fix: (1) Add credits to OpenRouter account, (2) Use a paid model, (3) Configure Ollama fallback
