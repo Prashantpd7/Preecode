@@ -20,6 +20,9 @@ const earlyAccessRoutes = require('./routes/earlyAccessRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 // const githubAuthRoutes = require('./routes/githubAuthRoutes');
 const memoryRoutes = require('./routes/memoryRoutes');
+const resumeRoutes = require('./routes/resumeRoutes');
+const interviewRoutes = require('./routes/interviewRoutes');
+const readinessRoutes = require('./routes/readinessRoutes');
 
 const errorHandler = require('./middleware/errorMiddleware');
 
@@ -88,7 +91,8 @@ app.get('/', (req, res) => {
 
 /* ================= MIDDLEWARE ================= */
 
-app.use(express.json({ limit: '50kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cookieParser());
 app.use(passport.initialize());
 
@@ -109,6 +113,9 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/memory', memoryRoutes);
 app.use('/api/early-access', earlyAccessRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/v2/resume', resumeRoutes);
+app.use('/v2/interview', interviewRoutes);
+app.use('/v2/readiness', readinessRoutes);
 
 /* ================= ERROR HANDLER ================= */
 
