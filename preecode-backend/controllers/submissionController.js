@@ -42,14 +42,10 @@ exports.addSubmission = async (req, res, next) => {
       language
     });
 
-    // Update stats if accepted
-    if (status === 'accepted') {
-      user.totalSolved += 1;
-      if (difficulty === 'easy') user.easySolved += 1;
-      if (difficulty === 'medium') user.mediumSolved += 1;
-      if (difficulty === 'hard') user.hardSolved += 1;
-      await user.save();
-    }
+    // Stats are now calculated from Submission collection directly via userController.getStats.
+    // The User model no longer has totalSolved/easySolved/mediumSolved/hardSolved fields,
+    // so we skip updating them here to avoid silent no-ops on save.
+    // See preecode-backend/models/User.js for the current schema.
 
     // Save memory for submission (fire and forget)
     saveMemory({

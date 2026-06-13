@@ -2089,14 +2089,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         aiRating
       });
 
+      // Determine submission status:
+      // - Explicit 'success' from RunDetectionService (onDidEndTerminalShellExecution)
+      // - Manual success flag from PracticeTimerService.onRunResult
+      // - Implicit success: user ran code at least once (attempts > 0) and no explicit failure
+      const runPassed = state.practice.runStatus === 'success';
+      const manualPass = state.practice.success;
+      const implicitPass = state.practice.attempts > 0 && state.practice.runStatus !== 'failure';
+      const submissionStatus = (runPassed || manualPass || implicitPass) ? 'Accepted' : 'Wrong Answer';
+
       const submissionSaved = await sendSubmission(context, {
         problemName: question,
         difficulty: state.practice.difficulty,
-        status: state.practice.runStatus === 'success' || state.practice.success ? 'Accepted' : 'Wrong Answer',
+        status: submissionStatus,
         topic,
         timeTaken,
         date: new Date().toISOString()
       });
+
+      console.log('[preecode] Submission status=' + submissionStatus + ' (runStatus=' + state.practice.runStatus + ', success=' + state.practice.success + ', attempts=' + state.practice.attempts + ')');
 
       if (saved) {
         void vscode.window.showInformationMessage(
