@@ -25,10 +25,24 @@
     .hint-body { display:none; }
     .hint-body.open { display:block; }
     .progress-bar-fill { transition:width .4s ease; }
-    .toast { position:fixed; bottom:24px; right:24px; z-index:9999; padding:12px 20px; border-radius:10px; font-size:.85rem; font-weight:500; opacity:0; transform:translateY(8px); transition:all .25s; pointer-events:none; }
-    .toast.show { opacity:1; transform:translateY(0); }
-    .toast.success { background:#16a34a; color:#fff; }
-    .toast.error   { background:#dc2626; color:#fff; }
+    .transcript-box { max-height:80px; min-height:60px; overflow-y:auto; }
+    .transcript-box::-webkit-scrollbar { width:4px; }
+    .transcript-box::-webkit-scrollbar-thumb { background:var(--th-border); border-radius:4px; }
+
+    /* Toggle switch */
+    .toggle-switch { position:relative; display:inline-flex; width:34px; height:20px; }
+    .toggle-switch input { opacity:0; width:0; height:0; position:absolute; }
+    .toggle-slider {
+      position:absolute; cursor:pointer; inset:0; background:var(--th-border,#3f3f46);
+      border-radius:20px; transition:background .25s;
+    }
+    .toggle-slider::before {
+      content:''; position:absolute; left:3px; top:3px; width:14px; height:14px;
+      background:#fff; border-radius:50%; transition:transform .25s;
+    }
+    .toggle-switch input:checked + .toggle-slider { background:var(--accent,#6366f1); }
+    .toggle-switch input:checked + .toggle-slider::before { transform:translateX(14px); }
+    .toggle-switch input:disabled + .toggle-slider { opacity:0.4; cursor:not-allowed; }
   </style>
 </head>
 <body class="bg-th-bg text-txt font-sans min-h-screen text-sm antialiased">
@@ -84,8 +98,22 @@
               </div>
             </div>
 
-            <!-- Right: Recording panel -->
-            <div class="dash-v4-card flex flex-col items-center justify-center gap-5 min-w-[220px]">
+            <!-- Right: Recording panel (fixed width, never expands) -->
+            <div class="dash-v4-card flex flex-col items-center justify-center gap-4 w-[260px] md:w-[280px] flex-shrink-0">
+              <!-- Camera toggle switch -->
+              <div class="flex items-center gap-2 w-full justify-center">
+                <label class="flex items-center gap-2 cursor-pointer select-none text-xs text-txt-muted">
+                  <div class="toggle-switch">
+                    <input type="checkbox" id="cameraToggle" />
+                    <span class="toggle-slider"></span>
+                  </div>
+                  <span><span class="hidden sm:inline">📷 </span>Camera</span>
+                </label>
+              </div>
+
+              <!-- Video preview (hidden unless camera is on) -->
+              <video id="videoPreview" class="hidden w-full rounded-lg border border-th-border bg-black max-h-[120px] object-cover" muted playsinline></video>
+
               <p class="text-xs text-txt-muted uppercase tracking-wider font-medium" id="recordStatus">Ready to record</p>
 
               <!-- Record button -->
@@ -97,6 +125,14 @@
 
               <!-- Timer -->
               <span class="text-2xl font-mono font-semibold text-txt" id="timerDisplay">00:00</span>
+
+              <!-- Live transcript preview - fixed height, scrollable -->
+              <div id="transcriptContainer" class="hidden w-full flex-shrink-0">
+                <p class="text-xs font-medium text-txt-muted mb-1">Live Transcript</p>
+                <div class="w-full bg-th-bg border border-th-border rounded-lg p-2 text-xs text-txt leading-relaxed transcript-box" id="liveTranscript">
+                  <span class="text-txt-muted italic">Listening...</span>
+                </div>
+              </div>
 
               <!-- Submit -->
               <button id="submitBtn" disabled class="dash-v4-practice__cta w-full flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
@@ -114,9 +150,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
 
   <script src="/api.js"></script>
   <script src="/layout/layout.js"></script>
@@ -140,6 +173,11 @@
     let elapsedSeconds  = 0;
     let isRecording     = false;
     let recordedBlob    = null;
+    let recognition     = null;
+    let finalTranscript = '';
+    let interimTranscript = '';
+    let useCamera       = false;
+    let videoStream     = null;
 
     // Load first question from session storage (set by setup page via redirect)
     const stored = sessionStorage.getItem('interview_' + interviewId);
@@ -189,26 +227,121 @@
       this.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = isOpen ? ' Show hint' : ' Hide hint'; });
     });
 
+    // ── Speech Recognition Setup ──
+    function initSpeechRecognition() {
+      var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn('[interview] SpeechRecognition not supported in this browser');
+        return null;
+      }
+      var sr = new SpeechRecognition();
+      sr.continuous = true;
+      sr.interimResults = true;
+      sr.lang = 'en-US';
+      sr.maxAlternatives = 1;
+      return sr;
+    }
+
+    // ── Camera toggle (disabled during recording) ──
+    var cameraCheckbox = document.getElementById('cameraToggle');
+    cameraCheckbox.addEventListener('change', function () {
+      useCamera = this.checked;
+      var preview = document.getElementById('videoPreview');
+      if (useCamera) {
+        preview.classList.remove('hidden');
+      } else {
+        preview.classList.add('hidden');
+        if (videoStream) {
+          videoStream.getTracks().forEach(function (t) { t.stop(); });
+          videoStream = null;
+        }
+      }
+    });
+
     // ── Recording ──
     document.getElementById('recordBtn').addEventListener('click', async function () {
       if (!isRecording) {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          finalTranscript = '';
+          interimTranscript = '';
+          document.getElementById('transcriptContainer').classList.remove('hidden');
+          document.getElementById('liveTranscript').innerHTML = '<span class="text-txt-muted italic">Listening...</span>';
+
+          // Request media stream — audio always, video if camera toggle is on
+          var mediaConstraints = { audio: true };
+          if (useCamera) {
+            mediaConstraints.video = { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' };
+          }
+          const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+
+          // Show video preview if camera is on
+          if (useCamera) {
+            videoStream = stream;
+            var preview = document.getElementById('videoPreview');
+            preview.srcObject = stream;
+            preview.muted = true; // Prevent audio feedback / echo
+            preview.classList.remove('hidden');
+            preview.play();
+          }
+
+          // Start audio recording
           mediaRecorder = new MediaRecorder(stream);
           audioChunks = [];
           mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-          mediaRecorder.onstop = () => {
-            recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          mediaRecorder.onstop = function () {
+            recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
             enableSubmit();
           };
           mediaRecorder.start();
+
+          // Start speech recognition for real-time transcription
+          recognition = initSpeechRecognition();
+          if (recognition) {
+            recognition.onresult = function (event) {
+              interimTranscript = '';
+              for (var i = event.resultIndex; i < event.results.length; i++) {
+                if (event.results[i].isFinal) {
+                  finalTranscript += event.results[i][0].transcript + ' ';
+                } else {
+                  interimTranscript = event.results[i][0].transcript;
+                }
+              }
+              var displayText = finalTranscript;
+              if (interimTranscript) {
+                displayText += '<span class="text-txt-muted">' + interimTranscript + '</span>';
+              }
+              if (!displayText.trim()) {
+                displayText = '<span class="text-txt-muted italic">Listening...</span>';
+              }
+              document.getElementById('liveTranscript').innerHTML = displayText;
+              // Auto-scroll to keep newest text visible
+              var txBox = document.getElementById('liveTranscript');
+              txBox.scrollTop = txBox.scrollHeight;
+            };
+            recognition.onerror = function (event) {
+              console.warn('[interview] Speech recognition error:', event.error);
+              if (event.error === 'no-speech') {
+                // Ignore - user might be thinking
+              } else if (event.error === 'aborted') {
+                // Stopped by user, expected
+              } else {
+                document.getElementById('liveTranscript').innerHTML = '<span class="text-red-400 italic">Speech recognition error: ' + event.error + '</span>';
+              }
+            };
+            recognition.start();
+          } else {
+            // No speech recognition available - user can still record audio
+            document.getElementById('liveTranscript').innerHTML = '<span class="text-txt-muted italic">Speech recognition not available. Recording audio only.</span>';
+          }
+
           isRecording = true;
           this.classList.remove('idle');
           this.classList.add('recording');
           document.getElementById('recordStatus').textContent = 'Recording…';
+          document.getElementById('cameraToggle').disabled = true;
           startTimer();
         } catch (err) {
-          showError('Microphone access denied. Please allow microphone access.');
+          showError('Microphone access denied. Please allow microphone access and try again.');
         }
       } else {
         stopRecording();
@@ -216,46 +349,78 @@
     });
 
     function stopRecording() {
+      // Stop speech recognition first
+      if (recognition) {
+        try {
+          recognition.stop();
+        } catch (_) {}
+        recognition = null;
+      }
+
+      // Stop audio/video recording
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+        mediaRecorder.stream.getTracks().forEach(function (t) { t.stop(); });
+      }
+
+      // Stop and hide video preview
+      var preview = document.getElementById('videoPreview');
+      if (preview) {
+        preview.pause();
+        preview.srcObject = null;
+        preview.classList.add('hidden');
       }
       isRecording = false;
       clearInterval(timerInterval);
-      const btn = document.getElementById('recordBtn');
+      var btn = document.getElementById('recordBtn');
       btn.classList.remove('recording');
       btn.classList.add('idle');
       document.getElementById('recordStatus').textContent = 'Recording complete';
+      document.getElementById('cameraToggle').disabled = false;
+
+      // Finalize transcript display
+      var transcriptText = finalTranscript.trim();
+      if (transcriptText) {
+        document.getElementById('liveTranscript').innerHTML = transcriptText;
+      } else {
+        document.getElementById('liveTranscript').innerHTML = '<span class="text-amber-400 italic">No speech detected. You can still submit the recording.</span>';
+      }
+      var txBox = document.getElementById('liveTranscript');
+      txBox.scrollTop = txBox.scrollHeight;
     }
 
     function enableSubmit() {
-      const btn = document.getElementById('submitBtn');
+      var btn = document.getElementById('submitBtn');
       btn.disabled = false;
       btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 
     function resetRecording() {
       recordedBlob = null;
+      finalTranscript = '';
+      interimTranscript = '';
       isRecording = false;
       audioChunks = [];
       elapsedSeconds = 0;
       clearInterval(timerInterval);
       document.getElementById('timerDisplay').textContent = '00:00';
       document.getElementById('recordStatus').textContent = 'Ready to record';
-      const btn = document.getElementById('recordBtn');
+      document.getElementById('transcriptContainer').classList.add('hidden');
+      document.getElementById('liveTranscript').innerHTML = '';
+      var btn = document.getElementById('recordBtn');
       btn.classList.remove('recording');
       btn.classList.add('idle');
-      const sub = document.getElementById('submitBtn');
+      var sub = document.getElementById('submitBtn');
       sub.disabled = true;
       sub.classList.add('opacity-50', 'cursor-not-allowed');
     }
 
     function startTimer() {
       elapsedSeconds = 0;
-      timerInterval = setInterval(() => {
+      timerInterval = setInterval(function () {
         elapsedSeconds++;
-        const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-        const s = String(elapsedSeconds % 60).padStart(2, '0');
+        var m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+        var s = String(elapsedSeconds % 60).padStart(2, '0');
         document.getElementById('timerDisplay').textContent = m + ':' + s;
       }, 1000);
     }
@@ -280,22 +445,20 @@
             interviewId,
             questionText: currentQuestion.question || currentQuestion,
             audioBase64,
+            transcription: finalTranscript.trim(),
           }),
         });
 
         const data = await res.json();
         if (!res.ok) { showError(data.error || 'Failed to submit answer.'); return; }
 
-        showToast(data.feedback ? data.feedback.slice(0, 120) + '…' : 'Answer submitted!', 'success');
-
+        // No toast, no evaluation preview — instant silent transition to next question
         if (data.sessionComplete) {
-          setTimeout(() => {
-            window.location.href = '/pages/interview-results.html?id=' + interviewId;
-          }, 1800);
+          window.location.href = '/pages/interview-results?id=' + interviewId;
         } else {
           currentQuestion = data.nextQuestion;
           questionNumber  = data.questionNumber;
-          setTimeout(renderQuestion, 1800);
+          renderQuestion();
         }
       } catch (err) {
         showError('Network error. Please try again.');
@@ -319,14 +482,6 @@
       b.textContent = msg;
       b.classList.remove('hidden');
       document.getElementById('loadingState').classList.add('hidden');
-    }
-
-    function showToast(msg, type) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'toast ' + type;
-      requestAnimationFrame(() => t.classList.add('show'));
-      setTimeout(() => t.classList.remove('show'), 3000);
     }
   })();
   </script>

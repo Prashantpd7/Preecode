@@ -151,12 +151,22 @@
           body: formData,
         });
 
-        const data = await res.json();
-        if (!res.ok) { showError(data.error || 'Upload failed.'); return; }
+        let data;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          // If response is not JSON (e.g. HTML error page), get text
+          const text = await res.text();
+          showError('Server error (' + res.status + '). Please try again or check the console for details.');
+          console.error('[resume] Non-JSON response:', text.substring(0, 500));
+          return;
+        }
+        if (!res.ok) { showError(data.error || data.message || 'Upload failed (status ' + res.status + ').'); return; }
 
-        window.location.href = '/pages/resume-analysis.html?id=' + data.resumeId;
+        window.location.href = '/pages/resume-analysis?id=' + data.resumeId;
       } catch (err) {
-        showError('Network error. Please try again.');
+        console.error('[resume] Upload error:', err);
+        showError('Network error. Please check your connection and try again.');
       } finally {
         analyzeBtn.disabled = false;
         analyzeBtnText.textContent = 'Analyze Resume';

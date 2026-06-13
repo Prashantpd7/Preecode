@@ -95,7 +95,10 @@ const connectDB = async () => {
   const uri = validateMongoURI(process.env.MONGO_URI);
 
   try {
-    const conn = await mongoose.connect(uri);
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: process.env.NODE_ENV === 'production' ? 30000 : 5000,
+      connectTimeoutMS: process.env.NODE_ENV === 'production' ? 30000 : 5000,
+    });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     console.log(`Database: ${conn.connection.name}`);
   } catch (error) {
@@ -105,7 +108,18 @@ const connectDB = async () => {
     console.error('Possible fixes:');
     diagnosis.advice.forEach((tip) => console.error(`  → ${tip}`));
     console.error('');
-    process.exit(1);
+
+    // In development, allow the server to start without a database connection
+    // so developers can test frontend/API functionality. In production, exit
+    // because the app cannot function without a database.
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    } else {
+      console.warn('[db] Development mode: continuing without database connection.');
+      console.warn('[db] Some features (login, submissions, etc.) will not work.');
+      // Return a stub mongoose instance so server startup doesn't crash
+      return null;
+    }
   }
 };
 

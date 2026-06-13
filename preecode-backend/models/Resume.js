@@ -14,6 +14,9 @@ const resumeSchema = new mongoose.Schema({
   analysis: {
     matchScore: { type: Number, default: 0 },
     missingSkills: [String],
+    missingKeywords: [String],
+    strengths: [String],
+    weaknesses: [String],
     suggestions: [String],
     rawAnalysis: { type: String },
   },

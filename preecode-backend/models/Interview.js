@@ -17,6 +17,15 @@ const answerSchema = new mongoose.Schema({
     clarityScore: { type: Number, default: 0 },
     energyScore: { type: Number, default: 0 },
   },
+  // Detailed evaluation fields
+  expectedAnswer: { type: String, default: '' },
+  keyPoints: [String],
+  detectedConcepts: [String],
+  missingConcepts: [String],
+  improvedAnswer: { type: String, default: '' },
+  technicalAccuracy: { type: Number, default: 0 },
+  communication: { type: Number, default: 0 },
+  confidence: { type: Number, default: 0 },
 }, { _id: false });
 
 const interviewSchema = new mongoose.Schema({

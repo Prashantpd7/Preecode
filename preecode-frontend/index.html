@@ -30,10 +30,10 @@
       <a href="/" class="brand-logo logo-nav"><span class="brand-dark">Pree</span><span class="brand-accent" style="color: #F97316">code</span></a>
 
       <div class="hidden md:flex items-center gap-8">
-        <a href="about.html" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">About</a>
+        <a href="/about" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">About</a>
         <a href="#testimonials" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">Testimonials</a>
         <a href="#faq" class="text-sm text-txt-sec hover:text-txt transition-colors no-underline">FAQ</a>
-        <a href="login.html" class="btn btn-primary btn-sm">Login</a>
+        <a href="/login" class="btn btn-primary btn-sm">Login</a>
       </div>
 
       <button id="mobile-menu-btn" class="md:hidden text-txt-sec hover:text-txt bg-transparent border-none cursor-pointer">
@@ -44,10 +44,10 @@
     </div>
 
     <div id="mobile-menu" class="hidden md:hidden border-t border-bdr px-6 py-4 space-y-3 bg-th-bg/95 backdrop-blur-xl">
-      <a href="about.html" class="block text-sm text-txt-sec hover:text-txt no-underline">About</a>
+      <a href="/about" class="block text-sm text-txt-sec hover:text-txt no-underline">About</a>
       <a href="#testimonials" class="block text-sm text-txt-sec hover:text-txt no-underline">Testimonials</a>
       <a href="#faq" class="block text-sm text-txt-sec hover:text-txt no-underline">FAQ</a>
-      <a href="login.html" class="btn btn-primary btn-sm block w-full text-center">Login</a>
+      <a href="/login" class="btn btn-primary btn-sm block w-full text-center">Login</a>
     </div>
   </nav>
 
@@ -403,12 +403,12 @@
     document.addEventListener('DOMContentLoaded', function () {
       var token = localStorage.getItem('token');
       if (!token) return;
-      var desktopLogin = document.querySelector('nav a[href="login.html"]');
-      var desktopRegister = document.querySelector('nav a[href="register.html"]');
+      var desktopLogin = document.querySelector('nav a[href="/login"]');
+      var desktopRegister = document.querySelector('nav a[href="/register"]');
       if (desktopLogin) { desktopLogin.href = '/pages/dashboard.html'; desktopLogin.textContent = 'Dashboard'; }
       if (desktopRegister) { desktopRegister.href = '/pages/dashboard.html'; desktopRegister.textContent = 'Dashboard'; }
-      var mobileLogin = document.querySelector('#mobile-menu a[href="login.html"]');
-      var mobileRegister = document.querySelector('#mobile-menu a[href="register.html"]');
+      var mobileLogin = document.querySelector('#mobile-menu a[href="/login"]');
+      var mobileRegister = document.querySelector('#mobile-menu a[href="/register"]');
       if (mobileLogin) { mobileLogin.href = '/pages/dashboard.html'; mobileLogin.textContent = 'Dashboard'; }
       if (mobileRegister) { mobileRegister.href = '/pages/dashboard.html'; mobileRegister.textContent = 'Dashboard'; }
     });
@@ -726,7 +726,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 00-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 00-1.276.057L.327 7.261A1 1 0 00.326 8.74L3.899 12 .326 15.26a1 1 0 00.001 1.479L1.65 17.94a.999.999 0 001.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 001.704.29l4.942-2.377A1.5 1.5 0 0024 19.08V4.92a1.5 1.5 0 00-.85-1.333zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>
           Install in VS Code
         </a>
-        <a href="register.html" class="hero-new__cta-secondary">
+        <a href="/register" class="hero-new__cta-secondary">
           Start Free — No credit card
         </a>
       </div>
@@ -764,8 +764,8 @@
           </div>
           <div class="footer-link-group">
             <p class="footer-group-label">Legal</p>
-            <a href="privacy.html" class="footer-link">Privacy Policy</a>
-            <a href="terms.html" class="footer-link">Terms of Service</a>
+            <a href="/privacy" class="footer-link">Privacy Policy</a>
+            <a href="/terms" class="footer-link">Terms of Service</a>
           </div>
         </div>
       </div>

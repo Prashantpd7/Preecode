@@ -213,7 +213,7 @@ router.get(
   '/google/callback',
   passport.authenticate('google', {
     session: false,
-    failureRedirect: `${frontendUrl}/auth/callback.html?error=oauth_failed`,
+    failureRedirect: `${frontendUrl}/auth/callback?error=oauth_failed`,
   }),
   (req, res) => {
     console.log('[auth] Google callback hit for user:', req.user && req.user._id);
@@ -244,10 +244,10 @@ router.get(
 
     // For web logins, redirect to frontend callback page
     if (originalRedirect) {
-      return res.redirect(`${frontendUrl}/auth/callback.html?token=${token}&redirect=${encodeURIComponent(originalRedirect)}`);
+      return res.redirect(`${frontendUrl}/auth/callback?token=${token}&redirect=${encodeURIComponent(originalRedirect)}`);
     }
 
-    res.redirect(`${frontendUrl}/auth/callback.html?token=${token}`);
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
   }
 );
 

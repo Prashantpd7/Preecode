@@ -8,7 +8,12 @@ console.log("OPENROUTER KEY:", process.env.OPENROUTER_API_KEY?.slice(0, 20));
 // NOTE: If free-tier models exhaust daily limits, the API will reject requests.
 // To fix: (1) Add credits to OpenRouter account, (2) Use a paid model, (3) Configure Ollama fallback
 const OPENROUTER_MODELS = [
-  'openrouter/free'
+  'openrouter/auto',
+  'openrouter/free',
+  'meta-llama/llama-4-maverick:free',
+  'mistralai/mistral-small-3.1-24b-instruct:free',
+  'google/gemini-2.5-flash-exp:free',
+  'deepseek/deepseek-chat-v3-0324:free'
 ];
 
 const MAX_RETRIES = 3;
@@ -105,8 +110,6 @@ async function fetchWithTimeout(url, options, timeoutMs) {
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    // Use dynamic import for node-fetch v3 (ESM)
-    const { default: fetch } = await import('node-fetch');
     return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timeoutId);

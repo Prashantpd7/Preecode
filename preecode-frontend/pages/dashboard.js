@@ -34,73 +34,110 @@
     });
   }
 
-  // ── Utilities ──
+  // ── UI Helpers (defined here since they're not provided by any loaded library) ──
 
-  function escHtml(s) {
-    var d = document.createElement('div');
-    d.appendChild(document.createTextNode(s || ''));
-    return d.innerHTML;
-  }
-
-  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
-
-  function $(id) { return document.getElementById(id); }
-
-  function setText(id, val) {
-    var el = $(id);
-    if (el) el.textContent = val;
+  function $(id) {
+    return document.getElementById(id);
   }
 
   function animateNumber(el, target, duration) {
     if (!el) return;
-    duration = duration || 900;
-    target = parseInt(target, 10) || 0;
-    if (target === 0) { el.textContent = '0'; return; }
-    var start = null;
-    function ease(t) { return 1 - Math.pow(1 - t, 3); }
-    function step(ts) {
-      if (!start) start = ts;
-      var p = Math.min((ts - start) / duration, 1);
-      el.textContent = Math.round(ease(p) * target);
-      if (p < 1) requestAnimationFrame(step);
+    var current = parseInt(el.textContent, 10) || 0;
+    if (current === target) return;
+    var start = performance.now();
+    duration = duration || 400;
+    function step(now) {
+      var progress = Math.min(1, (now - start) / duration);
+      var value = Math.round(current + (target - current) * progress);
+      el.textContent = value;
+      if (progress < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
   }
 
-  function animateProgress(id, pct, delay) {
-    var el = $(id);
+  function animateProgress(id, percent) {
+    var el = document.getElementById(id);
     if (!el) return;
-    setTimeout(function () {
-      el.style.width = Math.min(100, Math.max(0, pct)).toFixed(1) + '%';
-    }, delay || 200);
+    el.style.transition = 'width 0.4s ease';
+    requestAnimationFrame(function () {
+      el.style.width = percent + '%';
+    });
   }
 
-  function countThisWeek(subs) {
-    var now = Date.now();
-    var count = 0;
-    (subs || []).forEach(function (s) {
-      if (!s.submittedAt) return;
-      var diff = Math.floor((now - new Date(s.submittedAt).getTime()) / 86400000);
-      if (diff >= 0 && diff < 7) count++;
-    });
-    return count;
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+
+  function cap(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+
+  // ── Utilities ──
+
+  function parseTimeToMinutes(timeStr) {
+    if (!timeStr) return null;
+    var s = String(timeStr).trim().toLowerCase();
+
+    // MM:SS format
+    var parts = s.split(':');
+    if (parts.length === 2) {
+      var mm = parseInt(parts[0], 10);
+      var ss = parseInt(parts[1], 10);
+      if (!isNaN(mm) && !isNaN(ss)) return mm + (ss / 60);
+    }
+    // HH:MM:SS format
+    if (parts.length === 3) {
+      var hh = parseInt(parts[0], 10);
+      var mm = parseInt(parts[1], 10);
+      var ss = parseInt(parts[2], 10);
+      if (!isNaN(hh) && !isNaN(mm) && !isNaN(ss)) return (hh * 60) + mm + (ss / 60);
+    }
+
+    // "Xh Ym", "Xh", "Xm"
+    var hMatch = s.match(/(\d+)\s*h/);
+    var mMatch = s.match(/(\d+)\s*m/);
+    if (hMatch || mMatch) {
+      var total = 0;
+      if (hMatch) total += parseInt(hMatch[1], 10) * 60;
+      if (mMatch) total += parseInt(mMatch[1], 10);
+      return total;
+    }
+
+    // "X min" or "X minutes"
+    var minMatch = s.match(/^(\d+)\s*min/);
+    if (minMatch) return parseInt(minMatch[1], 10);
+
+    // Plain number — treat as minutes
+    var num = parseFloat(s);
+    if (!isNaN(num) && num > 0) return num;
+
+    return null;
   }
 
   // ── Component: StatsCards (V4) ──
 
   function StatsCards(data) {
     var total = data.totalSolved || 0;
-    var subs = data.recentSubmissions || [];
-    var accepted = subs.filter(function (s) { return s.status === 'accepted'; }).length;
-    var accuracy = subs.length ? Math.round((accepted / subs.length) * 100) : 0;
-    var weekCount = countThisWeek(subs);
+    var totalAttempts = data.totalAttempts || 0;
+    var weekCount = data.weekSolved || 0;
+    var accepted = totalAttempts > 0 ? total : 0; // total IS the count of accepted
+    var accuracy = totalAttempts > 0 ? Math.round((accepted / totalAttempts) * 100) : 0;
 
     // Total Solved
     animateNumber($('statTotal'), total);
     var totalTrend = $('totalTrend');
     if (totalTrend) {
       var span = totalTrend.querySelector('span');
-      if (span) span.textContent = '+' + weekCount + ' this week';
+      if (span) span.textContent = total > 0 ? '+' + weekCount + ' this week' : 'Start solving to track progress';
       totalTrend.className = 'dash-v4-stat__trend ' + (weekCount > 0 ? 'up' : 'neutral');
       if (weekCount > 0) {
         totalTrend.insertAdjacentHTML('afterbegin', '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M5 2L8 6H2L5 2Z" fill="currentColor"/></svg>');
@@ -108,12 +145,12 @@
     }
     animateProgress('totalProgress', Math.min(100, total * 2));
 
-    // Accuracy Rate
+    // Accuracy Rate — calculated from ALL submissions, not just last 10
     animateNumber($('statAccuracy'), accuracy);
     var accTrend = $('accuracyTrend');
     if (accTrend) {
       var accSpan = accTrend.querySelector('span');
-      if (accSpan) accSpan.textContent = accepted + ' / ' + subs.length + ' accepted';
+      if (accSpan) accSpan.textContent = accepted + ' / ' + totalAttempts + ' accepted';
       accTrend.className = 'dash-v4-stat__trend ' + (accuracy >= 50 ? 'up' : accuracy > 0 ? 'down' : 'neutral');
     }
     animateProgress('accuracyProgress', accuracy);
@@ -124,7 +161,6 @@
     // Placement Readiness — fetch from v2 API
     var readiness = 0;
     var readTrend = $('readinessTrend');
-    // Try to load from v2 readiness API
     var uid = localStorage.getItem('preecode_uid');
     var tok = localStorage.getItem('token');
     if (uid && tok) {
@@ -137,12 +173,11 @@
           if (readTrend) {
             var rSpan = readTrend.querySelector('span');
             var pct = rd.readinessPercent || 0;
-            if (rSpan) rSpan.textContent = pct >= 70 ? '🎯 Placement ready!' : pct >= 40 ? '📈 Good progress' : '🚀 Keep going!';
+            if (rSpan) rSpan.textContent = pct >= 70 ? '🎯 Placement ready!' : pct >= 40 ? '📈 Good progress' : total > 0 ? '🚀 Keep going!' : 'Start solving to generate stats';
             readTrend.className = 'dash-v4-stat__trend ' + (pct >= 70 ? 'up' : 'neutral');
           }
         })
         .catch(function() {
-          // fallback to local calc
           animateNumber($('statReadiness'), readiness);
           animateProgress('readinessProgress', readiness);
         });
@@ -494,12 +529,8 @@
 
     (practices || []).forEach(function (p, i) {
       if (!p || !p.timeTaken) return;
-      var parts = String(p.timeTaken).split(':');
-      if (parts.length !== 2) return;
-      var mm = parseInt(parts[0], 10);
-      var ss = parseInt(parts[1], 10);
-      if (isNaN(mm) || isNaN(ss)) return;
-      var mins = mm + (ss / 60);
+      var mins = parseTimeToMinutes(p.timeTaken);
+      if (mins === null || mins < 0) return;
       totalMinutes += mins;
       validCount++;
       if (i === 0) lastSessionTime = mins;

@@ -173,19 +173,25 @@
 
   <script src="/api.js"></script>
   <script>
+    console.log('🐛 dashboard.html: Scripts starting to load');
     // If OAuth redirected back with a token in querystring, persist it before layout runs
     (function () {
       try {
         var params = new URLSearchParams(window.location.search);
         var t = params.get('token');
+        console.log('🐛 dashboard.html: Checking URL for token param, found:', !!t);
         if (t) {
+          console.log('🐛 dashboard.html: Found token in URL, storing in localStorage');
           localStorage.setItem('token', t);
           params.delete('token');
           var newSearch = params.toString();
           var newUrl = window.location.pathname + (newSearch ? '?' + newSearch : '');
           history.replaceState({}, document.title, newUrl);
         }
-      } catch (e) {}
+        console.log('🐛 dashboard.html: Token in localStorage:', !!localStorage.getItem('token'));
+      } catch (e) {
+        console.error('🐛 dashboard.html: Error in inline token cleanup:', e);
+      }
     })();
   </script>
   <script src="/layout/layout.js"></script>

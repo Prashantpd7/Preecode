@@ -11,7 +11,7 @@
     <h2 id="title" style="margin-bottom:8px">Signing you in…</h2>
     <p id="msg" style="color:#9ca3af">Please wait — finishing authentication.</p>
     <div id="actions" style="margin-top:18px;display:none">
-      <a id="goLogin" href="/login.html" style="color:#ffa116;margin-right:12px;text-decoration:none">Go to Sign In</a>
+      <a id="goLogin" href="/login" style="color:#ffa116;margin-right:12px;text-decoration:none">Go to Sign In</a>
       <a id="goHome" href="/" style="color:#9ca3af;text-decoration:none">Return Home</a>
     </div>
   </div>
@@ -124,7 +124,7 @@
           // remove token from URL for cleanliness
           params.delete('token');
           var newSearch = params.toString();
-          var newUrl = '/pages/dashboard.html' + (newSearch ? '?' + newSearch : '');
+          var newUrl = '/pages/dashboard' + (newSearch ? '?' + newSearch : '');
           console.log('🐛 OAuth callback: Redirecting to:', newUrl);
           setTimeout(function () { window.location.href = newUrl; }, 700);
           return;
@@ -142,7 +142,7 @@
         // since the token was already saved earlier.
         if (localStorage.getItem('token')) {
           console.log('🐛 OAuth callback: Token exists despite error, redirecting to dashboard');
-          window.location.href = '/pages/dashboard.html';
+          window.location.href = '/pages/dashboard';
         } else {
           console.log('🐛 OAuth callback: No token found, redirecting to login page');
           window.location.href = '/login.html';

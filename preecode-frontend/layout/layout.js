@@ -2,7 +2,10 @@
 
 (function () {
   // Auth guard
-  if (!localStorage.getItem('token')) {
+  var _token = localStorage.getItem('token');
+  console.log('🐛 layout.js: Auth guard check, token exists:', !!_token, 'token length:', _token ? _token.length : 0);
+  if (!_token) {
+    console.log('🐛 layout.js: No token found, redirecting to /index.html');
     window.location.href = '/index.html';
     return;
   }
@@ -272,6 +275,7 @@
   var logoutBtn = document.getElementById('navLogout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function () {
+      console.log('🐛 layout.js: Logout clicked');
       localStorage.removeItem('token');
       localStorage.removeItem('preecode_uid');
       localStorage.removeItem('preecode_name');

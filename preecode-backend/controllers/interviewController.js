@@ -95,7 +95,7 @@ Return ONLY valid JSON (no markdown, no extra text):
 // POST /v2/interview/answer
 exports.submitAnswer = async (req, res, next) => {
   try {
-    const { interviewId, questionText, audioBase64 } = req.body;
+    const { interviewId, questionText, audioBase64, transcription: candidateTranscript } = req.body;
     const userId = req.user?._id;
 
     if (!userId) {
@@ -119,79 +119,140 @@ exports.submitAnswer = async (req, res, next) => {
       return res.status(400).json({ error: 'Interview already completed.' });
     }
 
-    // Find the current question index — use the currentQuestion counter for reliability
+    // Find the current question index
     const questionIndex = interview.currentQuestion - 1;
     if (questionIndex < 0 || questionIndex >= interview.questions.length) {
       return res.status(400).json({ error: 'No question to answer.' });
     }
-    // Verify the question hasn't been answered yet
     if (interview.questions[questionIndex].transcription) {
       return res.status(400).json({ error: 'Question already answered.' });
     }
 
-    // Evaluate the answer using AI
-    const answerPrompt = `You are an expert interview evaluator. Evaluate this interview answer.
+    // Use the real transcript from the candidate, or fallback to empty
+    const finalTranscript = (candidateTranscript || '').trim();
+    console.log('[interview] Evaluating answer for question:', questionText.slice(0, 60));
+    console.log('[interview] Candidate transcript:', finalTranscript.slice(0, 200));
+
+    // Evaluate the answer using AI — based on REAL transcript
+    const answerPrompt = `You are a strict technical interview evaluator. Your job is to evaluate the candidate's ACTUAL spoken answer against the question asked.
 
 Role: ${interview.role}
 Difficulty: ${interview.difficulty}
 Question: "${questionText}"
 
-Since we don't have actual audio transcription, evaluate based on the context and question expected. 
+Candidate's actual transcribed answer:
+"""
+${finalTranscript || '(No answer provided — candidate said nothing or audio could not be transcribed)'}
+"""
+
+## EVALUATION RULES (CRITICAL):
+1. Base your evaluation SOLELY on the candidate's transcript above. Do NOT imagine what they might have said.
+2. If the transcript is empty, the candidate said nothing — score 0 across the board.
+3. Be honest and harsh when appropriate. A wrong answer deserves a low score.
+4. If the answer is factually incorrect, score it low.
+5. If the answer is partially correct, give partial credit.
+6. If the answer is completely irrelevant (e.g., nonsense, unrelated topic), score near 0.
+7. There is NO minimum score floor. A bad answer MUST get a bad score.
+
+## SCORING RUBRIC:
+- technicalAccuracy (0-100): Is the answer factually correct? Does it demonstrate real knowledge?
+- relevance (0-100): Is the answer directly relevant to the question asked?
+- completeness (0-100): Does the answer fully address the question or is it partial?
+- communication (0-100): Is the answer clear, well-structured, and easy to understand?
+- confidence (0-100): Does the candidate sound confident or hesitant based on transcript cues?
+
+Then:
+- Generate an expected answer or key points that a good candidate would mention.
+- Identify which key concepts from the expected answer were DETECTED in the transcript.
+- Identify which key concepts were MISSING.
+- Generate an improved answer example.
 
 Return ONLY valid JSON (no markdown):
 {
-  "feedback": "2-3 sentences of constructive feedback on the answer, what was good and what could be improved",
-  "score": {
-    "relevance": <number 0-100: how relevant the answer is to the question>,
-    "completeness": <number 0-100: how complete/thorough the answer is>,
-    "clarity": <number 0-100: how clear and well-structured the answer is>
-  },
-  "speechMetrics": {
-    "speechRate": <number: estimated words per minute, 140-180 is normal>,
-    "fillerWordPercent": <number: estimated percentage of filler words (um, uh, like) 0-20>,
-    "clarityScore": <number 0-100: estimated clarity of speech>,
-    "energyScore": <number 0-100: estimated energy/confidence level>
+  "feedback": "1-2 sentences: what the candidate got right and what they missed. Be specific and reference the transcript.",
+  "expectedAnswer": "What a strong candidate would say — 2-4 sentences covering the key concepts",
+  "keyPoints": ["key concept 1", "key concept 2", "key concept 3"],
+  "detectedConcepts": ["concept from transcript that matches expected points"],
+  "missingConcepts": ["expected concept NOT found in transcript"],
+  "improvedAnswer": "Example of a strong answer the candidate could give next time — 2-4 sentences",
+  "scores": {
+    "technicalAccuracy": <number 0-100>,
+    "relevance": <number 0-100>,
+    "completeness": <number 0-100>,
+    "communication": <number 0-100>,
+    "confidence": <number 0-100>
   }
 }`;
 
     let evaluation = {
-      feedback: 'Your answer shows good understanding of the topic. Consider providing more specific examples from your experience to strengthen your response.',
-      score: { relevance: 70, completeness: 65, clarity: 75 },
-      speechMetrics: { speechRate: 150, fillerWordPercent: 5, clarityScore: 75, energyScore: 70 },
+      feedback: '',
+      expectedAnswer: '',
+      keyPoints: [],
+      detectedConcepts: [],
+      missingConcepts: [],
+      improvedAnswer: '',
+      scores: { technicalAccuracy: 0, relevance: 0, completeness: 0, communication: 0, confidence: 0 },
     };
 
     try {
       const aiResponse = await generateResponse([{ role: 'user', content: answerPrompt }], {
-        temperature: 0.3,
-        maxTokens: 1000,
+        temperature: 0.2,
+        maxTokens: 1500,
       });
       const cleaned = aiResponse.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleaned);
+
       evaluation = {
         feedback: parsed.feedback || evaluation.feedback,
-        score: {
-          relevance: Math.min(100, Math.max(0, parsed.score?.relevance || evaluation.score.relevance)),
-          completeness: Math.min(100, Math.max(0, parsed.score?.completeness || evaluation.score.completeness)),
-          clarity: Math.min(100, Math.max(0, parsed.score?.clarity || evaluation.score.clarity)),
-        },
-        speechMetrics: {
-          speechRate: parsed.speechMetrics?.speechRate || evaluation.speechMetrics.speechRate,
-          fillerWordPercent: parsed.speechMetrics?.fillerWordPercent || evaluation.speechMetrics.fillerWordPercent,
-          clarityScore: Math.min(100, Math.max(0, parsed.speechMetrics?.clarityScore || evaluation.speechMetrics.clarityScore)),
-          energyScore: Math.min(100, Math.max(0, parsed.speechMetrics?.energyScore || evaluation.speechMetrics.energyScore)),
+        expectedAnswer: parsed.expectedAnswer || '',
+        keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+        detectedConcepts: Array.isArray(parsed.detectedConcepts) ? parsed.detectedConcepts : [],
+        missingConcepts: Array.isArray(parsed.missingConcepts) ? parsed.missingConcepts : [],
+        improvedAnswer: parsed.improvedAnswer || '',
+        scores: {
+          technicalAccuracy: Math.min(100, Math.max(0, parsed.scores?.technicalAccuracy || 0)),
+          relevance: Math.min(100, Math.max(0, parsed.scores?.relevance || 0)),
+          completeness: Math.min(100, Math.max(0, parsed.scores?.completeness || 0)),
+          communication: Math.min(100, Math.max(0, parsed.scores?.communication || 0)),
+          confidence: Math.min(100, Math.max(0, parsed.scores?.confidence || 0)),
         },
       };
     } catch (aiError) {
       console.error('[interview] Answer evaluation error:', aiError.message);
-      // Continue with default evaluation
+      // If AI fails, the evaluation stays at all zeros (honest: we couldn't evaluate)
+      evaluation.feedback = 'Could not evaluate the answer due to a system error.';
     }
 
-    // Update the question with answer data
+    // Log evaluation for debugging
+    console.log('[interview] Evaluation scores:', JSON.stringify(evaluation.scores));
+    console.log('[interview] Detected concepts:', JSON.stringify(evaluation.detectedConcepts));
+    console.log('[interview] Missing concepts:', JSON.stringify(evaluation.missingConcepts));
+    console.log('[interview] Transcript length:', finalTranscript.length, 'chars');
+
+    // Update the question with REAL answer data
     interview.questions[questionIndex].audioBase64 = audioBase64 || '';
-    interview.questions[questionIndex].transcription = '(Audio answer recorded)';
+    interview.questions[questionIndex].transcription = finalTranscript || '(No speech detected)';
     interview.questions[questionIndex].aiFeedback = evaluation.feedback;
-    interview.questions[questionIndex].answerScore = evaluation.score;
-    interview.questions[questionIndex].speechMetrics = evaluation.speechMetrics;
+    interview.questions[questionIndex].answerScore = {
+      relevance: evaluation.scores.relevance,
+      completeness: evaluation.scores.completeness,
+      clarity: evaluation.scores.communication,
+    };
+    interview.questions[questionIndex].speechMetrics = {
+      speechRate: 0,
+      fillerWordPercent: 0,
+      clarityScore: evaluation.scores.communication,
+      energyScore: evaluation.scores.confidence,
+    };
+    // New detailed evaluation fields
+    interview.questions[questionIndex].expectedAnswer = evaluation.expectedAnswer;
+    interview.questions[questionIndex].keyPoints = evaluation.keyPoints;
+    interview.questions[questionIndex].detectedConcepts = evaluation.detectedConcepts;
+    interview.questions[questionIndex].missingConcepts = evaluation.missingConcepts;
+    interview.questions[questionIndex].improvedAnswer = evaluation.improvedAnswer;
+    interview.questions[questionIndex].technicalAccuracy = evaluation.scores.technicalAccuracy;
+    interview.questions[questionIndex].communication = evaluation.scores.communication;
+    interview.questions[questionIndex].confidence = evaluation.scores.confidence;
 
     // Check if we need to generate the next question
     const isLastQuestion = interview.currentQuestion >= interview.totalQuestions;
@@ -200,13 +261,14 @@ Return ONLY valid JSON (no markdown):
     let sessionComplete = false;
 
     if (isLastQuestion) {
-      // Interview complete — calculate overall score
-      const answeredQuestions = interview.questions.filter(q => q.transcription);
+      // Interview complete — calculate overall score using the 5-score system
+      const answeredQuestions = interview.questions.filter(q => q.transcription && q.transcription !== '(No speech detected)');
       if (answeredQuestions.length > 0) {
         const totalScore = answeredQuestions.reduce((sum, q) => {
-          return sum + (q.answerScore?.relevance || 0) + (q.answerScore?.completeness || 0) + (q.answerScore?.clarity || 0);
+          return sum + (q.technicalAccuracy || 0) + (q.answerScore?.relevance || 0) +
+                 (q.answerScore?.completeness || 0) + (q.communication || 0) + (q.confidence || 0);
         }, 0);
-        interview.overallScore = Math.round(totalScore / (answeredQuestions.length * 3));
+        interview.overallScore = Math.round(totalScore / (answeredQuestions.length * 5));
       }
       interview.status = 'completed';
       interview.completedAt = new Date();
@@ -300,7 +362,7 @@ exports.getResults = async (req, res, next) => {
       return res.status(404).json({ error: 'Interview not found.' });
     }
 
-    // Map questions to the expected format
+    // Map questions to the expected format with new detailed fields
     const answers = (interview.questions || []).map(q => ({
       questionText: q.questionText || '',
       transcription: q.transcription || '',
@@ -316,7 +378,27 @@ exports.getResults = async (req, res, next) => {
         completeness: 0,
         clarity: 0,
       },
+      // New detailed evaluation fields
+      expectedAnswer: q.expectedAnswer || '',
+      keyPoints: q.keyPoints || [],
+      detectedConcepts: q.detectedConcepts || [],
+      missingConcepts: q.missingConcepts || [],
+      improvedAnswer: q.improvedAnswer || '',
+      technicalAccuracy: q.technicalAccuracy || 0,
+      communication: q.communication || 0,
+      confidence: q.confidence || 0,
     }));
+
+    // Calculate overall score using the 5-score system
+    const scoredQuestions = answers.filter(a => a.transcription && a.transcription !== '(No speech detected)');
+    let overallScore = 0;
+    if (scoredQuestions.length > 0) {
+      const total = scoredQuestions.reduce((sum, a) => {
+        return sum + a.technicalAccuracy + (a.answerScore?.relevance || 0) +
+               (a.answerScore?.completeness || 0) + a.communication + a.confidence;
+      }, 0);
+      overallScore = Math.round(total / (scoredQuestions.length * 5));
+    }
 
     res.json({
       interview: {
@@ -324,7 +406,7 @@ exports.getResults = async (req, res, next) => {
         role: interview.role,
         difficulty: interview.difficulty,
         status: interview.status,
-        overallScore: interview.overallScore || 0,
+        overallScore: interview.overallScore || overallScore || 0,
         totalQuestions: interview.totalQuestions,
         createdAt: interview.createdAt,
         completedAt: interview.completedAt,

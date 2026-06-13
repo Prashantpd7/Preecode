@@ -129,16 +129,35 @@ exports.getStats = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
-    // Get recent submissions (last 10)
-    const recentSubmissions = await Submission.find({ userId: user._id })
+
+    // Get ALL submissions for this user (not just last 10)
+    const allSubmissions = await Submission.find({ userId: user._id })
       .sort({ submittedAt: -1 })
-      .limit(10)
       .select('-__v -userId');
+
+    // Calculate real stats from actual submission data
+    const totalSolved = allSubmissions.filter(s => s.status === 'accepted').length;
+    const totalAttempts = allSubmissions.length;
+    const acceptedSubmissions = allSubmissions.filter(s => s.status === 'accepted');
+
+    const easySolved = acceptedSubmissions.filter(s => s.difficulty === 'easy').length;
+    const mediumSolved = acceptedSubmissions.filter(s => s.difficulty === 'medium').length;
+    const hardSolved = acceptedSubmissions.filter(s => s.difficulty === 'hard').length;
+
+    // Last 10 submissions for the table
+    const recentSubmissions = allSubmissions.slice(0, 10);
+
+    // Total solved this week
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const weekSolved = acceptedSubmissions.filter(s => s.submittedAt && new Date(s.submittedAt) >= oneWeekAgo).length;
+
     res.json({
-      totalSolved: user.totalSolved,
-      easySolved: user.easySolved,
-      mediumSolved: user.mediumSolved,
-      hardSolved: user.hardSolved,
+      totalSolved,
+      totalAttempts,
+      easySolved,
+      mediumSolved,
+      hardSolved,
+      weekSolved,
       recentSubmissions,
     });
   } catch (error) {

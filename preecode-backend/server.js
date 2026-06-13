@@ -1,5 +1,24 @@
-// Load environment variables first
+// Load environment variables from .env (production defaults)
 require('dotenv').config();
+
+// Load .env.local overrides if present.
+// .env.local is gitignored so it only exists on local machines.
+// This takes effect regardless of NODE_ENV, enabling local development
+// overrides even when .env has NODE_ENV=production.
+const fs = require('fs');
+const path = require('path');
+const localEnvPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(localEnvPath)) {
+  const dotenv = require('dotenv');
+  const localConfig = dotenv.parse(fs.readFileSync(localEnvPath));
+  for (const key of Object.keys(localConfig)) {
+    if (localConfig[key]) {
+      process.env[key] = localConfig[key];
+    }
+  }
+  console.log('[startup] Loaded .env.local overrides');
+  console.log(`[startup] NODE_ENV=${process.env.NODE_ENV}, FRONTEND_URL=${process.env.FRONTEND_URL}`);
+}
 
 const http = require('http');
 const express = require('express');
@@ -113,9 +132,9 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/memory', memoryRoutes);
 app.use('/api/early-access', earlyAccessRoutes);
 app.use('/api/upload', uploadRoutes);
-app.use('/v2/resume', resumeRoutes);
-app.use('/v2/interview', interviewRoutes);
-app.use('/v2/readiness', readinessRoutes);
+app.use('/api/v2/resume', resumeRoutes);
+app.use('/api/v2/interview', interviewRoutes);
+app.use('/api/v2/readiness', readinessRoutes);
 
 /* ================= ERROR HANDLER ================= */
 

@@ -143,7 +143,7 @@
           totalQuestions: data.totalQuestions,
         }));
 
-        window.location.href = '/pages/interview-session.html?id=' + data.interviewId;
+        window.location.href = '/pages/interview-session?id=' + data.interviewId;
       } catch (err) {
         showError('Network error. Please try again.');
       } finally {

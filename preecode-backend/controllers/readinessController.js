@@ -18,11 +18,12 @@ exports.getReadiness = async (req, res, next) => {
     ]);
 
     // Calculate problem-solving stats
-    const totalSolved = submissions.length;
-    const easySolved = submissions.filter(s => s.difficulty === 'easy').length;
-    const mediumSolved = submissions.filter(s => s.difficulty === 'medium').length;
-    const hardSolved = submissions.filter(s => s.difficulty === 'hard').length;
+    // NOTE: totalSolved = count of ACCEPTED submissions only (not all attempts)
     const acceptedSolved = submissions.filter(s => s.status === 'accepted').length;
+    const totalAttempts = submissions.length;
+    const easySolved = submissions.filter(s => s.difficulty === 'easy' && s.status === 'accepted').length;
+    const mediumSolved = submissions.filter(s => s.difficulty === 'medium' && s.status === 'accepted').length;
+    const hardSolved = submissions.filter(s => s.difficulty === 'hard' && s.status === 'accepted').length;
 
     // Calculate interview score (best recent)
     const interviewScore = interviews.length > 0
@@ -35,8 +36,8 @@ exports.getReadiness = async (req, res, next) => {
       : 0;
 
     // Calculate readiness percentage
-    // Weights: problems solved (40%), interview score (30%), resume score (30%)
-    const problemWeight = Math.min(100, (totalSolved / 20) * 100) * 0.4;
+    // Weights: accepted problems (40%), interview score (30%), resume score (30%)
+    const problemWeight = Math.min(100, (acceptedSolved / 20) * 100) * 0.4;
     const interviewWeight = interviewScore * 0.3;
     const resumeWeight = resumeScore * 0.3;
     const readinessPercent = Math.min(100, Math.round(problemWeight + interviewWeight + resumeWeight));
@@ -44,10 +45,10 @@ exports.getReadiness = async (req, res, next) => {
     // Generate improvement plan (can also use AI for personalized tips)
     let improvementPlan = [];
 
-    if (totalSolved < 10) {
-      improvementPlan.push('Solve more coding problems — aim for at least 10 problems to build fundamentals.');
+    if (acceptedSolved < 10) {
+      improvementPlan.push('Solve more coding problems — aim for at least 10 accepted solutions to build fundamentals.');
     }
-    if (acceptedSolved < totalSolved * 0.5 && totalSolved > 0) {
+    if (acceptedSolved < totalAttempts * 0.5 && totalAttempts > 0) {
       improvementPlan.push('Focus on accuracy — review your wrong submissions to identify recurring mistakes.');
     }
     if (easySolved > 0 && mediumSolved === 0) {
@@ -76,11 +77,11 @@ exports.getReadiness = async (req, res, next) => {
     res.json({
       readinessPercent,
       breakdown: {
-        totalSolved,
+        acceptedSolved,
+        totalAttempts,
         easySolved,
         mediumSolved,
         hardSolved,
-        acceptedSolved,
       },
       interviewScore,
       resumeScore,

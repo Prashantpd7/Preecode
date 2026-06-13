@@ -17,15 +17,17 @@ function readOptionalUrlEnv(name) {
 
 // Keep auth/runtime URLs env-driven so extension and backend do not silently drift.
 const backendUrl = readOptionalUrlEnv('BACKEND_URL');
-const frontendUrl = normalizeBaseUrl(readRequiredEnv('FRONTEND_URL'));
+const frontendUrl = readRequiredEnv('FRONTEND_URL');
 const frontendDevUrl = readOptionalUrlEnv('FRONTEND_DEV_URL');
-const googleCallbackUrl = readOptionalUrlEnv('GOOGLE_CALLBACK_URL') || (
-  backendUrl ? `${backendUrl}/api/auth/google/callback` : ''
-);
+const isDev = process.env.NODE_ENV === 'development' && frontendDevUrl;
+const googleCallbackUrl = isDev
+  ? (backendUrl ? `${backendUrl}/api/auth/google/callback` : '')
+  : (readOptionalUrlEnv('GOOGLE_CALLBACK_URL') || 
+     (backendUrl ? `${backendUrl}/api/auth/google/callback` : ''));
 
-if (!googleCallbackUrl) {
-  throw new Error('[config] GOOGLE_CALLBACK_URL or BACKEND_URL must be configured for Google OAuth');
-}
+// Make Google OAuth config optional — allows running without Google auth for local dev
+const googleClientId = readOptionalUrlEnv('GOOGLE_CLIENT_ID');
+const googleClientSecret = readOptionalUrlEnv('GOOGLE_CLIENT_SECRET');
 
 module.exports = {
   backendUrl,
@@ -33,6 +35,6 @@ module.exports = {
   frontendDevUrl,
   googleCallbackUrl,
   jwtSecret: readRequiredEnv('JWT_SECRET'),
-  googleClientId: readRequiredEnv('GOOGLE_CLIENT_ID'),
-  googleClientSecret: readRequiredEnv('GOOGLE_CLIENT_SECRET'),
+  googleClientId,
+  googleClientSecret,
 };
