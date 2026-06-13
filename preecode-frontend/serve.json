@@ -1,0 +1,16 @@
+{
+  "public": ".",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "renderSingle": true,
+  "directoryListing": false,
+  "unlisted": [".env", ".env.*"],
+  "headers": [
+    {
+      "source": "**/*.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
+}

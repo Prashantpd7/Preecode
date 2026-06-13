@@ -51,8 +51,12 @@
         }
 
         if (token) {
+          console.log('🐛 OAuth callback: Token received, length:', token.length);
           // Persist token
-          try { localStorage.setItem('token', token); } catch (e) { /* ignore */ }
+          try {
+            localStorage.setItem('token', token);
+            console.log('🐛 OAuth callback: Token stored in localStorage');
+          } catch (e) { console.error('🐛 OAuth callback: Failed to store token:', e); }
 
           // Check if we need to redirect to VS Code extension
           var redirectParam = params.get('redirect');
@@ -116,10 +120,12 @@
 
           // Navigate to dashboard (no automatic VS Code deep-link open).
           msg.textContent = 'Signed in — redirecting to dashboard...';
+          console.log('🐛 OAuth callback: About to redirect to dashboard, token in localStorage:', !!localStorage.getItem('token'), 'token length:', localStorage.getItem('token') ? localStorage.getItem('token').length : 0);
           // remove token from URL for cleanliness
           params.delete('token');
           var newSearch = params.toString();
           var newUrl = '/pages/dashboard.html' + (newSearch ? '?' + newSearch : '');
+          console.log('🐛 OAuth callback: Redirecting to:', newUrl);
           setTimeout(function () { window.location.href = newUrl; }, 700);
           return;
         }
@@ -129,8 +135,18 @@
         msg.textContent = 'No authentication token was returned. Please sign in manually.';
         document.getElementById('actions').style.display = 'block';
       } catch (e) {
-        try { localStorage.removeItem('token'); } catch (e) {}
-        window.location.href = '/login.html';
+        console.error('🐛 OAuth callback: UNHANDLED ERROR in outer catch:', e && e.message, e && e.stack);
+        console.log('🐛 OAuth callback: Token in localStorage:', !!localStorage.getItem('token'));
+        // Bug: The outer catch was previously removing the token and redirecting to login,
+        // which destroyed a successfully stored token. Now we redirect to dashboard
+        // since the token was already saved earlier.
+        if (localStorage.getItem('token')) {
+          console.log('🐛 OAuth callback: Token exists despite error, redirecting to dashboard');
+          window.location.href = '/pages/dashboard.html';
+        } else {
+          console.log('🐛 OAuth callback: No token found, redirecting to login page');
+          window.location.href = '/login.html';
+        }
       }
     })();
   </script>
