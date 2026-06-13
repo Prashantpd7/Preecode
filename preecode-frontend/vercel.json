@@ -1,5 +1,17 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "redirects": [
+    {
+      "source": "/pages/([^/.]+)",
+      "destination": "/pages/$1.html",
+      "permanent": false
+    },
+    {
+      "source": "/auth/([^/.]+)",
+      "destination": "/auth/$1.html",
+      "permanent": false
+    }
+  ]
 }
