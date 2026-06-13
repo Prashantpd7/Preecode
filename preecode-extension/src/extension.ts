@@ -1232,10 +1232,12 @@ async function buildInlineExplainedSolution(
 ): Promise<string> {
   const prompt = [
     `Explain this ${language} solution line by line for a beginner.`,
-    'Return only code and inline comments.',
-    'Rules:',
-    `- Keep the original ${language} code lines unchanged in order.`,
-    `- After each meaningful line, add exactly one ${language === 'python' ? '#' : '//'} comment line in simple language.`,
+    'Return only the original code with inline comments added to it.',
+    `Do NOT add any new lines or blank lines. Do NOT add any extra text or instructions.`,
+    `For each meaningful line of the original code, add an inline ${language === 'python' ? '# ' : '// '} comment at the end of the same line.`,
+    `Example format:`,
+    `def even_numbers(nums): ${language === 'python' ? '# ' : '// '}Define a function that takes a list of numbers`,
+    `    return [x for x in nums if x % 2 == 0] ${language === 'python' ? '# ' : '// '}Filter and return only even numbers`,
     '- Do not use markdown fences.',
     '- Keep comments short and practical.',
     `Code:\n${code}`
