@@ -87,7 +87,12 @@ const corsOptions = {
   origin: function (origin, callback) {
     // allow requests with no origin (like server-to-server, curl)
     if (!origin) return callback(null, true);
+    // exact match against configured origins
     if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    // Production fallback: allow any vercel.app subdomain (preecode.vercel.app, etc.)
+    if (/^https?:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) {
       return callback(null, true);
     }
     console.warn('Blocked CORS request from origin:', origin);
