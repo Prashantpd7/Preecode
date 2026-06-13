@@ -5886,6 +5886,8 @@ html.dark .dash-v4-practice:hover {
 .status-badge.accepted { background: rgba(52,211,153,0.12); color: #34d399; }
 .status-badge.wrong    { background: rgba(248,113,113,0.12); color: #f87171; }
 .status-badge.tle      { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.status-badge.runtime_error       { background: rgba(239,68,68,0.12); color: #ef4444; }
+.status-badge.compilation_error   { background: rgba(249,115,22,0.12); color: #f97316; }
 
 /* ── Empty State V4 ── */
 .dash-v4-empty {

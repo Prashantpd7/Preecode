@@ -497,8 +497,14 @@
     tbody.innerHTML = '';
     subs.forEach(function (sub) {
       var diffClass = sub.difficulty || 'easy';
-      var statusClass = sub.status === 'accepted' ? 'accepted' : sub.status === 'tle' ? 'tle' : 'wrong';
-      var statusLabel = sub.status === 'accepted' ? 'Accepted' : sub.status === 'tle' ? 'TLE' : 'Wrong Answer';
+      var statusClass = 'wrong';
+      var statusLabel = 'Wrong Answer';
+      if (sub.status === 'accepted') { statusClass = 'accepted'; statusLabel = 'Accepted'; }
+      else if (sub.status === 'tle' || sub.status === 'time_limit_exceeded') { statusClass = 'tle'; statusLabel = 'Time Limit Exceeded'; }
+      else if (sub.status === 'runtime_error') { statusClass = 'runtime_error'; statusLabel = 'Runtime Error'; }
+      else if (sub.status === 'compilation_error') { statusClass = 'compilation_error'; statusLabel = 'Compilation Error'; }
+      else if (sub.status === 'wrong') { statusClass = 'wrong'; statusLabel = 'Wrong Answer'; }
+
       var dateStr = sub.submittedAt ? sub.submittedAt.slice(0, 10) : '--';
       var runtime = sub.timeTaken || (sub.solveTime ? sub.solveTime + ' min' : '--');
 

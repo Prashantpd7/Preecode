@@ -20,9 +20,17 @@ exports.addSubmission = async (req, res, next) => {
     }
 
     let status = 'wrong';
-    if (statusRaw.includes('accept') || statusRaw.includes('correct')) {
+    if (statusRaw.includes('accept') || statusRaw.includes('correct') || statusRaw === 'passed') {
       status = 'accepted';
+    } else if (statusRaw.includes('runtime') || statusRaw.includes('exception') || statusRaw.includes('crash')) {
+      status = 'runtime_error';
+    } else if (statusRaw.includes('compil') || statusRaw.includes('build fail')) {
+      status = 'compilation_error';
+    } else if (statusRaw.includes('timeout') || statusRaw.includes('tle') || statusRaw.includes('time limit')) {
+      status = 'time_limit_exceeded';
     }
+
+    console.log('[submission] Received status="' + req.body.status + '" → parsed="' + status + '" for problem="' + problemName + '"');
 
     if (!userId || !problemName) {
       return res.status(400).json({ message: 'All fields are required.' });
