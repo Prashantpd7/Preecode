@@ -296,22 +296,11 @@
         });
       }
 
-      // GitHub
+      // GitHub (not yet available — shows message instead of navigating to broken route)
       var githubBtn = document.getElementById("githubLoginBtn");
       if (githubBtn) {
         githubBtn.addEventListener("click", function () {
-          var overlay = document.getElementById('serverWakeOverlay');
-          if (overlay) overlay.style.display = 'flex';
-          var redirected = false;
-          function doRedirect() {
-            if (redirected) return;
-            redirected = true;
-            window.location.href = API_BASE + '/auth/github';
-          }
-          var fallback = setTimeout(doRedirect, 10000);
-          fetch(API_BASE + '/health')
-            .then(function () { clearTimeout(fallback); doRedirect(); })
-            .catch(function () { clearTimeout(fallback); doRedirect(); });
+          alert('GitHub authentication is coming soon. Please use Google or email to sign in.');
         });
       }
     });
