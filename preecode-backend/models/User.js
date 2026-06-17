@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   firstName: { type: String },
   lastName: { type: String },
+  avatar: { type: String, default: '' },
   // Early Access & Plan fields
   plan: { type: String, enum: ['free', 'pro'], default: 'pro' },
   subscriptionStatus: { type: String, enum: ['active', 'inactive'], default: 'active' },

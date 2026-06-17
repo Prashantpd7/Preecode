@@ -42,6 +42,7 @@ const memoryRoutes = require('./routes/memoryRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const readinessRoutes = require('./routes/readinessRoutes');
+const securityRoutes = require('./routes/securityRoutes');
 
 const errorHandler = require('./middleware/errorMiddleware');
 
@@ -140,6 +141,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/v2/resume', resumeRoutes);
 app.use('/api/v2/interview', interviewRoutes);
 app.use('/api/v2/readiness', readinessRoutes);
+app.use('/api/security', securityRoutes);
 
 /* ================= ERROR HANDLER ================= */
 

@@ -5,7 +5,7 @@ import { getFrontendUrl } from '../services/apiService';
 
 export interface ControlCenterHandlers {
   onQuickAction: (request: {
-    action: 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion';
+    action: 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'security' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion';
     payload?: {
       language?: string;
       difficulty?: 'easy' | 'medium' | 'hard';
@@ -58,7 +58,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage(async (message: { type: string; payload?: any; action?: string; height?: number; startLine?: number; endLine?: number; direction?: 'prev' | 'next' }) => {
       if (message.type === 'quickAction' && message.action) {
         await this.handlers.onQuickAction({
-          action: message.action as 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion',
+          action: message.action as 'practice' | 'generate' | 'detect' | 'debug' | 'fix' | 'explain' | 'review' | 'security' | 'explainQuestion' | 'showHint' | 'showSolution' | 'explainSolution' | 'evaluateCode' | 'differentApproach' | 'saveQuestion',
           payload: message.payload
         });
         return;
@@ -145,6 +145,23 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
   }
 
   private postState(state: PreecodeState): void {
+    const user = state.user;
+    console.log('[Preecode PROFILE] H postState: USER_OBJECT_SENT_TO_WEBVIEW =', JSON.stringify({
+      isAuthenticated: user.isAuthenticated,
+      userId: user.userId || null,
+      username: user.username || null,
+      email: user.email || null,
+      avatarUrl: user.avatarUrl || null,
+      hasToken: user.token ? 'YES(len=' + user.token.length + ')' : 'NO'
+    }));
+
+    console.log("PROFILE STEP 4 POSTMESSAGE", JSON.stringify({
+      isAuthenticated: user.isAuthenticated,
+      userId: user.userId,
+      username: user.username,
+      email: user.email,
+      avatarUrl: user.avatarUrl
+    }));
     this.webviewView?.webview.postMessage({
       type: 'state',
       payload: state
@@ -205,6 +222,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
     </section>
 
     <section class="card section-card hidden" id="toolsFlow">
+      <button class="primary-btn full main-action" data-action="security">Security Analyze</button>
       <button class="primary-btn full main-action" data-mode-target="practice" data-action="practice">Start Practicing Question</button>
       <div class="action-grid" id="quickActionsSection">
         <button class="primary-btn" data-action="debug">Debug Code</button>

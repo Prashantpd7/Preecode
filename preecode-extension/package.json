@@ -109,9 +109,28 @@
         "command": "preecode.restartTour",
         "title": "Preecode: Restart Tour",
         "icon": "$(play-circle)"
+      },
+      {
+        "command": "preecode.securityAnalyze",
+        "title": "Preecode: Security Analyze",
+        "icon": "$(shield)"
       }
     ],
-    "menus": {}
+    "menus": {
+      "editor/context": [
+        {
+          "command": "preecode.securityAnalyze",
+          "when": "editorTextFocus",
+          "group": "Preecode@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "preecode.securityAnalyze",
+          "when": "editorTextFocus"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

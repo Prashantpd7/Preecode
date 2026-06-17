@@ -221,9 +221,14 @@ export class LoginPanel {
 
   private async handleGoogleLogin(): Promise<void> {
     // Open browser to Google OAuth endpoint with redirect back to extension
+    // NOTE: Always use the production backend URL for OAuth, because Google OAuth
+    // credentials are registered on the production backend. The local dev backend
+    // does NOT have Google OAuth configured, so pointing there would break login
+    // even if the local server is running.
     const extensionId = this.context.extension.id;
     const redirectUri = encodeURIComponent(`vscode://${extensionId}/auth`);
-    const backendUrl = await getBackendUrl();
+    const { DEFAULT_BACKEND_URL } = await import('../services/apiService.js');
+    const backendUrl = DEFAULT_BACKEND_URL;
     const googleLoginUrl = `${backendUrl}/api/auth/google?redirect=${redirectUri}`;
 
     await vscode.env.openExternal(vscode.Uri.parse(googleLoginUrl));

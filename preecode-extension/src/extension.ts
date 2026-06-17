@@ -1,8 +1,10 @@
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AuthManager } from './auth/authManager';
 import { generateQuestionFromBackend, sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
+import { analyzeCodeSecurity, formatSecurityResult } from './services/securityAnalyzeService';
 import { BackendSyncService } from './services/backendSyncService';
 import { preecodeStore } from './state/store';
 import { RunDetectionService } from './timer/runDetectionService';
@@ -14,7 +16,20 @@ dotenv.config({
   path: path.resolve(__dirname, '../.env')
 });
 
-type QuickAction = FullQuickAction;
+// Load .env.local overrides if present (same pattern as backend)
+// .env.local is gitignored, allowing local dev overrides without modifying .env
+const localEnvPath = path.resolve(__dirname, '../.env.local');
+if (fs.existsSync(localEnvPath)) {
+  const localConfig = dotenv.parse(fs.readFileSync(localEnvPath));
+  for (const key of Object.keys(localConfig)) {
+    if (localConfig[key]) {
+      process.env[key] = localConfig[key];
+    }
+  }
+  console.log('[preecode] Loaded .env.local overrides');
+}
+
+type QuickAction = FullQuickAction | 'security';
 const CHAT_HISTORY_KEY = 'preecode.chatHistory';
 const MARKER_TOKEN = 'PREECODE';
 
@@ -42,7 +57,7 @@ interface QuickActionPayload {
   difficulty?: 'easy' | 'medium' | 'hard';
 }
 
-type ToolAction = 'debug' | 'fix' | 'explain' | 'review';
+type ToolAction = 'debug' | 'fix' | 'explain' | 'review' | 'security';
 
 type FullQuickAction = PracticeAction | ToolAction;
 
@@ -1349,13 +1364,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const CURRENT_VERSION = context.extension.packageJSON.version;
   const previousVersion = context.globalState.get<string>(VERSION_KEY);
 
+  console.log('[Preecode Auth DIAG] extension activate: VERSION_KEY=' + VERSION_KEY + ' CURRENT_VERSION=' + CURRENT_VERSION + ' previousVersion=' + previousVersion);
+
   if (previousVersion !== CURRENT_VERSION) {
+    console.log('[Preecode Auth DIAG] **** VERSION MISMATCH **** clearing auth state and resetting onboarding');
     // Version changed or first activation - this handles uninstall/reinstall
     await context.globalState.update(VERSION_KEY, CURRENT_VERSION);
+    console.log('[Preecode Auth DIAG] updated VERSION_KEY to ' + CURRENT_VERSION);
     // Clear all authentication state for fresh start
     await authManager.clearAuthState();
+    console.log('[Preecode Auth DIAG] clearAuthState completed');
     // Reset onboarding for a fresh install
     await onboardingService.resetTour();
+    console.log('[Preecode Auth DIAG] onboarding reset completed');
+  } else {
+    console.log('[Preecode Auth DIAG] **** VERSION MATCH **** skipping clearAuthState');
   }
 
   const withGenerationNotification = async <T>(title: string, work: () => Promise<T>): Promise<T> => {
@@ -1377,7 +1400,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     backendSyncService
   );
 
+  console.log('[Preecode Auth DIAG] about to call restoreSession()');
   await authManager.restoreSession();
+  console.log('[Preecode Auth DIAG] restoreSession() completed');
 
   // Initialize onboarding
   await onboardingService.init();
@@ -1449,14 +1474,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const syncAuthIfNeeded = async (): Promise<void> => {
     const now = Date.now();
     if (now - lastAuthSyncAt < 8000) {
+      console.log('[Preecode Auth DIAG] syncAuthIfNeeded: throttled (last=' + (now - lastAuthSyncAt) + 'ms ago, min=8000ms)');
       return;
     }
     lastAuthSyncAt = now;
+    console.log('[Preecode Auth DIAG] syncAuthIfNeeded: window focused, calling syncFromStoredToken()');
     await authManager.syncFromStoredToken();
+    console.log('[Preecode Auth DIAG] syncAuthIfNeeded: syncFromStoredToken() completed');
   };
 
   context.subscriptions.push(
     vscode.window.onDidChangeWindowState((event) => {
+      console.log('[Preecode Auth DIAG] onDidChangeWindowState: focused=' + event.focused);
       if (event.focused) {
         void syncAuthIfNeeded();
       }
@@ -2271,6 +2300,59 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
 
+    if (action === 'security') {
+      const active = vscode.window.activeTextEditor;
+      if (!active) {
+        vscode.window.showErrorMessage('Select code first, then click Security Analyze.');
+        return;
+      }
+
+      const selectionText = active.document.getText(active.selection).trim();
+      const codeToAnalyze = selectionText || active.document.getText().trim();
+
+      if (!codeToAnalyze) {
+        vscode.window.showErrorMessage('No code found to analyze. Open a file with code first.');
+        return;
+      }
+
+      try {
+        const result = await withGenerationNotification('Running Security Analyze', async () => {
+          return analyzeCodeSecurity(
+            context,
+            codeToAnalyze,
+            active.document.fileName,
+            active.document.languageId
+          );
+        });
+
+        const formatted = formatSecurityResult(result);
+        
+        // Show results in a new untitled document for detailed view
+        const document = await vscode.workspace.openTextDocument({
+          content: formatted,
+          language: 'markdown',
+        });
+        await vscode.window.showTextDocument(document, {
+          viewColumn: vscode.ViewColumn.Beside,
+          preserveFocus: true,
+        });
+
+        // Also show summary as notification
+        const issueSummary = result.totalIssues > 0
+          ? `${result.totalIssues} issue${result.totalIssues > 1 ? 's' : ''} found`
+          : 'No issues found';
+        void vscode.window.showInformationMessage(
+          `Security Score: ${result.score}/100 | ${result.severity.toUpperCase()} | ${issueSummary}`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Security analysis failed.';
+        void vscode.window.showErrorMessage(`Security Analyze: ${message}`);
+      }
+
+      await backendSyncService.sync('major-event');
+      return;
+    }
+
     if (action === 'review') {
       const active = vscode.window.activeTextEditor;
       if (!active) {
@@ -2614,6 +2696,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('preecode.reviewCode', async () => {
       await runQuickAction('review');
+    }),
+    vscode.commands.registerCommand('preecode.securityAnalyze', async () => {
+      await runQuickAction('security');
     }),
     vscode.commands.registerCommand('preecode.openControlCenter', async () => {
       await vscode.commands.executeCommand('workbench.view.extension.preecode');

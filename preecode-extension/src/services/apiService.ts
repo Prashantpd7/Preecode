@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
-const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
+export const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
 const QUESTION_REQUEST_TIMEOUT_MS = 35_000;
 
 function normalizeBaseUrl(url: string): string {
@@ -9,9 +9,17 @@ function normalizeBaseUrl(url: string): string {
 }
 
 export function getBackendUrl(): string {
-    const configured = vscode.workspace.getConfiguration('preecode').get<string>('backendUrl')?.trim();
-    if (configured) {
-        return normalizeBaseUrl(configured);
+    // Use inspect() to check if the user explicitly set this in VS Code settings.
+    // get() returns the package.json default even when not explicitly set, which
+    // would prevent env var overrides (like .env.local) from ever being checked.
+    const config = vscode.workspace.getConfiguration('preecode');
+    const inspected = config.inspect<string>('backendUrl');
+    if (inspected) {
+        // Only use VS Code setting if user explicitly set it (not the default)
+        const explicitValue = inspected.globalValue ?? inspected.workspaceValue ?? inspected.workspaceFolderValue;
+        if (explicitValue) {
+            return normalizeBaseUrl(explicitValue.trim());
+        }
     }
 
     const envConfigured = process.env.PREECODE_BACKEND_URL?.trim();
@@ -24,9 +32,19 @@ export function getBackendUrl(): string {
 }
 
 export function getFrontendUrl(): string {
-    const configured = vscode.workspace.getConfiguration('preecode').get<string>('frontendUrl');
+    const config = vscode.workspace.getConfiguration('preecode');
+    const inspected = config.inspect<string>('frontendUrl');
+    if (inspected) {
+        const explicitValue = inspected.globalValue ?? inspected.workspaceValue ?? inspected.workspaceFolderValue;
+        if (explicitValue) {
+            return normalizeBaseUrl(explicitValue.trim());
+        }
+    }
     const envConfigured = process.env.PREECODE_FRONTEND_URL?.trim();
-    return normalizeBaseUrl(configured || envConfigured || 'https://preecode.vercel.app');
+    if (envConfigured) {
+        return normalizeBaseUrl(envConfigured);
+    }
+    return 'https://preecode.vercel.app';
 }
 
 export function getApiBase(): string {
@@ -45,7 +63,7 @@ export async function doFetch(url: string, opts?: any): Promise<any> {
     return fn(url, opts);
 }
 
-async function doFetchWithTimeout(url: string, opts: any, timeoutMs = QUESTION_REQUEST_TIMEOUT_MS): Promise<any> {
+export async function doFetchWithTimeout(url: string, opts: any, timeoutMs = QUESTION_REQUEST_TIMEOUT_MS): Promise<any> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
