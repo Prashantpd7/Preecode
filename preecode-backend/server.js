@@ -43,6 +43,7 @@ const resumeRoutes = require('./routes/resumeRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const readinessRoutes = require('./routes/readinessRoutes');
 const securityRoutes = require('./routes/securityRoutes');
+const armoriqMcpRoutes = require('./routes/armoriqMcpRoutes');
 
 const errorHandler = require('./middleware/errorMiddleware');
 
@@ -142,6 +143,7 @@ app.use('/api/v2/resume', resumeRoutes);
 app.use('/api/v2/interview', interviewRoutes);
 app.use('/api/v2/readiness', readinessRoutes);
 app.use('/api/security', securityRoutes);
+app.use('/api/armoriq', armoriqMcpRoutes);
 
 /* ================= ERROR HANDLER ================= */
 

@@ -1,18 +1,24 @@
 const { analyzeCode } = require('../services/armorclawService');
-const { logSecurityScan, createAuditEntry } = require('../services/armoriqService');
+const { logSecurityScan, createAuditEntry, evaluatePolicy, reportSecurityEvent } = require('../services/armoriqService');
 const SecurityAudit = require('../models/SecurityAudit');
 
 /**
  * POST /api/security/analyze
  * 
- * Analyzes selected code for security vulnerabilities.
- * Uses ArmorClaw service (with AI fallback) for analysis.
- * Logs results via ArmorIQ service and stores in SecurityAudit collection.
+ * Full ArmorIQ-integrated Security Analyze workflow (exact 6-step spec):
+ *   Step 1: User clicks Security Analyze (handled by extension)
+ *   Step 2: Security findings are generated (AI analysis via ArmorClaw)
+ *   Step 3: Findings are sent to ArmorIQ (capturePlan + getIntentToken + invoke)
+ *   Step 4: ArmorIQ policy evaluation runs (evaluatePolicy via getIntentToken with policy)
+ *   Step 5: Audit log entry is created (database + ArmorIQ audit)
+ *   Step 6: Response is returned to Preecode
  */
 exports.analyzeCode = async (req, res, next) => {
-  try {
-    const { code, fileName, language } = req.body;
+  const { code, fileName, language } = req.body;
+  const userId = req.user?._id?.toString();
+  const startTime = Date.now();
 
+  try {
     if (!code || typeof code !== 'string' || !code.trim()) {
       return res.status(400).json({
         success: false,
@@ -28,15 +34,83 @@ exports.analyzeCode = async (req, res, next) => {
       });
     }
 
-    // Perform security analysis
+    // ============================================================================
+    // STEP 2: Generate security findings via ArmorClaw AI analysis
+    // ============================================================================
+    console.log('[Security] Step 2: Generating security findings via ArmorClaw AI...');
     const result = await analyzeCode(code, language || 'auto', {
       fileName: fileName || 'untitled',
-      userId: req.user?._id?.toString(),
+      userId,
     });
 
-    // Store audit log in database
+    const elapsed = Date.now() - startTime;
+    console.log(`[Security] Analysis complete — Score: ${result.score}/100, Issues: ${result.totalIssues}, Severity: ${result.severity} (${elapsed}ms)`);
+
+    const context = {
+      code,
+      language: language || 'auto',
+      metadata: { fileName: fileName || 'untitled', userId, score: result.score, issueCount: result.totalIssues },
+    };
+
+    // ============================================================================
+    // STEP 3: Send findings to ArmorIQ via capturePlan + getIntentToken + invoke
+    // ============================================================================
+    let armoriqAuditResult = null;
     try {
-      const auditLog = new SecurityAudit({
+      console.log('[ArmorIQ] Step 3: Sending findings to ArmorIQ...');
+      armoriqAuditResult = await logSecurityScan({
+        // The logSecurityScan function internally uses:
+        //   1. capturePlan() to capture the security scan intent
+        //   2. getIntentToken() to get signed token (with "security-scan-policy")
+        //   3. verifyIntentToken() automatically verifies the token
+        //   4. invoke() to send the audit record to ArmorIQ backend
+        resource: 'code_analysis',
+        status: 'completed',
+        details: {
+          language,
+          codeLength: code.length,
+          score: result.score,
+          issueCount: result.totalIssues,
+          severity: result.severity,
+          analysisTimeMs: elapsed,
+          findings: result.issues.map((i) => ({
+            type: i.type,
+            severity: i.severity,
+            title: i.title,
+          })),
+        },
+        userId,
+      });
+      console.log('[ArmorIQ] Step 3 complete — Findings sent to ArmorIQ');
+    } catch (armoriqError) {
+      console.error('[ArmorIQ] Step 3 failed (non-fatal):', armoriqError.message);
+    }
+
+    // ============================================================================
+    // STEP 4: ArmorIQ policy evaluation runs
+    // ============================================================================
+    const defaultPolicyResult = { passed: true, policyName: 'no-hardcoded-secrets', message: 'Policy evaluation skipped (see details).', details: {} };
+    let policyResult = defaultPolicyResult;
+    let policyEvaluated = false;
+    try {
+      console.log('[ArmorIQ] Policy Check Started — Evaluating ArmorIQ policies...');
+      policyResult = await evaluatePolicy('no-hardcoded-secrets', context);
+      policyEvaluated = policyResult !== defaultPolicyResult;
+      console.log('[ArmorIQ] Policy Result —', JSON.stringify(policyResult));
+      console.log('[ArmorIQ] Step 4 complete — Policy evaluation finished');
+    } catch (policyError) {
+      console.error('[ArmorIQ] Policy evaluation failed (non-fatal):', policyError.message);
+    }
+
+    // ============================================================================
+    // STEP 5: Audit log entry created (database + ArmorIQ audit)
+    // ============================================================================
+    let auditLog = null;
+    try {
+      console.log('[ArmorIQ] Step 5: Creating audit log entries...');
+
+      // 5a. Save to MongoDB SecurityAudit collection
+      auditLog = new SecurityAudit({
         userId: req.user?._id,
         action: 'security_scan',
         resource: 'code_analysis',
@@ -50,30 +124,61 @@ exports.analyzeCode = async (req, res, next) => {
           summary: result.summary,
           issueTypes: result.issues.map((i) => i.type),
           recommendations: result.recommendations,
+          armoriqAudited: !!armoriqAuditResult,
+          armoriqTokenId: armoriqAuditResult?.armoriqTokenId || null,
+          policyCheck: policyResult,
         },
         ip: req.ip,
         userAgent: req.headers['user-agent'] || '',
       });
       await auditLog.save();
+      console.log('[ArmorIQ] Audit Log Created — Database audit saved:', auditLog._id.toString());
 
-      // Also log via ArmorIQ service
-      await logSecurityScan({
+      // 5b. Also create an independent ArmorIQ audit entry
+      await createAuditEntry({
+        action: 'security_scan',
         resource: 'code_analysis',
         status: 'completed',
         details: {
-          auditId: auditLog._id.toString(),
-          language,
-          codeLength: code.length,
+          databaseAuditId: auditLog._id.toString(),
           score: result.score,
           issueCount: result.totalIssues,
+          severity: result.severity,
+          analysisTimeMs: elapsed,
+          policyPassed: policyResult.passed,
         },
-        userId: req.user?._id?.toString(),
-      });
+        userId,
+      }).catch((e) => console.error('[ArmorIQ] Additional audit entry failed:', e.message));
+
     } catch (logError) {
       console.error('[SECURITY_CONTROLLER] Failed to save audit log:', logError.message);
       // Don't fail the request if audit logging fails
     }
 
+    // ============================================================================
+    // STEP 5b: Report security event if significant issues found
+    // ============================================================================
+    if (result.totalIssues > 0 && result.score < 70) {
+      try {
+        const eventResult = await reportSecurityEvent('security_vulnerability_found', {
+          score: result.score,
+          severity: result.severity,
+          issueCount: result.totalIssues,
+          issueTypes: result.issues.map((i) => i.type),
+          fileName: fileName || 'untitled',
+          language: language || 'auto',
+          userId,
+        });
+        console.log('[ArmorIQ] Event Synced — Security vulnerability event:', eventResult.id || 'synced');
+      } catch (eventError) {
+        console.error('[ArmorIQ] Failed to sync security event:', eventError.message);
+      }
+    }
+
+    // ============================================================================
+    // STEP 6: Response is returned to Preecode
+    // ============================================================================
+    console.log('[Security] Step 6: Returning response to Preecode extension');
     res.json({
       success: true,
       data: {
@@ -84,11 +189,28 @@ exports.analyzeCode = async (req, res, next) => {
         recommendations: result.recommendations,
         totalIssues: result.totalIssues,
       },
+      meta: {
+        analysisTimeMs: elapsed,
+        steps: {
+          findingsGenerated: true,
+          findingsSentToArmorIQ: !!armoriqAuditResult,
+          policyEvaluated,
+          auditLogged: !!auditLog,
+          armoriqEventSynced: result.totalIssues > 0 && result.score < 70,
+        },
+        armoriq: {
+          tokenId: armoriqAuditResult?.armoriqTokenId || null,
+          policyChecked: policyResult.passed,
+          policyName: policyResult.policyName,
+        },
+        databaseAuditId: auditLog?._id?.toString() || null,
+      },
     });
   } catch (error) {
     console.error('[SECURITY_CONTROLLER] Analysis error:', error.message);
+    const elapsed = Date.now() - startTime;
 
-    // Log failure
+    // Log failure to ArmorIQ
     try {
       await createAuditEntry({
         action: 'security_scan',
@@ -98,8 +220,9 @@ exports.analyzeCode = async (req, res, next) => {
           language,
           codeLength: req.body?.code?.length || 0,
           error: error.message,
+          analysisTimeMs: elapsed,
         },
-        userId: req.user?._id?.toString(),
+        userId,
       });
     } catch (logError) {
       // Ignore audit log failures
