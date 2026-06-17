@@ -104,6 +104,8 @@ async function logSecurityScan(entry) {
     return auditRecord;
   }
 
+  let intentToken;
+  let invokeResult;
   try {
     console.log('[ArmorIQ] Policy Check Started — logging security scan via ArmorIQ SDK');
     console.log('[ArmorIQ] Entry:', JSON.stringify(entry));
@@ -135,11 +137,11 @@ async function logSecurityScan(entry) {
     console.log('[ArmorIQ] Plan captured:', planCapture.id || JSON.stringify(planCapture).slice(0, 100));
 
     // Step 2: Get signed intent token (enforces policies if configured)
-    const intentToken = await client.getIntentToken(planCapture, 'security-scan-policy', 300); // 5 minute validity
+    intentToken = await client.getIntentToken(planCapture, { policyName: 'security-scan-policy' }, 300); // 5 minute validity
     console.log('[ArmorIQ] Policy Check Result — Intent token obtained:', intentToken.tokenId || 'success');
 
     // Step 3: Invoke the audit logging action (auto-verified against intent token)
-    const invokeResult = await client.invoke(
+    invokeResult = await client.invoke(
       'preecode-audit-mcp',
       'log_security_scan',
       intentToken,
@@ -165,7 +167,8 @@ async function logSecurityScan(entry) {
       details: entry.details,
       userId: entry.userId,
       timestamp: new Date().toISOString(),
-    };    } catch (error) {
+    };
+  } catch (error) {
     console.error('[ArmorIQ] Failed to log security scan via SDK:', error.message);
 
     if (error instanceof InvalidTokenException) {
@@ -178,8 +181,9 @@ async function logSecurityScan(entry) {
       console.error('[ArmorIQ] MCP invocation failed — audit service unavailable');
     }
 
-    // Fallback to local audit when SDK fails
+    // Fallback to local audit when SDK fails, but preserve intent token if we got one
     console.log('[ArmorIQ] Falling back to local audit entry after SDK failure');
+    const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
     return {
       id: `audit-fallback-${Date.now()}`,
       action: 'security_scan',
@@ -190,6 +194,7 @@ async function logSecurityScan(entry) {
       userId: entry.userId || 'system',
       timestamp: new Date().toISOString(),
       armoriqError: error.message,
+      armoriqTokenId,
     };
   }
 }
@@ -244,6 +249,8 @@ async function evaluatePolicy(policyName, context = {}) {
     return result;
   }
 
+  let intentToken;
+  let invokeResult;
   try {
     console.log('[ArmorIQ] Policy Check Started — evaluating policy:', policyName);
 
@@ -273,11 +280,11 @@ async function evaluatePolicy(policyName, context = {}) {
     console.log('[ArmorIQ] Policy plan captured:', planCapture.id || JSON.stringify(planCapture).slice(0, 100));
 
     // Step 2: Get intent token with policy constraints
-    const intentToken = await client.getIntentToken(planCapture, policyName || 'default-security-policy', 120); // 2 minute validity
+    intentToken = await client.getIntentToken(planCapture, { policyName: policyName || 'default-security-policy' }, 120); // 2 minute validity
     console.log('[ArmorIQ] Policy Result — Intent token obtained:', intentToken.tokenId || 'success');
 
     // Step 3: Invoke policy evaluation via ArmorIQ
-    const invokeResult = await client.invoke(
+    invokeResult = await client.invoke(
       'preecode-policy-mcp',
       'evaluate_policy',
       intentToken,
@@ -304,7 +311,8 @@ async function evaluatePolicy(policyName, context = {}) {
         armoriqTokenId: intentToken.tokenId,
         invokeResult: invokeResult,
       },
-    };    } catch (error) {
+    };
+  } catch (error) {
     console.error('[ArmorIQ] Policy evaluation failed via SDK:', error.message);
 
     if (error instanceof InvalidTokenException) {
@@ -315,7 +323,8 @@ async function evaluatePolicy(policyName, context = {}) {
       console.error('[ArmorIQ] MCP invocation failed — policy evaluation service unavailable');
     }
 
-    // Fallback
+    // Fallback, but preserve intent token if we got one
+    const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
     return {
       passed: false,
       policyName: policyName,
@@ -325,6 +334,7 @@ async function evaluatePolicy(policyName, context = {}) {
         evaluatedAt: new Date().toISOString(),
         error: error.message,
         fallback: true,
+        armoriqTokenId,
       },
     };
   }
@@ -362,6 +372,8 @@ async function createAuditEntry(entry) {
     return auditRecord;
   }
 
+  let intentToken;
+  let invokeResult;
   try {
     console.log('[ArmorIQ] Creating audit entry via SDK:', entry.action);
 
@@ -390,10 +402,10 @@ async function createAuditEntry(entry) {
     );
 
     // Step 2: Get intent token
-    const intentToken = await client.getIntentToken(planCapture, null, 300);
+    intentToken = await client.getIntentToken(planCapture, undefined, 300);
 
     // Step 3: Invoke audit entry creation
-    const invokeResult = await client.invoke(
+    invokeResult = await client.invoke(
       'preecode-audit-mcp',
       'create_audit_entry',
       intentToken,
@@ -422,7 +434,8 @@ async function createAuditEntry(entry) {
   } catch (error) {
     console.error('[ArmorIQ] Failed to create audit entry via SDK:', error.message);
 
-    // Fallback
+    // Fallback, but preserve intent token if we got one
+    const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
     return {
       id: `entry-fallback-${Date.now()}`,
       action: entry.action || 'unknown',
@@ -433,6 +446,7 @@ async function createAuditEntry(entry) {
       userId: entry.userId || 'system',
       timestamp: new Date().toISOString(),
       armoriqError: error.message,
+      armoriqTokenId,
     };
   }
 }
@@ -457,6 +471,8 @@ async function reportSecurityEvent(eventType, eventData = {}) {
     };
   }
 
+  let intentToken;
+  let invokeResult;
   try {
     console.log('[ArmorIQ] Event Synced — reporting security event:', eventType);
 
@@ -479,9 +495,9 @@ async function reportSecurityEvent(eventType, eventData = {}) {
       { eventType, source: 'armorclaw' }
     );
 
-    const intentToken = await client.getIntentToken(planCapture, null, 60);
+    intentToken = await client.getIntentToken(planCapture, undefined, 60);
 
-    const invokeResult = await client.invoke(
+    invokeResult = await client.invoke(
       'preecode-event-mcp',
       'report_security_event',
       intentToken,
@@ -501,12 +517,14 @@ async function reportSecurityEvent(eventType, eventData = {}) {
     };
   } catch (error) {
     console.error('[ArmorIQ] Failed to sync security event:', error.message);
+    const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
     return {
       id: `event-fallback-${Date.now()}`,
       eventType,
       status: 'failed',
       error: error.message,
       timestamp: new Date().toISOString(),
+      armoriqTokenId,
     };
   }
 }

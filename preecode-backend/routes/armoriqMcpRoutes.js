@@ -1,145 +1,216 @@
 /**
- * ArmorIQ MCP Server Endpoints
+ * ArmorIQ MCP Server — Model Context Protocol Implementation
  * 
- * These endpoints receive forwarded calls from the ArmorIQ proxy when
- * client.invoke() is called. The ArmorIQ proxy:
- *   1. Verifies the intent token
- *   2. Checks policies
- *   3. Forwards the call to this MCP server
- *   4. Logs the result to the ArmorIQ audit trail
+ * Implements the MCP Streamable HTTP transport specification:
+ *   https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
  * 
- * Accepts BOTH formats:
- *   - SDK-native: { action, params, requestId }
- *   - JSON-RPC:   { jsonrpc, method, params: { name, arguments }, id }
+ * Single endpoint: POST /api/armoriq/mcp
  * 
- * These endpoints MUST be registered in the ArmorIQ Platform MCP Registry
- * for invoke() to succeed. The registration URL must be publicly reachable
- * from the ArmorIQ cloud proxy (not localhost).
+ * Handles JSON-RPC 2.0 methods:
+ *   - initialize       → Server capabilities + protocol version
+ *   - tools/list       → Available tools (audit, policy, event)
+ *   - tools/call       → Execute a tool by name
+ * 
+ * Headers required by MCP spec:
+ *   Accept: application/json
+ *   Content-Type: application/json
+ *   MCP-Protocol-Version: 2025-11-25
+ * 
+ * This single endpoint should be registered on the ArmorIQ platform
+ * for all 3 MCP server names (preecode-audit-mcp, preecode-policy-mcp,
+ * preecode-event-mcp) since they all use the same tools.
  */
+
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const SecurityAudit = require('../models/SecurityAudit');
 
+// MCP Protocol version
+const MCP_VERSION = '2025-11-25';
+
 /**
- * Normalizes incoming request to { action, params, requestId } regardless
- * of whether the proxy sends SDK-native format or JSON-RPC format.
+ * MCP Server capabilities declaration
  */
-function normalizeRequest(body) {
-  // JSON-RPC format: { jsonrpc, method, params: { name, arguments }, id }
-  if (body.jsonrpc === '2.0' && body.method === 'tools/call') {
-    return {
-      action: body.params?.name || body.params?.action || 'unknown',
-      params: body.params?.arguments || body.params || {},
-      requestId: body.id || body.params?.requestId || null,
-    };
+const SERVER_CAPABILITIES = {
+  tools: {},  // server supports the tools capability
+};
+
+const SERVER_INFO = {
+  name: 'preecode-armoriq-mcp',
+  version: '1.0.0',
+};
+
+/**
+ * Tool definitions for tools/list
+ * Each tool maps to an ArmorIQ action.
+ */
+const TOOLS = [
+  {
+    name: 'log_security_scan',
+    description: 'Log a security scan result with score, issues, and recommendations',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        resource: { type: 'string', description: 'Resource being scanned (e.g. code_analysis)' },
+        status: { type: 'string', enum: ['completed', 'failed', 'pending'], description: 'Scan status' },
+        details: { type: 'object', description: 'Scan details including score, issues, severity' },
+        userId: { type: 'string', description: 'User who performed the scan' },
+        timestamp: { type: 'string', description: 'ISO timestamp' },
+      },
+      required: ['resource', 'status'],
+    },
+  },
+  {
+    name: 'create_audit_entry',
+    description: 'Create a formal audit log entry for any security action',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'Action being audited' },
+        resource: { type: 'string', description: 'Resource acted upon' },
+        status: { type: 'string', enum: ['completed', 'failed', 'pending'], description: 'Action status' },
+        details: { type: 'object', description: 'Additional context' },
+        userId: { type: 'string', description: 'User who performed the action' },
+        timestamp: { type: 'string', description: 'ISO timestamp' },
+      },
+      required: ['action', 'resource', 'status'],
+    },
+  },
+  {
+    name: 'evaluate_policy',
+    description: 'Evaluate code against a named security policy',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        policyName: { type: 'string', description: 'Name of the policy to evaluate' },
+        language: { type: 'string', description: 'Programming language of the code' },
+        codeSnippet: { type: 'string', description: 'Code to evaluate (truncated)' },
+        metadata: { type: 'object', description: 'Additional context' },
+      },
+      required: ['policyName'],
+    },
+  },
+  {
+    name: 'report_security_event',
+    description: 'Report a security vulnerability event with score and severity',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        eventType: { type: 'string', description: 'Type of security event' },
+        score: { type: 'number', description: 'Security score 0-100' },
+        severity: { type: 'string', description: 'Overall severity' },
+        issueCount: { type: 'number', description: 'Number of issues found' },
+        issueTypes: { type: 'array', items: { type: 'string' }, description: 'Types of issues' },
+        fileName: { type: 'string', description: 'File that was analyzed' },
+        language: { type: 'string', description: 'Programming language' },
+        userId: { type: 'string', description: 'User who triggered the event' },
+      },
+      required: ['eventType'],
+    },
+  },
+];
+
+/**
+ * Validates MCP protocol version header
+ */
+function validateMcpHeaders(req) {
+  const version = req.headers['mcp-protocol-version'];
+  if (!version) {
+    return { valid: false, error: { code: -32001, message: 'Missing MCP-Protocol-Version header. Must be: 2025-11-25' } };
   }
-  // SDK-native format: { action, params, requestId }
-  return {
-    action: body.action || 'unknown',
-    params: body.params || {},
-    requestId: body.requestId || null,
-  };
+  return { valid: true };
 }
 
-function mcpSuccessResponse(requestId, data) {
-  return {
-    jsonrpc: '2.0',
-    id: requestId || `mcp-${Date.now()}`,
-    result: {
-      success: true,
-      data: data || {},
-      timestamp: new Date().toISOString(),
-    },
-  };
-}
+/**
+ * Handles the initialize method
+ */
+function handleInitialize(params) {
+  const clientVersion = params?.protocolVersion || 'unknown';
+  console.log('[ArmorIQ MCP] initialize — client protocol:', clientVersion, 'client:', params?.clientInfo?.name, params?.clientInfo?.version);
 
-function mcpErrorResponse(requestId, message) {
   return {
-    jsonrpc: '2.0',
-    id: requestId || null,
-    error: {
-      code: -32000,
-      message: message || 'MCP invocation failed',
-    },
+    protocolVersion: MCP_VERSION,
+    capabilities: SERVER_CAPABILITIES,
+    serverInfo: SERVER_INFO,
   };
 }
 
 /**
- * POST /api/armoriq/audit - Audit logging MCP server
- * MCP name: preecode-audit-mcp
- * Actions: log_security_scan, create_audit_entry
+ * Handles the tools/list method
  */
-router.post('/audit', async (req, res) => {
-  try {
-    const { action, params, requestId } = normalizeRequest(req.body);
-    console.log('[ArmorIQ MCP] Audit endpoint called — action:', action);
-    console.log('[ArmorIQ MCP] Params:', JSON.stringify(params || {}).slice(0, 500));
+function handleToolsList() {
+  console.log('[ArmorIQ MCP] tools/list — returning', TOOLS.length, 'tools');
+  return {
+    tools: TOOLS,
+  };
+}
 
-    if (action === 'log_security_scan') {
+/**
+ * Executes a tool by name with given arguments
+ */
+async function handleToolsCall(name, args) {
+  console.log('[ArmorIQ MCP] tools/call — name:', name, 'args:', JSON.stringify(args || {}).slice(0, 300));
+
+  switch (name) {
+    case 'log_security_scan': {
       const auditRecord = {
         action: 'security_scan',
         source: 'armorclaw',
-        resource: params?.resource || 'unknown',
-        status: params?.status || 'completed',
-        details: params?.details || {},
-        userId: params?.userId || 'system',
-        timestamp: params?.timestamp || new Date().toISOString(),
+        resource: args?.resource || 'unknown',
+        status: args?.status || 'completed',
+        details: args?.details || {},
+        userId: args?.userId || 'system',
+        timestamp: args?.timestamp || new Date().toISOString(),
         armoriqVerified: true,
         armoriqSource: 'mcp_proxy',
       };
       console.log('[ArmorIQ MCP] Security scan audit stored:', JSON.stringify(auditRecord).slice(0, 200));
-
-      return res.json(mcpSuccessResponse(requestId, {
-        id: `audit-${Date.now()}`,
-        stored: true,
-        action: 'log_security_scan',
-      }));
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            id: `audit-${Date.now()}`,
+            stored: true,
+            action: 'log_security_scan',
+            resource: auditRecord.resource,
+            status: auditRecord.status,
+            timestamp: auditRecord.timestamp,
+          }),
+        }],
+      };
     }
 
-    if (action === 'create_audit_entry') {
+    case 'create_audit_entry': {
       const auditRecord = {
-        action: params?.action || 'unknown',
+        action: args?.action || 'unknown',
         source: 'armoriq',
-        resource: params?.resource || 'unknown',
-        status: params?.status || 'completed',
-        details: params?.details || {},
-        userId: params?.userId || 'system',
-        timestamp: params?.timestamp || new Date().toISOString(),
+        resource: args?.resource || 'unknown',
+        status: args?.status || 'completed',
+        details: args?.details || {},
+        userId: args?.userId || 'system',
+        timestamp: args?.timestamp || new Date().toISOString(),
         armoriqVerified: true,
         armoriqSource: 'mcp_proxy',
       };
       console.log('[ArmorIQ MCP] Audit entry created:', JSON.stringify(auditRecord).slice(0, 200));
-
-      return res.json(mcpSuccessResponse(requestId, {
-        id: `entry-${Date.now()}`,
-        stored: true,
-        action: 'create_audit_entry',
-      }));
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            id: `entry-${Date.now()}`,
+            stored: true,
+            action: 'create_audit_entry',
+            resource: auditRecord.resource,
+            status: auditRecord.status,
+            timestamp: auditRecord.timestamp,
+          }),
+        }],
+      };
     }
 
-    return res.status(400).json(mcpErrorResponse(requestId, `Unknown action: ${action}`));
-  } catch (error) {
-    console.error('[ArmorIQ MCP] Audit endpoint error:', error.message);
-    return res.status(500).json(mcpErrorResponse(null, error.message));
-  }
-});
-
-/**
- * POST /api/armoriq/policy - Policy evaluation MCP server
- * MCP name: preecode-policy-mcp
- * Actions: evaluate_policy
- */
-router.post('/policy', async (req, res) => {
-  try {
-    const { action, params, requestId } = normalizeRequest(req.body);
-    console.log('[ArmorIQ MCP] Policy endpoint called — action:', action);
-    console.log('[ArmorIQ MCP] Policy name:', params?.policyName);
-
-    if (action === 'evaluate_policy') {
-      const policyName = params?.policyName || 'unknown';
-      const language = params?.language || 'unknown';
-
+    case 'evaluate_policy': {
+      const policyName = args?.policyName || 'unknown';
       const validPolicies = [
         'no-hardcoded-secrets', 'no-sql-injection', 'no-xss',
         'input-validation', 'secure-crypto', 'safe-deserialization', 'auth-best-practices',
@@ -155,67 +226,53 @@ router.post('/policy', async (req, res) => {
           : `Policy "${normalizedPolicy}" is not defined.`,
         violations: [],
         evaluatedAt: new Date().toISOString(),
-        language,
+        language: args?.language || 'unknown',
       };
       console.log('[ArmorIQ MCP] Policy evaluation result:', JSON.stringify(result));
-      return res.json(mcpSuccessResponse(requestId, result));
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(result),
+        }],
+      };
     }
 
-    return res.status(400).json(mcpErrorResponse(requestId, `Unknown action: ${action}`));
-  } catch (error) {
-    console.error('[ArmorIQ MCP] Policy endpoint error:', error.message);
-    return res.status(500).json(mcpErrorResponse(null, error.message));
-  }
-});
-
-/**
- * POST /api/armoriq/event - Security event MCP server
- * MCP name: preecode-event-mcp
- * Actions: report_security_event
- */
-router.post('/event', async (req, res) => {
-  try {
-    const { action, params, requestId } = normalizeRequest(req.body);
-    console.log('[ArmorIQ MCP] Event endpoint called — action:', action);
-    console.log('[ArmorIQ MCP] Event type:', params?.eventType);
-
-    if (action === 'report_security_event') {
+    case 'report_security_event': {
       const eventRecord = {
-        eventType: params?.eventType || 'unknown',
-        score: params?.score,
-        severity: params?.severity,
-        issueCount: params?.issueCount,
-        issueTypes: params?.issueTypes,
-        fileName: params?.fileName,
-        language: params?.language,
-        userId: params?.userId || 'system',
+        eventType: args?.eventType || 'unknown',
+        score: args?.score,
+        severity: args?.severity,
+        issueCount: args?.issueCount,
+        issueTypes: args?.issueTypes,
+        fileName: args?.fileName,
+        language: args?.language,
+        userId: args?.userId || 'system',
         timestamp: new Date().toISOString(),
         armoriqVerified: true,
         armoriqSource: 'mcp_proxy',
       };
       console.log('[ArmorIQ MCP] Security event recorded:', JSON.stringify(eventRecord).slice(0, 300));
 
-      // Store in SecurityAudit collection using safe ObjectId conversion
-      if (params?.score !== undefined) {
+      // Store in SecurityAudit collection
+      if (args?.score !== undefined) {
         try {
           let safeUserId = undefined;
-          if (params.userId && mongoose.Types.ObjectId.isValid(params.userId)) {
-            safeUserId = new mongoose.Types.ObjectId(params.userId);
+          if (args.userId && mongoose.Types.ObjectId.isValid(args.userId)) {
+            safeUserId = new mongoose.Types.ObjectId(args.userId);
           }
-
           const auditLog = new SecurityAudit({
             userId: safeUserId,
             action: 'vulnerability_scan',
             resource: 'code_analysis',
             status: 'completed',
-            fileName: params.fileName || 'untitled',
-            language: params.language || 'auto',
-            securityScore: params.score,
-            issueCount: params.issueCount || 0,
-            severity: params.severity || 'low',
+            fileName: args.fileName || 'untitled',
+            language: args.language || 'auto',
+            securityScore: args.score,
+            issueCount: args.issueCount || 0,
+            severity: args.severity || 'low',
             details: {
-              eventType: params.eventType,
-              issueTypes: params.issueTypes,
+              eventType: args.eventType,
+              issueTypes: args.issueTypes,
               armoriqVerified: true,
               armoriqSource: 'mcp_proxy',
             },
@@ -227,19 +284,152 @@ router.post('/event', async (req, res) => {
         }
       }
 
-      return res.json(mcpSuccessResponse(requestId, {
-        id: `event-${Date.now()}`,
-        stored: true,
-        action: 'report_security_event',
-        eventType: params?.eventType,
-      }));
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            id: `event-${Date.now()}`,
+            stored: true,
+            action: 'report_security_event',
+            eventType: args?.eventType,
+            timestamp: new Date().toISOString(),
+          }),
+        }],
+      };
     }
 
-    return res.status(400).json(mcpErrorResponse(requestId, `Unknown action: ${action}`));
+    default:
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${name}. Available: ${TOOLS.map(t => t.name).join(', ')}` }) }],
+        isError: true,
+      };
+  }
+}
+
+// ============================================================================
+// MCP Protocol Endpoint — Single handler for all MCP methods
+// ============================================================================
+
+router.post('/mcp', async (req, res) => {
+  // Validate MCP headers
+  const headerCheck = validateMcpHeaders(req);
+  if (!headerCheck.valid) {
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      id: null,
+      error: headerCheck.error,
+    });
+  }
+
+  const body = req.body;
+
+  // Validate JSON-RPC format
+  if (!body || body.jsonrpc !== '2.0') {
+    return res.status(400).json({
+      jsonrpc: '2.0',
+      id: body?.id || null,
+      error: { code: -32600, message: 'Invalid Request: must be JSON-RPC 2.0' },
+    });
+  }
+
+  // Notification (no id) — just acknowledge
+  if (body.id === undefined || body.id === null) {
+    console.log('[ArmorIQ MCP] Notification received — method:', body.method);
+    return res.status(202).end(); // Accepted, no response
+  }
+
+  const { method, params, id } = body;
+
+  try {
+    let result;
+
+    switch (method) {
+      case 'initialize':
+        result = handleInitialize(params);
+        break;
+
+      case 'tools/list':
+        result = handleToolsList();
+        break;
+
+      case 'tools/call':
+        result = await handleToolsCall(params?.name, params?.arguments);
+        break;
+
+      default:
+        return res.status(400).json({
+          jsonrpc: '2.0',
+          id,
+          error: { code: -32601, message: `Method not found: ${method}` },
+        });
+    }
+
+    // Set MCP protocol headers
+    res.set('MCP-Protocol-Version', MCP_VERSION);
+    res.set('Content-Type', 'application/json');
+
+    return res.json({
+      jsonrpc: '2.0',
+      id,
+      result,
+    });
   } catch (error) {
-    console.error('[ArmorIQ MCP] Event endpoint error:', error.message);
-    return res.status(500).json(mcpErrorResponse(null, error.message));
+    console.error('[ArmorIQ MCP] Error handling method:', method, error.message);
+    return res.json({
+      jsonrpc: '2.0',
+      id,
+      error: {
+        code: -32000,
+        message: error.message || 'Internal MCP server error',
+      },
+    });
   }
 });
+
+/**
+ * GET /api/armoriq/mcp — Health check for MCP endpoint
+ */
+router.get('/mcp', (req, res) => {
+  res.json({
+    server: SERVER_INFO.name,
+    version: SERVER_INFO.version,
+    protocol: MCP_VERSION,
+    tools: TOOLS.length,
+    status: 'ready',
+  });
+});
+
+/**
+ * Legacy REST endpoints for backward compatibility
+ */
+
+router.post('/audit', async (req, res) => {
+  return handleLegacyCall(req, res, 'log_security_scan');
+});
+router.post('/policy', async (req, res) => {
+  return handleLegacyCall(req, res, 'evaluate_policy');
+});
+router.post('/event', async (req, res) => {
+  return handleLegacyCall(req, res, 'report_security_event');
+});
+
+async function handleLegacyCall(req, res, toolName) {
+  try {
+    const body = req.body;
+    const args = body.params || body.arguments || body;
+    const result = await handleToolsCall(toolName, args);
+    return res.json({
+      jsonrpc: '2.0',
+      id: body.id || `legacy-${Date.now()}`,
+      result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      jsonrpc: '2.0',
+      id: null,
+      error: { code: -32000, message: error.message },
+    });
+  }
+}
 
 module.exports = router;
