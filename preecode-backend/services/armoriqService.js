@@ -117,7 +117,7 @@ async function logSecurityScan(entry) {
         {
           action: 'log_security_scan',
           tool: 'audit_logger',
-          mcp: 'preecode-audit-mcp',
+          mcp: 'preecode-armoriq-mcp',
           inputs: {
             resource: entry.resource,
             status: entry.status,
@@ -142,7 +142,7 @@ async function logSecurityScan(entry) {
 
     // Step 3: Invoke the audit logging action (auto-verified against intent token)
     invokeResult = await client.invoke(
-      'preecode-audit-mcp',
+      'preecode-armoriq-mcp',
       'log_security_scan',
       intentToken,
       {
@@ -261,7 +261,7 @@ async function evaluatePolicy(policyName, context = {}) {
         {
           action: 'evaluate_policy',
           tool: 'policy_engine',
-          mcp: 'preecode-policy-mcp',
+          mcp: 'preecode-armoriq-mcp',
           inputs: {
             policyName,
             language: context.language,
@@ -285,7 +285,7 @@ async function evaluatePolicy(policyName, context = {}) {
 
     // Step 3: Invoke policy evaluation via ArmorIQ
     invokeResult = await client.invoke(
-      'preecode-policy-mcp',
+      'preecode-armoriq-mcp',
       'evaluate_policy',
       intentToken,
       {
@@ -384,7 +384,7 @@ async function createAuditEntry(entry) {
         {
           action: 'create_audit_entry',
           tool: 'audit_logger',
-          mcp: 'preecode-audit-mcp',
+          mcp: 'preecode-armoriq-mcp',
           inputs: {
             action: entry.action,
             status: entry.status,
@@ -406,7 +406,7 @@ async function createAuditEntry(entry) {
 
     // Step 3: Invoke audit entry creation
     invokeResult = await client.invoke(
-      'preecode-audit-mcp',
+      'preecode-armoriq-mcp',
       'create_audit_entry',
       intentToken,
       {
@@ -482,7 +482,7 @@ async function reportSecurityEvent(eventType, eventData = {}) {
         {
           action: 'report_security_event',
           tool: 'event_logger',
-          mcp: 'preecode-event-mcp',
+          mcp: 'preecode-armoriq-mcp',
           inputs: { eventType, ...eventData },
         },
       ],
@@ -498,7 +498,7 @@ async function reportSecurityEvent(eventType, eventData = {}) {
     intentToken = await client.getIntentToken(planCapture, undefined, 60);
 
     invokeResult = await client.invoke(
-      'preecode-event-mcp',
+      'preecode-armoriq-mcp',
       'report_security_event',
       intentToken,
       { eventType, ...eventData },

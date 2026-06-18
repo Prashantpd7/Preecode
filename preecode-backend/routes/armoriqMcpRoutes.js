@@ -17,8 +17,8 @@
  *   MCP-Protocol-Version: 2025-11-25
  * 
  * This single endpoint should be registered on the ArmorIQ platform
- * for all 3 MCP server names (preecode-audit-mcp, preecode-policy-mcp,
- * preecode-event-mcp) since they all use the same tools.
+ * for the registered MCP server (preecode-armoriq-mcp) which
+ * exposes all 4 tools on the same endpoint.
  */
 
 const express = require('express');

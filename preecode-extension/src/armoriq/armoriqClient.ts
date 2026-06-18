@@ -73,7 +73,7 @@ export class ArmorIQClient {
             {
               action: 'log_security_scan',
               tool: 'audit_logger',
-              mcp: 'preecode-audit-mcp',
+              mcp: 'preecode-armoriq-mcp',
               inputs: {
                 resource: 'code_generation',
                 status: 'completed',
@@ -93,7 +93,7 @@ export class ArmorIQClient {
         const token = await this.sdkClient.getIntentToken(planCapture, { policyName: 'security-scan-policy' });
 
         await this.sdkClient.invoke(
-          'preecode-audit-mcp',
+          'preecode-armoriq-mcp',
           'log_security_scan',
           token,
           {
