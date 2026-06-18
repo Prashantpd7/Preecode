@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { analyzeCode, getAuditLogs } = require('../controllers/securityController');
+const { analyzeCode, getAuditLogs, createAiAuditLog, getAiAuditLogs } = require('../controllers/securityController');
 const auth = require('../middleware/authMiddleware');
 
 // POST /api/security/analyze - Analyze code for security vulnerabilities
@@ -14,5 +14,11 @@ router.post('/analyze', ...securityMiddlewares, analyzeCode);
 
 // GET /api/security/audit-logs - Get recent audit logs
 router.get('/audit-logs', auth, getAuditLogs);
+
+// POST /api/security/ai-audit - Save AI security audit log
+router.post('/ai-audit', auth, createAiAuditLog);
+
+// GET /api/security/ai-audit-logs - Get recent AI security audit logs
+router.get('/ai-audit-logs', auth, getAiAuditLogs);
 
 module.exports = router;

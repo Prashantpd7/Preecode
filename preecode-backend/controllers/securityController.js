@@ -1,6 +1,7 @@
 const { analyzeCode } = require('../services/armorclawService');
 const { logSecurityScan, createAuditEntry, evaluatePolicy, reportSecurityEvent } = require('../services/armoriqService');
 const SecurityAudit = require('../models/SecurityAudit');
+const AiSecurityAudit = require('../models/AiSecurityAudit');
 
 /**
  * POST /api/security/analyze
@@ -256,6 +257,64 @@ exports.getAuditLogs = async (req, res, next) => {
       success: true,
       data: logs,
       total: logs.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/security/ai-audit
+ * 
+ * Saves a security audit log for AI-generated code
+ */
+exports.createAiAuditLog = async (req, res, next) => {
+  try {
+    const { timestamp, prompt, generatedCode, securityIssues, securityScore, riskLevel, policyAction, armorIQStatus } = req.body;
+    const userId = req.user?._id;
+
+    const audit = new AiSecurityAudit({
+      userId,
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      prompt: prompt || '',
+      generatedCode: generatedCode || '',
+      securityIssues: Array.isArray(securityIssues) ? securityIssues : [],
+      securityScore: typeof securityScore === 'number' ? securityScore : 100,
+      riskLevel: riskLevel || 'low',
+      policyAction: policyAction || 'Allow',
+      armorIQStatus: armorIQStatus || 'Disconnected'
+    });
+
+    await audit.save();
+
+    res.status(201).json({
+      success: true,
+      data: audit
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/security/ai-audit-logs
+ * 
+ * Retrieves recent AI security audit logs for the current user
+ */
+exports.getAiAuditLogs = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const filter = { userId: req.user._id };
+
+    const logs = await AiSecurityAudit.find(filter)
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .select('-__v');
+
+    res.json({
+      success: true,
+      data: logs,
+      total: logs.length
     });
   } catch (error) {
     next(error);

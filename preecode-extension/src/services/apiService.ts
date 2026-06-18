@@ -457,3 +457,69 @@ export async function generateQuestionFromBackend(
         throw new Error(msg || 'Could not reach question generation service.');
     }
 }
+
+export async function saveAiSecurityAudit(
+    context: vscode.ExtensionContext,
+    data: any
+): Promise<boolean> {
+    const token = await getToken(context);
+    if (!token) {
+        return false;
+    }
+
+    try {
+        const response = await doFetch(`${API_BASE}/security/ai-audit`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.status === 401) {
+            await deleteToken(context);
+            return false;
+        }
+
+        return response.ok;
+    } catch (error) {
+        console.error('[ApiService] saveAiSecurityAudit failed:', error);
+        return false;
+    }
+}
+
+export async function fetchAiSecurityAudits(
+    context: vscode.ExtensionContext,
+    limit: number = 20
+): Promise<any[]> {
+    const token = await getToken(context);
+    if (!token) {
+        return [];
+    }
+
+    try {
+        const response = await doFetch(`${API_BASE}/security/ai-audit-logs?limit=${limit}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 401) {
+            await deleteToken(context);
+            return [];
+        }
+
+        if (response.ok) {
+            const result = await response.json();
+            return result.data || [];
+        }
+        return [];
+    } catch (error) {
+        console.error('[ApiService] fetchAiSecurityAudits failed:', error);
+        return [];
+    }
+}
+
