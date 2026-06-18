@@ -1,10 +1,20 @@
-import * as dotenv from 'dotenv';
+import * as dotenv from 'dotenv'; 
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AuthManager } from './auth/authManager';
 import { generateQuestionFromBackend, sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
 import { analyzeCodeSecurity, formatSecurityResult } from './services/securityAnalyzeService';
+
+// Security Pipeline Imports
+import { scanCode } from './security/armorclaw';
+import { evaluatePolicy } from './security/policyEngine';
+import { generateSecurityFix } from './security/securityFix';
+import { ArmorIQClient } from './armoriq/armoriqClient';
+import { logSecurityAudit } from './audit/auditLogger';
+import { SecurityCenterPanel } from './views/securityPanel';
+
+let armoriqClient: ArmorIQClient;
 import { BackendSyncService } from './services/backendSyncService';
 import { preecodeStore } from './state/store';
 import { RunDetectionService } from './timer/runDetectionService';
@@ -421,6 +431,119 @@ function buildEditorContext(editor: vscode.TextEditor): string {
   ].join('\n\n');
 }
 
+async function runSecurityPipeline(
+  context: vscode.ExtensionContext,
+  prompt: string,
+  code: string,
+  language: string
+): Promise<string> {
+  const scanResults = scanCode(code, language);
+  const policyResult = evaluatePolicy(scanResults);
+  const timestamp = new Date().toISOString();
+
+  let finalCode = code;
+  let finalIssues = scanResults;
+  let finalPolicyResult = policyResult;
+  let lastFix: any = null;
+
+  if (policyResult.action === 'Block') {
+    void vscode.window.showWarningMessage(
+      `[Security Pipeline] Code generation blocked: ${policyResult.reason}. Running AI Security Fix Generator...`
+    );
+
+    const issueToFix = scanResults[0];
+    const fixResult = await generateSecurityFix(context, code, issueToFix, language);
+    finalCode = fixResult.fixedCode;
+    lastFix = fixResult;
+
+    // Rescan the secured code
+    const rescanResults = scanCode(finalCode, language);
+    finalIssues = rescanResults;
+    finalPolicyResult = evaluatePolicy(rescanResults);
+  } else if (policyResult.action === 'Warn') {
+    void vscode.window.showWarningMessage(`[Security Pipeline] Warning: ${policyResult.reason}`);
+  }
+
+  // Calculate Security Score
+  const finalCritical = finalIssues.filter(i => i.severity === 'critical').length;
+  const finalHigh = finalIssues.filter(i => i.severity === 'high').length;
+  const finalMedium = finalIssues.filter(i => i.severity === 'medium').length;
+  const finalLow = finalIssues.filter(i => i.severity === 'low' || i.severity === 'info').length;
+  const securityScore = Math.max(0, 100 - (finalCritical * 35 + finalHigh * 25 + finalMedium * 15 + finalLow * 5));
+
+  // Log to ArmorIQ
+  const armorIQStatus = armoriqClient ? armoriqClient.getStatus() : 'Disconnected';
+  if (armoriqClient) {
+    await armoriqClient.logScanResult({
+      prompt,
+      generatedCode: finalCode,
+      scanResults: finalIssues,
+      policyResult: finalPolicyResult,
+      timestamp
+    }).catch(err => console.error('[SecurityPipeline] ArmorIQ logging failed:', err));
+  }
+
+  // Create local audit log entries via backend
+  const logEntry = {
+    timestamp,
+    prompt,
+    generatedCode: finalCode,
+    securityIssues: finalIssues,
+    securityScore,
+    riskLevel: finalIssues.length > 0
+      ? (finalIssues.some(i => i.severity === 'critical') ? 'critical' as const
+        : (finalIssues.some(i => i.severity === 'high') ? 'high' as const
+          : (finalIssues.some(i => i.severity === 'medium') ? 'medium' as const : 'low' as const)))
+      : 'low' as const,
+    policyAction: finalPolicyResult.action,
+    armorIQStatus
+  };
+
+  await logSecurityAudit(context, logEntry).catch(err =>
+    console.error('[SecurityPipeline] Audit logging failed:', err)
+  );
+
+  // Update webview panel state
+  if (SecurityCenterPanel.currentPanel) {
+    SecurityCenterPanel.currentPanel.updateState({
+      securityScore,
+      lastScanTime: timestamp,
+      lastScanCode: finalCode,
+      lastScanIssues: finalIssues,
+      lastPolicyResult: finalPolicyResult,
+      lastFix,
+      armorIQStatus
+    });
+    void SecurityCenterPanel.currentPanel.refreshData(context);
+  }
+
+  return finalCode;
+}
+
+async function secureGeneratedQuestion(
+  context: vscode.ExtensionContext,
+  rawQuestion: string,
+  language: string
+): Promise<string> {
+  if (!rawQuestion) return rawQuestion;
+
+  const solutionBlockRx = /\[SOLUTION\]([\s\S]*?)(?=\[QUESTION\]|\[HINT\]|\[SOLUTION\]|$)/i;
+  const match = rawQuestion.match(solutionBlockRx);
+  if (!match) {
+    return rawQuestion;
+  }
+
+  const rawSolution = match[1].trim();
+  const cleanSolution = stripCodeFences(rawSolution);
+
+  // Run security pipeline on the solution code snippet
+  const prompt = "Practice Question Auto Generation Solution Scan";
+  const securedSolution = await runSecurityPipeline(context, prompt, cleanSolution, language);
+
+  // Replace back the solution section
+  return rawQuestion.replace(match[1], `\n${securedSolution}\n`);
+}
+
 async function askBackendAssistant(context: vscode.ExtensionContext, editor: vscode.TextEditor, prompt: string): Promise<string> {
   return sendAIChatMessage(
     context,
@@ -438,7 +561,9 @@ async function generateFixedFileCode(context: vscode.ExtensionContext, editor: v
     'Keep functionality the same and only apply error-fix changes.'
   ].join(' ');
   const raw = await askBackendAssistant(context, editor, prompt);
-  return stripCodeFences(raw || '').trim();
+  const code = stripCodeFences(raw || '').trim();
+  const language = editor.document.languageId || 'plaintext';
+  return runSecurityPipeline(context, prompt, code, language);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -756,7 +881,7 @@ async function generateRunnableSolution(context: vscode.ExtensionContext, editor
   if (!looksLikeRunnableCode(code, language)) {
     throw new Error('AI returned non-runnable solution output. Try again.');
   }
-  return code;
+  return runSecurityPipeline(context, prompt, code, language);
 }
 
 async function generateAlternativeRunnableSolution(
@@ -780,7 +905,7 @@ async function generateAlternativeRunnableSolution(
   if (!looksLikeRunnableCode(code, language)) {
     throw new Error('AI returned non-runnable alternative solution output. Try again.');
   }
-  return code;
+  return runSecurityPipeline(context, prompt, code, language);
 }
 
 function lineWhy(line: string): string {
@@ -1341,6 +1466,7 @@ async function generateDebugLineExplanation(
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  armoriqClient = new ArmorIQClient();
   const authManager = new AuthManager(context);
   const onboardingService = new OnboardingService(context);
   const timerService = new PracticeTimerService();
@@ -1732,10 +1858,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       let generated = '';
       try {
         generated = await withGenerationNotification('Generating question', async () => {
-          return generateQuestionFromBackend(context, {
+          const raw = await generateQuestionFromBackend(context, {
             language,
             difficulty
           });
+          return secureGeneratedQuestion(context, raw, language);
         });
       } catch (error) {
         const detail = error instanceof Error ? error.message : 'Could not generate question.';
@@ -2308,6 +2435,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       const selectionText = active.document.getText(active.selection).trim();
+      const isSelection = !!selectionText;
       const codeToAnalyze = selectionText || active.document.getText().trim();
 
       if (!codeToAnalyze) {
@@ -2315,35 +2443,171 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
 
+      // Focus the Security Center sidebar view
+      await vscode.commands.executeCommand('preecode.securityCenter.focus');
+
       try {
+        const prompt = "Manual Security Scan of Editor Code";
+        const language = active.document.languageId || 'plaintext';
+
         const result = await withGenerationNotification('Running Security Analyze', async () => {
-          return analyzeCodeSecurity(
-            context,
-            codeToAnalyze,
-            active.document.fileName,
-            active.document.languageId
+          let issues: any[] = [];
+          let score = 100;
+          let summary = '';
+          let isBackend = false;
+          let backendResult: any = null;
+
+          try {
+            const res = await analyzeCodeSecurity(
+              context,
+              codeToAnalyze,
+              active.document.fileName,
+              language
+            );
+            issues = res.issues.map(i => ({
+              issue: i.title || i.type,
+              severity: i.severity,
+              description: i.description,
+              lineNumber: i.lineNumber || 1,
+              recommendation: i.howToFix || i.whyDangerous
+            }));
+            score = res.score;
+            summary = res.summary;
+            isBackend = true;
+            backendResult = res;
+          } catch (backendError: any) {
+            console.warn('[Security Analyze] Backend analysis failed, falling back to local scanner:', backendError.message);
+            issues = scanCode(codeToAnalyze, language);
+            const critical = issues.filter(i => i.severity === 'critical').length;
+            const high = issues.filter(i => i.severity === 'high').length;
+            const medium = issues.filter(i => i.severity === 'medium').length;
+            const low = issues.filter(i => i.severity === 'low' || i.severity === 'info').length;
+            score = Math.max(0, 100 - (critical * 35 + high * 25 + medium * 15 + low * 5));
+            summary = issues.length > 0 ? `Detected ${issues.length} security issues locally.` : 'No security issues detected locally.';
+          }
+
+          const policyResult = evaluatePolicy(issues);
+          const timestamp = new Date().toISOString();
+          let finalCode = codeToAnalyze;
+          let finalIssues = issues;
+          let finalPolicyResult = policyResult;
+          let finalScore = score;
+          let lastFix: any = null;
+
+          if (policyResult.action === 'Block' && issues.length > 0) {
+            void vscode.window.showWarningMessage(
+              `[Security Pipeline] Code analysis blocked: ${policyResult.reason}. Running AI Security Fix Generator...`
+            );
+
+            const issueToFix = issues[0];
+            const fixResult = await generateSecurityFix(context, codeToAnalyze, issueToFix, language);
+            finalCode = fixResult.fixedCode;
+            lastFix = fixResult;
+
+            // Rescan the secured code
+            const rescanResults = scanCode(finalCode, language);
+            finalIssues = rescanResults;
+            finalPolicyResult = evaluatePolicy(rescanResults);
+
+            const finalCritical = finalIssues.filter(i => i.severity === 'critical').length;
+            const finalHigh = finalIssues.filter(i => i.severity === 'high').length;
+            const finalMedium = finalIssues.filter(i => i.severity === 'medium').length;
+            const finalLow = finalIssues.filter(i => i.severity === 'low' || i.severity === 'info').length;
+            finalScore = Math.max(0, 100 - (finalCritical * 35 + finalHigh * 25 + finalMedium * 15 + finalLow * 5));
+          } else if (policyResult.action === 'Warn') {
+            void vscode.window.showWarningMessage(`[Security Pipeline] Warning: ${policyResult.reason}`);
+          }
+
+          // Log to ArmorIQ
+          const armorIQStatus = armoriqClient ? armoriqClient.getStatus() : 'Disconnected';
+          if (armoriqClient) {
+            await armoriqClient.logScanResult({
+              prompt,
+              generatedCode: finalCode,
+              scanResults: finalIssues,
+              policyResult: finalPolicyResult,
+              timestamp
+            }).catch(err => console.error('[SecurityPipeline] ArmorIQ logging failed:', err));
+          }
+
+          // Create local audit log entries via backend
+          const logEntry = {
+            timestamp,
+            prompt,
+            generatedCode: finalCode,
+            securityIssues: finalIssues,
+            securityScore: finalScore,
+            riskLevel: finalIssues.length > 0
+              ? (finalIssues.some(i => i.severity === 'critical') ? 'critical' as const
+                : (finalIssues.some(i => i.severity === 'high') ? 'high' as const
+                  : (finalIssues.some(i => i.severity === 'medium') ? 'medium' as const : 'low' as const)))
+              : 'low' as const,
+            policyAction: finalPolicyResult.action,
+            armorIQStatus
+          };
+
+          await logSecurityAudit(context, logEntry).catch(err =>
+            console.error('[SecurityPipeline] Audit logging failed:', err)
           );
+
+          // Update webview panel state
+          if (SecurityCenterPanel.currentPanel) {
+            SecurityCenterPanel.currentPanel.updateState({
+              securityScore: finalScore,
+              lastScanTime: timestamp,
+              lastScanCode: finalCode,
+              lastScanIssues: finalIssues,
+              lastPolicyResult: finalPolicyResult,
+              lastFix,
+              armorIQStatus
+            });
+            void SecurityCenterPanel.currentPanel.refreshData(context);
+          }
+
+          return {
+            securedCode: finalCode,
+            isBackend,
+            backendResult,
+            finalScore,
+            finalIssues,
+            finalPolicyResult
+          };
         });
 
-        const formatted = formatSecurityResult(result);
-        
-        // Show results in a new untitled document for detailed view
-        const document = await vscode.workspace.openTextDocument({
-          content: formatted,
-          language: 'markdown',
-        });
-        await vscode.window.showTextDocument(document, {
-          viewColumn: vscode.ViewColumn.Beside,
-          preserveFocus: true,
-        });
+        // Replace code in the editor if it was auto-secured (Block and corrected)
+        if (result.securedCode !== codeToAnalyze) {
+          if (isSelection) {
+            await active.edit((editBuilder) => {
+              editBuilder.replace(active.selection, result.securedCode);
+            });
+            void vscode.window.showInformationMessage('Security Pipeline: Replaced vulnerable selection with secured code.');
+          } else {
+            await replaceDocument(active, result.securedCode);
+            void vscode.window.showInformationMessage('Security Pipeline: Replaced vulnerable document with secured code.');
+          }
+        } else {
+          // If no Block replacement occurred:
+          if (result.isBackend && result.backendResult) {
+            // Open the markdown report side-by-side
+            const formatted = formatSecurityResult(result.backendResult);
+            const document = await vscode.workspace.openTextDocument({
+              content: formatted,
+              language: 'markdown',
+            });
+            await vscode.window.showTextDocument(document, {
+              viewColumn: vscode.ViewColumn.Beside,
+              preserveFocus: true,
+            });
+          }
 
-        // Also show summary as notification
-        const issueSummary = result.totalIssues > 0
-          ? `${result.totalIssues} issue${result.totalIssues > 1 ? 's' : ''} found`
-          : 'No issues found';
-        void vscode.window.showInformationMessage(
-          `Security Score: ${result.score}/100 | ${result.severity.toUpperCase()} | ${issueSummary}`
-        );
+          // Show scan notification summary
+          const issueSummary = result.finalIssues.length > 0
+            ? `${result.finalIssues.length} issue${result.finalIssues.length > 1 ? 's' : ''} found`
+            : 'No issues found';
+          void vscode.window.showInformationMessage(
+            `Security Score: ${result.finalScore}/100 | ${result.finalPolicyResult.action.toUpperCase()} | ${issueSummary}`
+          );
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Security analysis failed.';
         void vscode.window.showErrorMessage(`Security Analyze: ${message}`);
@@ -2674,8 +2938,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   });
 
+  const securityCenter = new SecurityCenterPanel(
+    context,
+    context.extensionUri,
+    armoriqClient ? armoriqClient.getStatus() : 'Disconnected'
+  );
+
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(ControlCenterViewProvider.viewId, controlCenter)
+    vscode.window.registerWebviewViewProvider(ControlCenterViewProvider.viewId, controlCenter),
+    vscode.window.registerWebviewViewProvider(SecurityCenterPanel.viewId, securityCenter)
   );
 
   context.subscriptions.push(
@@ -2702,6 +2973,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand('preecode.openControlCenter', async () => {
       await vscode.commands.executeCommand('workbench.view.extension.preecode');
+    }),
+    vscode.commands.registerCommand('preecode.openSecurityCenter', async () => {
+      await vscode.commands.executeCommand('preecode.securityCenter.focus');
     }),
     vscode.commands.registerCommand('preecode.restartTour', async () => {
       await onboardingService.resetTour();

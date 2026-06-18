@@ -66,6 +66,12 @@
           "name": "Control Center",
           "type": "webview",
           "icon": "resources/hubot-view.svg"
+        },
+        {
+          "id": "preecode.securityCenter",
+          "name": "Security Center",
+          "type": "webview",
+          "icon": "resources/hubot-view.svg"
         }
       ]
     },
@@ -114,6 +120,11 @@
         "command": "preecode.securityAnalyze",
         "title": "Preecode: Security Analyze",
         "icon": "$(shield)"
+      },
+      {
+        "command": "preecode.openSecurityCenter",
+        "title": "Preecode: Open Security Center",
+        "icon": "$(shield)"
       }
     ],
     "menus": {
@@ -151,6 +162,7 @@
     "typescript-eslint": "^8.54.0"
   },
   "dependencies": {
+    "@armoriq/sdk": "^0.3.8",
     "dotenv": "^17.3.1",
     "monaco-editor": "^0.52.2",
     "node-fetch": "^3.3.2"

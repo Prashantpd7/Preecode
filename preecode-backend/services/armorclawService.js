@@ -70,6 +70,30 @@ async function analyzeCode(code, language, options = {}) {
     return createEmptyResult('No code provided for analysis.');
   }
 
+  // Fallback to local regex-based scanner if OPENROUTER_API_KEY is not configured
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.warn('[ARMORCLAW] OPENROUTER_API_KEY is missing. Falling back to local regex-based security scan.');
+    const result = localRegexScan(code, language);
+
+    // Create audit log for this security scan
+    createAuditEntry({
+      action: 'security_scan',
+      resource: 'code_analysis',
+      status: 'completed',
+      details: {
+        language,
+        codeLength: code.length,
+        score: result.score,
+        issueCount: result.totalIssues,
+        severity: result.severity,
+      },
+    }).catch((err) => {
+      console.error('[ARMORCLAW] Audit log failed:', err.message);
+    });
+
+    return result;
+  }
+
   // ============================================================================
   // ARMORCLAW_INTEGRATION POINT #1
   // Uncomment to use ArmorClaw SDK when available:
@@ -414,6 +438,177 @@ function generateDefaultRecommendations(issues) {
   recs.add('Implement proper input validation and output encoding across all entry points.');
 
   return Array.from(recs);
+}
+
+function localRegexScan(code, language) {
+  const issues = [];
+  const lines = code.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNumber = i + 1;
+    const trimmed = line.trim();
+
+    // 1. Hardcoded Secrets
+    if (
+      /(password|passwd|pass|client_secret|clientsecret|client_id|clientid|db_pass|dbpassword|dbpwd|private_key|privatekey)\s*[:=]\s*["'`]([a-zA-Z0-9_\-\.@#\$%\^&\*\(\)\+]{4,})["'`]/i.test(trimmed)
+    ) {
+      if (!/\b(process\.env|os\.environ|getenv|os\.getenv)\b/i.test(trimmed)) {
+        issues.push({
+          type: 'hardcoded_secret',
+          severity: 'critical',
+          title: 'Hardcoded Secret',
+          description: `A hardcoded credential/secret was found on line ${lineNumber}.`,
+          whyDangerous: 'Exposing credentials in source code allows attackers to gain unauthorized access if they access the code repository.',
+          howToFix: 'Move all credentials, passwords, and secrets to environment variables.',
+          secureExample: 'const dbPassword = process.env.DB_PASSWORD;',
+          lineNumber
+        });
+      }
+    }
+
+    // API Key
+    if (
+      /(api_key|apikey|api_secret|apisecret|auth_token|authtoken|jwt_secret|jwtsecret|secret_key|secretkey|token)\s*[:=]\s*["'`]([a-zA-Z0-9_\-\.]{8,})["'`]/i.test(trimmed) ||
+      /\b(sk_live_[0-9a-zA-Z]{24}|AIzaSy[a-zA-Z0-9_\-]{33}|[a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64})\b/.test(trimmed)
+    ) {
+      if (!/\b(process\.env|os\.environ|getenv|os\.getenv)\b/i.test(trimmed)) {
+        issues.push({
+          type: 'hardcoded_secret',
+          severity: 'high',
+          title: 'Hardcoded API Key',
+          description: `An exposed API key or access token was found on line ${lineNumber}.`,
+          whyDangerous: 'Exposed API keys can lead to unauthorized billing, data leakage, and service disruptions.',
+          howToFix: 'Use environment variables to store API keys and avoid committing credentials to version control.',
+          secureExample: 'const apiKey = process.env.API_KEY;',
+          lineNumber
+        });
+      }
+    }
+
+    // 2. SQL Injection
+    if (
+      /(\.query|\.execute|\.raw)\s*\(\s*["'`].*?\$\{\w+\}.*?["'`]\s*\)/i.test(trimmed) ||
+      /(\.query|\.execute|\.raw)\s*\(\s*["'`].*?["'`]\s*\+\s*\w+/i.test(trimmed) ||
+      /\b(select|insert|update|delete)\b.*?\+.*?\bfrom\b/i.test(trimmed) ||
+      /\b(cursor\.execute|db\.query)\s*\(\s*f["'`].*?\{\w+\}.*?["'`]\s*\)/i.test(trimmed)
+    ) {
+      issues.push({
+        type: 'sql_injection',
+        severity: 'critical',
+        title: 'SQL Injection Vulnerability',
+        description: `Unsanitized input is direct concatenated or interpolated into a SQL query on line ${lineNumber}.`,
+        whyDangerous: 'Attackers can execute arbitrary SQL statements, allowing them to bypass authentication, read, modify, or delete database contents.',
+        howToFix: 'Use parameterized queries, prepared statements, or an Object Relational Mapper (ORM).',
+        secureExample: 'db.query("SELECT * FROM users WHERE id = ?", [userId]);',
+        lineNumber
+      });
+    }
+
+    // 3. Command Injection
+    if (
+      /(\bchild_process\.(exec|execSync|spawn|spawnSync)|os\.system|subprocess\.(Popen|run|call))\s*\(\s*["'`].*?\$\{\w+\}.*?["'`]\s*\)/i.test(trimmed) ||
+      /(\bchild_process\.(exec|execSync|spawn|spawnSync)|os\.system|subprocess\.(Popen|run|call))\s*\(\s*["'`].*?["'`]\s*\+\s*\w+/i.test(trimmed) ||
+      /(\bchild_process\.(exec|execSync|spawn|spawnSync)|os\.system|subprocess\.(Popen|run|call))\s*\(\s*f["'`].*?\{\w+\}.*?["'`]\s*\)/i.test(trimmed)
+    ) {
+      issues.push({
+        type: 'command_injection',
+        severity: 'critical',
+        title: 'Command Injection Vulnerability',
+        description: `Running system command with direct string concatenation or interpolation on line ${lineNumber}.`,
+        whyDangerous: 'Allows attackers to execute arbitrary shell commands on the host server, potentially taking full control of the machine.',
+        howToFix: 'Avoid executing shell commands with user input. If required, sanitize inputs or pass arguments as an array.',
+        secureExample: 'execFile("ping", ["-c", "4", host]);',
+        lineNumber
+      });
+    }
+
+    // 4. eval() Usage
+    if (/\beval\s*\(\s*/.test(trimmed) || /\bnew\s+Function\s*\(\s*/.test(trimmed) || /\bwindow\.execScript\s*\(\s*/.test(trimmed)) {
+      issues.push({
+        type: 'code_injection',
+        severity: 'high',
+        title: 'Unsafe Dynamic Code Execution (eval)',
+        description: `Use of eval() or unsafe dynamic function constructor found on line ${lineNumber}.`,
+        whyDangerous: 'Executes input with high privileges, creating remote code execution (RCE) vectors and performance degradation.',
+        howToFix: 'Refactor code to avoid dynamic code evaluation (eval). Use safer parser alternatives.',
+        secureExample: 'const data = JSON.parse(userInput);',
+        lineNumber
+      });
+    }
+
+    // 5. Unsafe File Operations (Path Traversal)
+    if (
+      /(\bfs\.read(FileSync|File|Stream)|fs\.write(FileSync|File)|open)\s*\(\s*.*?\+\s*.*?\)/i.test(trimmed) ||
+      /(\bfs\.read(FileSync|File|Stream)|fs\.write(FileSync|File)|open)\s*\(\s*.*?f["'`].*?\{\w+\}.*?["'`]\s*\)/i.test(trimmed)
+    ) {
+      if (/\.\./.test(trimmed) || /\b(path|filepath|filename)\b/i.test(trimmed)) {
+        issues.push({
+          type: 'path_traversal',
+          severity: 'medium',
+          title: 'Unsafe File Path Operation',
+          description: `Constructing file path dynamically on line ${lineNumber} could expose files to Path Traversal attacks.`,
+          whyDangerous: 'Allows attackers to read or write arbitrary files on the filesystem, potentially exposing config files or system sources.',
+          howToFix: 'Use path utilities like path.resolve or path.join and validate paths against a whitelist.',
+          secureExample: 'const safePath = path.resolve(baseDir, filename);',
+          lineNumber
+        });
+      }
+    }
+
+    // 6. Cross-Site Scripting (XSS)
+    if (
+      /(\.innerHTML|\.outerHTML)\s*=/i.test(trimmed) ||
+      /\bdocument\.write\s*\(\s*/i.test(trimmed) ||
+      /\bdangerouslySetInnerHTML\b/i.test(trimmed)
+    ) {
+      issues.push({
+        type: 'xss',
+        severity: 'high',
+        title: 'Cross-Site Scripting (XSS)',
+        description: `Direct manipulation of HTML content using raw variables on line ${lineNumber}.`,
+        whyDangerous: 'Injects malicious client-side script executable by other users, leading to cookie theft, session hijacking, or defacement.',
+        howToFix: 'Use textContent, innerText, or sanitization libraries like DOMPurify.',
+        secureExample: 'element.textContent = userInput;',
+        lineNumber
+      });
+    }
+
+    // 7. Weak Crypto
+    if (
+      /(md5|sha1)\s*\(\s*/i.test(trimmed) ||
+      /crypto\.createHash\s*\(\s*["'](md5|sha1)["']\)/i.test(trimmed)
+    ) {
+      issues.push({
+        type: 'insecure_crypto',
+        severity: 'medium',
+        title: 'Insecure Cryptographic Algorithm',
+        description: `Use of weak or outdated cryptographic hash function (MD5/SHA1) detected on line ${lineNumber}.`,
+        whyDangerous: 'MD5 and SHA1 are cryptographically broken and vulnerable to collision attacks, making them unfit for password hashing or data integrity checks.',
+        howToFix: 'Upgrade to secure algorithms like SHA-256, bcrypt, or argon2.',
+        secureExample: 'const hash = crypto.createHash("sha256").update(data).digest("hex");',
+        lineNumber
+      });
+    }
+  }
+
+  // Calculate score
+  const critical = issues.filter(i => i.severity === 'critical').length;
+  const high = issues.filter(i => i.severity === 'high').length;
+  const medium = issues.filter(i => i.severity === 'medium').length;
+  const low = issues.filter(i => i.severity === 'low').length;
+
+  const score = Math.max(0, 100 - (critical * 35 + high * 25 + medium * 15 + low * 5));
+  const severity = calculateSeverity(score, issues.length);
+
+  return {
+    score,
+    severity,
+    issues: issues.map(normalizeIssue),
+    recommendations: generateDefaultRecommendations(issues),
+    totalIssues: issues.length,
+    summary: generateSummary(score, issues.length)
+  };
 }
 
 /**
