@@ -11,6 +11,8 @@ export class ArmorIQClient {
 
   constructor() {
     this.apiKey = process.env.ARMORIQ_API_KEY || '';
+    // ARMORIQ_ORG_ID and ARMORIQ_PROJECT_ID are optional — only used
+    // for the fallback REST API call headers, NOT required for SDK init.
     this.orgId = process.env.ARMORIQ_ORG_ID || '';
     this.projectId = process.env.ARMORIQ_PROJECT_ID || '';
 
@@ -18,8 +20,10 @@ export class ArmorIQClient {
   }
 
   private initializeSDK() {
-    if (!this.apiKey || !this.orgId || !this.projectId) {
-      console.log('[ArmorIQ] Configuration incomplete. Check environment variables.');
+    // Only ARMORIQ_API_KEY is required to mark as Connected.
+    // ARMORIQ_ORG_ID and ARMORIQ_PROJECT_ID are optional extras.
+    if (!this.apiKey) {
+      console.log('[ArmorIQ] ARMORIQ_API_KEY not set. Cannot connect.');
       return;
     }
 
@@ -29,10 +33,8 @@ export class ArmorIQClient {
       if (sdkModule && sdkModule.ArmorIQClient) {
         this.sdkClient = new sdkModule.ArmorIQClient({
           apiKey: this.apiKey,
-          orgId: this.orgId,
-          projectId: this.projectId,
-          userId: 'preecode-extension-user',
-          agentId: 'preecode-extension-agent'
+          userId: process.env.USER_ID || 'preecode-extension-user',
+          agentId: process.env.AGENT_ID || 'preecode-extension-agent',
         });
         console.log('[ArmorIQ] SDK client initialized successfully');
       }
