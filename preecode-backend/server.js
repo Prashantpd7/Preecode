@@ -102,8 +102,8 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Length', 'X-JSON-Response'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'MCP-Protocol-Version'],
+  exposedHeaders: ['Content-Length', 'X-JSON-Response', 'MCP-Protocol-Version', 'MCP-Session-Id'],
 };
 
 // Enable CORS for all routes with the options and handle preflight

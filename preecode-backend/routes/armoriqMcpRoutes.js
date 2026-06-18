@@ -33,7 +33,9 @@ const MCP_VERSION = '2025-11-25';
  * MCP Server capabilities declaration
  */
 const SERVER_CAPABILITIES = {
-  tools: {},  // server supports the tools capability
+  tools: {
+    listChanged: false,  // server supports the tools capability
+  },
 };
 
 const SERVER_INFO = {
@@ -387,15 +389,18 @@ router.post('/mcp', async (req, res) => {
 });
 
 /**
- * GET /api/armoriq/mcp — Health check for MCP endpoint
+ * GET /api/armoriq/mcp — Per MCP Streamable HTTP transport spec 2025-11-25:
+ * If the server does not offer SSE, it MUST return 405 Method Not Allowed.
+ * Clients should use POST for JSON-RPC requests.
  */
 router.get('/mcp', (req, res) => {
-  res.json({
-    server: SERVER_INFO.name,
-    version: SERVER_INFO.version,
-    protocol: MCP_VERSION,
-    tools: TOOLS.length,
-    status: 'ready',
+  res.status(405).json({
+    jsonrpc: '2.0',
+    id: null,
+    error: {
+      code: -32000,
+      message: 'Method Not Allowed. This endpoint does not support GET for SSE. Use POST with JSON-RPC 2.0 body and MCP-Protocol-Version: 2025-11-25 header.',
+    },
   });
 });
 
