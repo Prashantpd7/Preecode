@@ -157,6 +157,40 @@ async function logSecurityScan(entry) {
     );
     console.log('[ArmorIQ] Audit Log Created — Invoke result:', JSON.stringify(invokeResult).slice(0, 200));
 
+    // Step 4: Report audit entry via ArmorIQSession.report() for dashboard visibility
+    try {
+      const session = client.startSession({
+        mode: 'local',
+        llm: 'armorclaw-ai',
+        defaultMcpName: 'preecode-armoriq-mcp',
+      });
+      session.currentToken = intentToken;
+      session.userEmail = entry.userId || 'system';
+      console.log('[ArmorIQ] Session report started');
+      await session.report(
+        'log_security_scan',
+        {
+          resource: entry.resource,
+          status: entry.status,
+          score: entry.details?.score,
+          issueCount: entry.details?.issueCount,
+          severity: entry.details?.severity,
+          analysisTimeMs: entry.details?.analysisTimeMs,
+          findings: entry.details?.findings,
+        },
+        invokeResult,
+        {
+          status: 'success',
+          userEmail: entry.userId || 'system',
+        }
+      );
+      console.log('[ArmorIQ] Session report success');
+      await client.completePlan(intentToken.planId)
+        .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+    } catch (reportError) {
+      console.error('[ArmorIQ] Session report failed:', reportError.message);
+    }
+
     return {
       id: invokeResult.id || `armoriq-${Date.now()}`,
       action: 'security_scan',
@@ -299,6 +333,39 @@ async function evaluatePolicy(policyName, context = {}) {
     );
     console.log('[ArmorIQ] Audit Log Created — Policy evaluation result:', JSON.stringify(invokeResult).slice(0, 200));
 
+    // Report audit entry via ArmorIQSession.report() for dashboard visibility
+    try {
+      const session = client.startSession({
+        mode: 'local',
+        llm: 'armorclaw-ai',
+        defaultMcpName: 'preecode-armoriq-mcp',
+      });
+      session.currentToken = intentToken;
+      session.userEmail = context.metadata?.userId || 'system';
+      console.log('[ArmorIQ] Session report started');
+      await session.report(
+        'evaluate_policy',
+        {
+          policyName,
+          language: context.language,
+          codeLength: (context.code || '').length,
+          passed: invokeResult.passed,
+          violations: invokeResult.violations,
+          message: invokeResult.message || invokeResult.summary,
+        },
+        invokeResult,
+        {
+          status: 'success',
+          userEmail: context.metadata?.userId || 'system',
+        }
+      );
+      console.log('[ArmorIQ] Session report success');
+      await client.completePlan(intentToken.planId)
+        .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+    } catch (reportError) {
+      console.error('[ArmorIQ] Session report failed:', reportError.message);
+    }
+
     // Parse the invoke result into PolicyEvaluationResult
     return {
       passed: invokeResult.passed !== false,
@@ -420,6 +487,41 @@ async function createAuditEntry(entry) {
     );
     console.log('[ArmorIQ] Audit Log Created — Entry ID:', invokeResult.id || 'synced');
 
+    // Report audit entry via ArmorIQSession.report() for dashboard visibility
+    try {
+      const session = client.startSession({
+        mode: 'local',
+        llm: 'armorclaw-ai',
+        defaultMcpName: 'preecode-armoriq-mcp',
+      });
+      session.currentToken = intentToken;
+      session.userEmail = entry.userId || 'system';
+      console.log('[ArmorIQ] Session report started');
+      await session.report(
+        'create_audit_entry',
+        {
+          action: entry.action,
+          resource: entry.resource,
+          status: entry.status,
+          databaseAuditId: entry.details?.databaseAuditId,
+          score: entry.details?.score,
+          issueCount: entry.details?.issueCount,
+          severity: entry.details?.severity,
+          policyPassed: entry.details?.policyPassed,
+        },
+        invokeResult,
+        {
+          status: 'success',
+          userEmail: entry.userId || 'system',
+        }
+      );
+      console.log('[ArmorIQ] Session report success');
+      await client.completePlan(intentToken.planId)
+        .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+    } catch (reportError) {
+      console.error('[ArmorIQ] Session report failed:', reportError.message);
+    }
+
     return {
       id: invokeResult.id || `armoriq-${Date.now()}`,
       action: entry.action,
@@ -507,6 +609,40 @@ async function reportSecurityEvent(eventType, eventData = {}) {
     );
 
     console.log('[ArmorIQ] Event Synced — Result:', invokeResult.id || 'synced');
+
+    // Report audit entry via ArmorIQSession.report() for dashboard visibility
+    try {
+      const session = client.startSession({
+        mode: 'local',
+        llm: 'armorclaw-ai',
+        defaultMcpName: 'preecode-armoriq-mcp',
+      });
+      session.currentToken = intentToken;
+      session.userEmail = eventData.userId || 'system';
+      console.log('[ArmorIQ] Session report started');
+      await session.report(
+        'report_security_event',
+        {
+          eventType,
+          score: eventData.score,
+          severity: eventData.severity,
+          issueCount: eventData.issueCount,
+          issueTypes: eventData.issueTypes,
+          fileName: eventData.fileName,
+          language: eventData.language,
+        },
+        invokeResult,
+        {
+          status: 'success',
+          userEmail: eventData.userId || 'system',
+        }
+      );
+      console.log('[ArmorIQ] Session report success');
+      await client.completePlan(intentToken.planId)
+        .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+    } catch (reportError) {
+      console.error('[ArmorIQ] Session report failed:', reportError.message);
+    }
 
     return {
       id: invokeResult.id || `armoriq-event-${Date.now()}`,
