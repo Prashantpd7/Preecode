@@ -1,120 +1,16 @@
-// Preecode AI Service - OpenRouter API Integration
-// Using models with better reliability and quota management
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+/**
+ * Preecode AI Service — routes all AI requests through the central AI Gateway.
+ *
+ * This file now delegates to aiGatewayService.js for all OpenRouter interactions.
+ * It remains as the public API for controllers, preserving backward-compatible exports.
+ *
+ * No models, API keys, or OpenRouter URLs are defined here.
+ * See aiGatewayService.js for the single source of truth.
+ */
 
-console.log("OPENROUTER KEY:", process.env.OPENROUTER_API_KEY?.slice(0, 20));
+const aiGateway = require('./aiGatewayService');
 
-// Model priority list - tries each in order until one works
-// NOTE: If free-tier models exhaust daily limits, the API will reject requests.
-// To fix: (1) Add credits to OpenRouter account, (2) Use a paid model, (3) Configure Ollama fallback
-const OPENROUTER_MODELS = [
-  'openrouter/auto',
-  'openrouter/free',
-  'meta-llama/llama-4-maverick:free',
-  'mistralai/mistral-small-3.1-24b-instruct:free',
-  'google/gemini-2.5-flash-exp:free',
-  'deepseek/deepseek-chat-v3-0324:free'
-];
-
-const MAX_RETRIES = 3;
-const RETRY_DELAYS_MS = [800, 2000, 4000];
-const REQUEST_TIMEOUT_MS = 45000;  // 45s — free models can be slow
-const MIN_REQUEST_SPACING_MS = 200;
-
-let lastRequestAtMs = 0;
-
-// API Key rotation to handle free tier daily limits
-let currentKeyIndex = 0;
-
-function getOpenRouterApiKeys() {
-  // Support multiple API keys separated by commas
-  const keysString = String(process.env.OPENROUTER_API_KEY || '').trim();
-  if (!keysString) return [];
-  
-  return keysString.split(',').map(k => k.trim()).filter(k => k.length > 0);
-}
-
-function getOpenRouterApiKey() {
-  const keys = getOpenRouterApiKeys();
-  if (keys.length === 0) return '';
-
-  // Rotate through available keys
-  const key = keys[currentKeyIndex % keys.length];
-  console.log(`[ai] Using API key: ${key.substring(0, 15)}...${key.substring(key.length - 4)}`);
-  return key;
-}
-
-function rotateToNextApiKey() {
-  const keys = getOpenRouterApiKeys();
-  if (keys.length > 1) {
-    currentKeyIndex = (currentKeyIndex + 1) % keys.length;
-    console.log(`[ai] Rotated to API key ${currentKeyIndex + 1} of ${keys.length}`);
-  }
-}
-
-const openrouterApiKeys = getOpenRouterApiKeys();
-
-if (openrouterApiKeys.length === 0) {
-  console.warn('[ai] OPENROUTER_API_KEY is missing. AI endpoints will return configuration errors until the key is set.');
-} else {
-  console.log(`[ai] Loaded ${openrouterApiKeys.length} OpenRouter API key(s) for rotation`);
-  console.log(`[ai] Models configured: ${OPENROUTER_MODELS.join(', ')}`);
-  console.log(`[ai] OpenRouter URL: ${OPENROUTER_URL}`);
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function applyRateLimitDelay() {
-  // Small spacing reduces accidental bursts that can trigger provider rate limits.
-  const now = Date.now();
-  const elapsed = now - lastRequestAtMs;
-  if (elapsed < MIN_REQUEST_SPACING_MS) {
-    await sleep(MIN_REQUEST_SPACING_MS - elapsed);
-  }
-  lastRequestAtMs = Date.now();
-}
-
-function validateMessages(messages) {
-  if (!Array.isArray(messages) || messages.length === 0) {
-    const err = new Error('Invalid OpenRouter payload: messages must be a non-empty array.');
-    err.statusCode = 400;
-    err.code = 'INVALID_OPENROUTER_PAYLOAD';
-    throw err;
-  }
-
-  for (const message of messages) {
-    const isValidRole = message && typeof message.role === 'string' && message.role.trim().length > 0;
-    const isValidContent = message && typeof message.content === 'string' && message.content.trim().length > 0;
-    if (!isValidRole || !isValidContent) {
-      const err = new Error('Invalid OpenRouter payload: each message must include role and content.');
-      err.statusCode = 400;
-      err.code = 'INVALID_OPENROUTER_PAYLOAD';
-      throw err;
-    }
-  }
-}
-
-function validateModel(model) {
-  if (typeof model !== 'string' || model.trim().length === 0) {
-    const err = new Error('Invalid OpenRouter payload: model must be a non-empty string.');
-    err.statusCode = 400;
-    err.code = 'INVALID_OPENROUTER_PAYLOAD';
-    throw err;
-  }
-}
-
-async function fetchWithTimeout(url, options, timeoutMs) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+// ─── Backward-compatible re-exports ──────────────────────────────────────────
 
 function buildStructuredError(base) {
   const err = new Error(base.message);
@@ -132,186 +28,35 @@ function buildStructuredError(base) {
   return err;
 }
 
-function parseJsonSafely(text) {
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
+/**
+ * Backward-compatible wrapper: delegates directly to aiGateway.callAI()
+ */
+async function call_openrouter(messages, options = {}) {
+  const result = await aiGateway.callAI(messages, { ...options, feature: 'call_openrouter' });
+  return result;
 }
 
-async function call_openrouter(messages, options = {}) {
-  const apiKey = getOpenRouterApiKey();
-  if (!apiKey) {
-    const err = new Error('AI is not configured. Set OPENROUTER_API_KEY in backend environment variables.');
-    err.statusCode = 503;
-    err.code = 'OPENROUTER_API_KEY_MISSING';
-    throw err;
-  }
-
-  validateMessages(messages);
-
-  const requestConfig = {
-    temperature: options.temperature ?? 0.7,
-    max_tokens: options.maxTokens ?? 512, // Reduced to 512 for better compatibility
-  };
-
-  const errors = [];
-
-  // Try each model with exponential retries before moving to the next fallback.
-  for (const model of OPENROUTER_MODELS) {
-    if (!model || typeof model !== 'string') {
-      continue;
+/**
+ * Backward-compatible wrapper: calls the gateway and returns just the content string.
+ */
+async function generateResponse(messages, options = {}) {
+  try {
+    const result = await aiGateway.callAI(messages, { ...options, feature: 'generate_response' });
+    return result.content;
+  } catch (error) {
+    if (error && error.name === 'OpenRouterError') {
+      throw error;
     }
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
-      const attemptNumber = attempt + 1;
-      const payload = {
-        model,
-        messages,
-        temperature: requestConfig.temperature,
-        max_tokens: requestConfig.max_tokens,
-      };
-
-      try {
-        validateModel(payload.model);
-        validateMessages(payload.messages);
-        console.log(`[ai] OpenRouter request model=${model} attempt=${attemptNumber}`);
-
-        await applyRateLimitDelay();
-
-        const response = await fetchWithTimeout(
-          OPENROUTER_URL,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': process.env.BACKEND_URL || 'http://localhost:5001',
-              'X-Title': 'Preecode'
-            },
-            body: JSON.stringify(payload),
-          },
-          REQUEST_TIMEOUT_MS
-        );
-
-        const rawBody = await response.text();
-        const parsedBody = parseJsonSafely(rawBody);
-
-        if (!response.ok) {
-          const providerMessage = parsedBody?.error?.message || `OpenRouter HTTP ${response.status}`;
-          // 402 = credits needed, 404 = model not found/removed — skip to next model immediately
-          // 429 = rate limit (could be daily limit on free tier)
-          const skipImmediately = response.status === 402 || response.status === 404;
-          const isRateLimit = response.status === 429 || providerMessage.includes('Rate limit exceeded') || providerMessage.includes('free-models-per-day');
-          const retryable = !skipImmediately && (response.status === 429 || response.status >= 500 || response.status === 408);
-
-          console.error('[ai] OpenRouter non-200 response', {
-            model,
-            attempt: attemptNumber,
-            status: response.status,
-            error: providerMessage,
-            body: rawBody.substring(0, 500),
-          });
-
-          errors.push({
-            model,
-            attempt: attemptNumber,
-            status: response.status,
-            message: providerMessage,
-          });
-
-          // If rate limit hit and we have multiple API keys, rotate to next key
-          if (isRateLimit && getOpenRouterApiKeys().length > 1) {
-            console.log(`[ai] Rate limit hit, rotating to next API key...`);
-            rotateToNextApiKey();
-            // Retry immediately with new key
-            if (attempt < MAX_RETRIES) {
-              await sleep(500); // Short delay before retry
-              continue;
-            }
-          }
-
-          if (skipImmediately) {
-            console.log(`[ai] Model ${model} returned ${response.status} (${providerMessage}), trying next model...`);
-            break; // move to next model
-          }
-
-          if (retryable && attempt < MAX_RETRIES) {
-            console.log(`[ai] Retrying in ${RETRY_DELAYS_MS[attempt]}ms...`);
-            await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
-            continue;
-          }
-
-          break;
-        }
-
-        const content = parsedBody?.choices?.[0]?.message?.content;
-        if (!content || typeof content !== 'string') {
-          console.error('[ai] Empty content received', {
-            model,
-            attempt: attemptNumber,
-            status: response.status,
-            hasChoices: !!parsedBody?.choices,
-            choicesLength: parsedBody?.choices?.length,
-          });
-          errors.push({
-            model,
-            attempt: attemptNumber,
-            status: response.status,
-            message: 'OpenRouter returned empty content.',
-          });
-          break;
-        }
-
-        console.log(`[ai] ✅ Success with model ${model} on attempt ${attemptNumber}`);
-        return {
-          content,
-          model,
-          raw: parsedBody,
-        };
-      } catch (error) {
-        const isTimeout = error && error.name === 'AbortError';
-        const retryable = isTimeout || (error && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT'));
-
-        console.error('[ai] OpenRouter network/timeout error', {
-          model,
-          attempt: attemptNumber,
-          error: error?.message || String(error),
-        });
-
-        errors.push({
-          model,
-          attempt: attemptNumber,
-          message: isTimeout ? 'OpenRouter request timed out.' : error?.message || 'Network error',
-        });
-
-        if (retryable && attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
-          continue;
-        }
-
-        break;
-      }
-    }
+    const wrapped = buildStructuredError({
+      message: `AI service error: ${error?.message || 'Unknown error'}`,
+      statusCode: error?.statusCode || 502,
+      code: error?.code || 'OPENROUTER_UNEXPECTED_ERROR',
+      responseBody: error?.message,
+      cause: error,
+      retryable: false,
+    });
+    throw wrapped;
   }
-
-  const lastError = errors[errors.length - 1] || {};
-  const errorSummary = errors.map(e => `[${e.model} attempt ${e.attempt}]: ${e.message}`).join(' | ');
-  throw buildStructuredError({
-    message: `AI request failed across all models. Last error: ${lastError.message || 'Unknown'}. Full trace: ${errorSummary}`,
-    statusCode: 502,
-    code: 'OPENROUTER_FALLBACK_EXHAUSTED',
-    model: lastError.model,
-    attempt: lastError.attempt,
-    providerStatus: lastError.status,
-    retryable: false,
-    responseBody: lastError.message,
-    cause: errors,
-  });
 }
 
 async function generateResponse(messages, options = {}) {
