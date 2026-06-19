@@ -25,7 +25,9 @@ let armoriqClient = null;
  * Only installs once per client instance.
  */
 function enableArmorIQDiagnostics(client) {
+  console.log('[ArmorIQ ENTER] enableArmorIQDiagnostics');
   if (client.__diagnosticsEnabled) {
+    console.log('[ArmorIQ EXIT] enableArmorIQDiagnostics (already enabled)');
     return;
   }
   client.__diagnosticsEnabled = true;
@@ -93,6 +95,7 @@ function enableArmorIQDiagnostics(client) {
   );
 
   console.log('[ArmorIQ DIAG] ✅ Diagnostic HTTP interceptors installed on SDK client');
+  console.log('[ArmorIQ EXIT] enableArmorIQDiagnostics');
 }
 
 /**
@@ -102,15 +105,25 @@ function enableArmorIQDiagnostics(client) {
  * @returns {ArmorIQClient|null} The ArmorIQ client, or null if not configured
  */
 function getArmorIQClient() {
-  if (armoriqClient) return armoriqClient;
+  console.log('[ArmorIQ ENTER] getArmorIQClient');
+  if (armoriqClient) {
+    console.log('[ArmorIQ EXIT] getArmorIQClient (cached)');
+    return armoriqClient;
+  }
 
   const apiKey = process.env.ARMORIQ_API_KEY;
   if (!apiKey) {
     console.log('[ArmorIQ] SDK not configured: ARMORIQ_API_KEY not set. Falling back to local audit.');
+    console.log('[ArmorIQ EXIT] getArmorIQClient (no API key, return null)');
     return null;
   }
+  console.log('[ArmorIQ] API key found, length:', apiKey.length, 'starts with:', apiKey.substring(0, 8));
 
   try {
+    console.log('[ArmorIQ] Creating ArmorIQClient instance...');
+    console.log('[ArmorIQ] ARMORIQ_ENV:', process.env.ARMORIQ_ENV || '(not set)');
+    console.log('[ArmorIQ] USER_ID:', process.env.USER_ID || 'preecode-backend (default)');
+    console.log('[ArmorIQ] AGENT_ID:', process.env.AGENT_ID || 'preecode-security-agent (default)');
     armoriqClient = new ArmorIQClient({
       apiKey,
       userId: process.env.USER_ID || 'preecode-backend',
@@ -122,14 +135,22 @@ function getArmorIQClient() {
       maxRetries: parseInt(process.env.ARMORIQ_MAX_RETRIES || '2', 10),
     });
     console.log('[ArmorIQ] Client initialized successfully');
+    console.log('[ArmorIQ] Backend endpoint:', armoriqClient.backendEndpoint);
+    console.log('[ArmorIQ] Proxy endpoint:', armoriqClient.defaultProxyEndpoint);
+    console.log('[ArmorIQ] IAP endpoint:', armoriqClient.iapEndpoint);
 
     // Install diagnostic HTTP interceptors to capture every outbound call
+    console.log('[ArmorIQ] About to call enableArmorIQDiagnostics...');
     enableArmorIQDiagnostics(armoriqClient);
+    console.log('[ArmorIQ] Diagnostics installed successfully');
 
+    console.log('[ArmorIQ EXIT] getArmorIQClient (new client)');
     return armoriqClient;
   } catch (error) {
     console.error('[ArmorIQ] Failed to initialize client:', error.message);
-    if (error.stack) console.error('[ArmorIQ] Init stack:', error.stack.split('\n').slice(0, 5).join('\n'));
+    console.error('[ArmorIQ] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    if (error.stack) console.error('[ArmorIQ] Init stack:', error.stack.split('\n').slice(0, 10).join('\n'));
+    console.log('[ArmorIQ EXIT] getArmorIQClient (error, return null)');
     return null;
   }
 }
@@ -165,6 +186,7 @@ function getArmorIQClient() {
  * @returns {Promise<Object>}
  */
 async function logSecurityScan(entry) {
+  console.log('[ArmorIQ ENTER] logSecurityScan');
   const client = getArmorIQClient();
 
   if (!client) {
@@ -182,6 +204,7 @@ async function logSecurityScan(entry) {
       createdAt: new Date().toISOString(),
     };
     console.log('[ArmorIQ] [LOCAL FALLBACK] Security scan logged:', JSON.stringify(auditRecord));
+    console.log('[ArmorIQ EXIT] logSecurityScan (local fallback)');
     return auditRecord;
   }
 
@@ -258,6 +281,7 @@ async function logSecurityScan(entry) {
     // Our console.log('[ArmorIQ] Session report success') will execute even if HTTP fails.
     // The diagnostic interceptors above will show the actual HTTP response.
     try {
+      console.log('[ArmorIQ ENTER] session.report block');
       console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
       console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
@@ -306,11 +330,15 @@ async function logSecurityScan(entry) {
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
       console.log('[ArmorIQ] END completePlan()');
+      console.log('[ArmorIQ EXIT] session.report block');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
-      if (reportError.stack) console.error('[ArmorIQ] Report stack:', reportError.stack.split('\n').slice(0, 5).join('\n'));
+      console.error('[ArmorIQ] Report error full:', JSON.stringify(reportError, Object.getOwnPropertyNames(reportError)));
+      if (reportError.stack) console.error('[ArmorIQ] Report stack:', reportError.stack.split('\n').slice(0, 10).join('\n'));
+      console.log('[ArmorIQ EXIT] session.report block (caught)');
     }
 
+    console.log('[ArmorIQ EXIT] logSecurityScan (success)');
     return {
       id: invokeResult.id || `armoriq-${Date.now()}`,
       action: 'security_scan',
@@ -323,8 +351,10 @@ async function logSecurityScan(entry) {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('[ArmorIQ] Failed to log security scan via SDK:', error.message);
-    if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 8).join('\n'));
+    console.error('[ArmorIQ] Caught outer error in logSecurityScan:', error.message);
+    console.error('[ArmorIQ] Error type:', error.name || typeof error);
+    console.error('[ArmorIQ] Error full:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 10).join('\n'));
 
     if (error instanceof InvalidTokenException) {
       console.error('[ArmorIQ] Invalid token — plan mismatch or tampered token');
@@ -339,6 +369,7 @@ async function logSecurityScan(entry) {
     // Fallback to local audit when SDK fails, but preserve intent token if we got one
     console.log('[ArmorIQ] Falling back to local audit entry after SDK failure');
     const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
+    console.log('[ArmorIQ EXIT] logSecurityScan (fallback after error)');
     return {
       id: `audit-fallback-${Date.now()}`,
       action: 'security_scan',
@@ -370,6 +401,7 @@ async function logSecurityScan(entry) {
  * @returns {Promise<PolicyEvaluationResult>}
  */
 async function evaluatePolicy(policyName, context = {}) {
+  console.log('[ArmorIQ ENTER] evaluatePolicy');
   const client = getArmorIQClient();
 
   if (!client) {
@@ -401,6 +433,7 @@ async function evaluatePolicy(policyName, context = {}) {
       },
     };
     console.log('[ArmorIQ] [LOCAL FALLBACK] Policy Result:', JSON.stringify(result));
+    console.log('[ArmorIQ EXIT] evaluatePolicy (local fallback)');
     return result;
   }
 
@@ -462,6 +495,7 @@ async function evaluatePolicy(policyName, context = {}) {
 
     // Report audit entry via ArmorIQSession.report() for dashboard visibility
     try {
+      console.log('[ArmorIQ ENTER] session.report block');
       console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
       console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
@@ -500,11 +534,13 @@ async function evaluatePolicy(policyName, context = {}) {
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
       console.log('[ArmorIQ] END completePlan()');
+      console.log('[ArmorIQ EXIT] session.report block');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
+      console.log('[ArmorIQ EXIT] session.report block (caught)');
     }
 
-    // Parse the invoke result into PolicyEvaluationResult
+    console.log('[ArmorIQ EXIT] evaluatePolicy (success)');
     return {
       passed: invokeResult.passed !== false,
       policyName: policyName,
@@ -518,7 +554,8 @@ async function evaluatePolicy(policyName, context = {}) {
       },
     };
   } catch (error) {
-    console.error('[ArmorIQ] Policy evaluation failed via SDK:', error.message);
+    console.error('[ArmorIQ] Caught outer error in evaluatePolicy:', error.message);
+    console.error('[ArmorIQ] Error type:', error.name || typeof error);
     if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 5).join('\n'));
 
     if (error instanceof InvalidTokenException) {
@@ -531,6 +568,7 @@ async function evaluatePolicy(policyName, context = {}) {
 
     // Fallback, but preserve intent token if we got one
     const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
+    console.log('[ArmorIQ EXIT] evaluatePolicy (fallback after error)');
     return {
       passed: false,
       policyName: policyName,
@@ -558,6 +596,7 @@ async function evaluatePolicy(policyName, context = {}) {
  * @returns {Promise<Object>}
  */
 async function createAuditEntry(entry) {
+  console.log('[ArmorIQ ENTER] createAuditEntry');
   const client = getArmorIQClient();
 
   if (!client) {
@@ -575,6 +614,7 @@ async function createAuditEntry(entry) {
       createdAt: new Date().toISOString(),
     };
     console.log('[ArmorIQ] [LOCAL FALLBACK] Audit entry created:', JSON.stringify(auditRecord));
+    console.log('[ArmorIQ EXIT] createAuditEntry (local fallback)');
     return auditRecord;
   }
 
@@ -633,6 +673,7 @@ async function createAuditEntry(entry) {
 
     // Report audit entry via ArmorIQSession.report() for dashboard visibility
     try {
+      console.log('[ArmorIQ ENTER] session.report block');
       console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
       console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
@@ -672,10 +713,13 @@ async function createAuditEntry(entry) {
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
       console.log('[ArmorIQ] END completePlan()');
+      console.log('[ArmorIQ EXIT] session.report block');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
+      console.log('[ArmorIQ EXIT] session.report block (caught)');
     }
 
+    console.log('[ArmorIQ EXIT] createAuditEntry (success)');
     return {
       id: invokeResult.id || `armoriq-${Date.now()}`,
       action: entry.action,
@@ -688,11 +732,13 @@ async function createAuditEntry(entry) {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('[ArmorIQ] Failed to create audit entry via SDK:', error.message);
+    console.error('[ArmorIQ] Caught outer error in createAuditEntry:', error.message);
+    console.error('[ArmorIQ] Error type:', error.name || typeof error);
     if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 5).join('\n'));
 
     // Fallback, but preserve intent token if we got one
     const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
+    console.log('[ArmorIQ EXIT] createAuditEntry (fallback after error)');
     return {
       id: `entry-fallback-${Date.now()}`,
       action: entry.action || 'unknown',
@@ -716,10 +762,12 @@ async function createAuditEntry(entry) {
  * @returns {Promise<Object>}
  */
 async function reportSecurityEvent(eventType, eventData = {}) {
+  console.log('[ArmorIQ ENTER] reportSecurityEvent');
   const client = getArmorIQClient();
 
   if (!client) {
     console.log('[ArmorIQ] [LOCAL FALLBACK] Security event (SDK not configured):', eventType);
+    console.log('[ArmorIQ EXIT] reportSecurityEvent (local fallback)');
     return {
       id: `event-${Date.now()}`,
       eventType,
@@ -769,6 +817,7 @@ async function reportSecurityEvent(eventType, eventData = {}) {
 
     // Report audit entry via ArmorIQSession.report() for dashboard visibility
     try {
+      console.log('[ArmorIQ ENTER] session.report block');
       console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
       console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
@@ -804,10 +853,13 @@ async function reportSecurityEvent(eventType, eventData = {}) {
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
       console.log('[ArmorIQ] END completePlan()');
+      console.log('[ArmorIQ EXIT] session.report block');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
+      console.log('[ArmorIQ EXIT] session.report block (caught)');
     }
 
+    console.log('[ArmorIQ EXIT] reportSecurityEvent (success)');
     return {
       id: invokeResult.id || `armoriq-event-${Date.now()}`,
       eventType,
@@ -816,9 +868,10 @@ async function reportSecurityEvent(eventType, eventData = {}) {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('[ArmorIQ] Failed to sync security event:', error.message);
+    console.error('[ArmorIQ] Caught outer error in reportSecurityEvent:', error.message);
     if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 5).join('\n'));
     const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
+    console.log('[ArmorIQ EXIT] reportSecurityEvent (fallback after error)');
     return {
       id: `event-fallback-${Date.now()}`,
       eventType,
@@ -837,16 +890,18 @@ async function reportSecurityEvent(eventType, eventData = {}) {
  * @returns {Promise<{valid: boolean, details: Object}>}
  */
 async function verifyIntentToken(intentToken) {
+  console.log('[ArmorIQ ENTER] verifyIntentToken');
   const client = getArmorIQClient();
 
   if (!client || !intentToken) {
+    console.log('[ArmorIQ EXIT] verifyIntentToken (no client or no token)');
     return { valid: false, details: { reason: 'SDK not configured or no token provided' } };
   }
 
   try {
     const verificationResult = client.verifyToken(intentToken);
     console.log('[ArmorIQ] Intent Verification — Token valid:', verificationResult.valid);
-
+    console.log('[ArmorIQ EXIT] verifyIntentToken');
     if (verificationResult.valid) {
       return { valid: true, details: verificationResult };
     } else {
@@ -854,6 +909,7 @@ async function verifyIntentToken(intentToken) {
     }
   } catch (error) {
     console.error('[ArmorIQ] Token verification failed:', error.message);
+    console.log('[ArmorIQ EXIT] verifyIntentToken (error)');
     return { valid: false, details: { error: error.message } };
   }
 }
@@ -868,21 +924,25 @@ async function verifyIntentToken(intentToken) {
  * @returns {Promise<Array>}
  */
 async function getAuditEntries(filters = {}) {
+  console.log('[ArmorIQ ENTER] getAuditEntries');
   const client = getArmorIQClient();
 
   if (!client) {
     console.log('[ArmorIQ] [LOCAL FALLBACK] Audit entries requested:', JSON.stringify(filters));
+    console.log('[ArmorIQ EXIT] getAuditEntries (local fallback)');
     return [];
   }
 
   try {
     console.log('[ArmorIQ] Querying audit entries with filters:', JSON.stringify(filters));
+    console.log('[ArmorIQ EXIT] getAuditEntries');
     // Note: The SDK may not have a direct queryAuditEntries method;
     // this is handled via the ArmorIQ platform dashboard.
     // For now, return empty — full query support will come with ArmorIQ API expansion.
     return [];
   } catch (error) {
     console.error('[ArmorIQ] Failed to query audit entries:', error.message);
+    console.log('[ArmorIQ EXIT] getAuditEntries (error)');
     return [];
   }
 }
