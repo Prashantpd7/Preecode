@@ -20,6 +20,82 @@ const { ArmorIQClient, InvalidTokenException, IntentMismatchException, MCPInvoca
 let armoriqClient = null;
 
 /**
+ * Installs axios request/response interceptors on the SDK's HTTP client
+ * to log every outbound call to ArmorIQ (URL, method, payload, response code, response body).
+ * Only installs once per client instance.
+ */
+function enableArmorIQDiagnostics(client) {
+  if (client.__diagnosticsEnabled) {
+    return;
+  }
+  client.__diagnosticsEnabled = true;
+
+  // ── Request Interceptor ──
+  client.httpClient.interceptors.request.use(
+    (config) => {
+      const sanitizedHeaders = { ...config.headers };
+      // Mask sensitive auth headers
+      if (sanitizedHeaders['X-API-Key']) {
+        const val = String(sanitizedHeaders['X-API-Key']);
+        sanitizedHeaders['X-API-Key'] = val.length > 8 ? val.slice(0, 4) + '***' + val.slice(-4) : '***masked***';
+      }
+      if (sanitizedHeaders['Authorization']) {
+        const val = String(sanitizedHeaders['Authorization']);
+        sanitizedHeaders['Authorization'] = val.length > 12 ? val.slice(0, 8) + '***' + val.slice(-4) : '***masked***';
+      }
+      console.log(`\n[ArmorIQ DIAG] ═══════════════════════════════════════`);
+      console.log(`[ArmorIQ DIAG]  REQUEST: ${(config.method || 'GET').toUpperCase()} ${config.url}`);
+      console.log(`[ArmorIQ DIAG]  HEADERS: ${JSON.stringify(sanitizedHeaders, null, 2)}`);
+      if (config.data) {
+        const dataStr = typeof config.data === 'string' ? config.data : JSON.stringify(config.data);
+        console.log(`[ArmorIQ DIAG]  PAYLOAD: ${dataStr.slice(0, 800)}${dataStr.length > 800 ? '... [truncated]' : ''}`);
+      }
+      console.log(`[ArmorIQ DIAG] ═══════════════════════════════════════\n`);
+      return config;
+    },
+    (error) => {
+      console.error(`\n[ArmorIQ DIAG] ❌ REQUEST SETUP ERROR: ${error.message}`);
+      if (error.stack) console.error(`[ArmorIQ DIAG]    STACK: ${error.stack.split('\n').slice(0, 4).join('\n')}`);
+      return Promise.reject(error);
+    }
+  );
+
+  // ── Response Interceptor (success) ──
+  client.httpClient.interceptors.response.use(
+    (response) => {
+      console.log(`\n[ArmorIQ DIAG] ───────────────────────────────────────`);
+      console.log(`[ArmorIQ DIAG]  RESPONSE: ${response.status} ${response.statusText}`);
+      const dataStr = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      console.log(`[ArmorIQ DIAG]  BODY: ${dataStr.slice(0, 800)}${dataStr.length > 800 ? '... [truncated]' : ''}`);
+      console.log(`[ArmorIQ DIAG] ───────────────────────────────────────\n`);
+      return response;
+    },
+    (error) => {
+      console.error(`\n[ArmorIQ DIAG] ❌───────────────────────────────────────`);
+      console.error(`[ArmorIQ DIAG]  RESPONSE ERROR: ${error.message}`);
+      if (error.response) {
+        console.error(`[ArmorIQ DIAG]  STATUS: ${error.response.status}`);
+        const dataStr = typeof error.response.data === 'string'
+          ? error.response.data
+          : JSON.stringify(error.response.data);
+        console.error(`[ArmorIQ DIAG]  BODY: ${(dataStr || 'N/A').slice(0, 800)}`);
+        console.error(`[ArmorIQ DIAG]  HEADERS: ${JSON.stringify(error.response.headers || {})}`);
+      }
+      if (error.code) {
+        console.error(`[ArmorIQ DIAG]  CODE: ${error.code}`);
+      }
+      if (error.stack) {
+        console.error(`[ArmorIQ DIAG]  STACK: ${error.stack.split('\n').slice(0, 6).join('\n')}`);
+      }
+      console.error(`[ArmorIQ DIAG] ❌───────────────────────────────────────\n`);
+      return Promise.reject(error);
+    }
+  );
+
+  console.log('[ArmorIQ DIAG] ✅ Diagnostic HTTP interceptors installed on SDK client');
+}
+
+/**
  * Gets or initializes the ArmorIQ client singleton.
  * Reads ARMORIQ_API_KEY from environment.
  * 
@@ -46,9 +122,14 @@ function getArmorIQClient() {
       maxRetries: parseInt(process.env.ARMORIQ_MAX_RETRIES || '2', 10),
     });
     console.log('[ArmorIQ] Client initialized successfully');
+
+    // Install diagnostic HTTP interceptors to capture every outbound call
+    enableArmorIQDiagnostics(armoriqClient);
+
     return armoriqClient;
   } catch (error) {
     console.error('[ArmorIQ] Failed to initialize client:', error.message);
+    if (error.stack) console.error('[ArmorIQ] Init stack:', error.stack.split('\n').slice(0, 5).join('\n'));
     return null;
   }
 }
@@ -107,10 +188,14 @@ async function logSecurityScan(entry) {
   let intentToken;
   let invokeResult;
   try {
-    console.log('[ArmorIQ] Policy Check Started — logging security scan via ArmorIQ SDK');
+    console.log('[ArmorIQ] ═══ Step 2: Security Analysis Complete — sending to ArmorIQ SDK ═══');
     console.log('[ArmorIQ] Entry:', JSON.stringify(entry));
+    console.log('[ArmorIQ] SDK backendEndpoint:', client.backendEndpoint);
+    console.log('[ArmorIQ] SDK proxyEndpoint:', client.defaultProxyEndpoint);
+    console.log('[ArmorIQ] SDK iapEndpoint:', client.iapEndpoint);
 
     // Step 1: Capture the security scan plan
+    console.log('[ArmorIQ] START capturePlan() — synchronous, no HTTP');
     const plan = {
       goal: `Security scan for ${entry.resource || 'unknown resource'}`,
       steps: [
@@ -135,12 +220,19 @@ async function logSecurityScan(entry) {
       { entryType: 'security_scan', source: 'armorclaw' }
     );
     console.log('[ArmorIQ] Plan captured:', planCapture.id || JSON.stringify(planCapture).slice(0, 100));
+    console.log('[ArmorIQ] END capturePlan()');
 
     // Step 2: Get signed intent token (enforces policies if configured)
+    console.log('[ArmorIQ] START getIntentToken() — HTTP POST to IAP');
     intentToken = await client.getIntentToken(planCapture, { policyName: 'security-scan-policy' }, 300); // 5 minute validity
     console.log('[ArmorIQ] Policy Check Result — Intent token obtained:', intentToken.tokenId || 'success');
+    console.log('[ArmorIQ] Intent token planId:', intentToken.planId);
+    console.log('[ArmorIQ] Intent token has jwtToken:', !!intentToken.jwtToken);
+    console.log('[ArmorIQ] Intent token has rawToken:', !!intentToken.rawToken);
+    console.log('[ArmorIQ] END getIntentToken()');
 
     // Step 3: Invoke the audit logging action (auto-verified against intent token)
+    console.log('[ArmorIQ] START invoke() — HTTP POST to Proxy');
     invokeResult = await client.invoke(
       'preecode-armoriq-mcp',
       'log_security_scan',
@@ -155,10 +247,19 @@ async function logSecurityScan(entry) {
       null,
       entry.userId || 'system'
     );
-    console.log('[ArmorIQ] Audit Log Created — Invoke result:', JSON.stringify(invokeResult).slice(0, 200));
+    console.log('[ArmorIQ] END invoke()');
+    console.log('[ArmorIQ] Invoke result status:', invokeResult.status);
+    console.log('[ArmorIQ] Invoke result verified:', invokeResult.verified);
+    console.log('[ArmorIQ] Invoke result executionTime:', invokeResult.executionTime);
+    console.log('[ArmorIQ] Audit Log Created — Invoke result:', JSON.stringify(invokeResult).slice(0, 300));
 
     // Step 4: Report audit entry via ArmorIQSession.report() for dashboard visibility
+    // IMPORTANT: The SDK's report() catches errors internally and does NOT rethrow.
+    // Our console.log('[ArmorIQ] Session report success') will execute even if HTTP fails.
+    // The diagnostic interceptors above will show the actual HTTP response.
     try {
+      console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
+      console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
         mode: 'local',
         llm: 'armorclaw-ai',
@@ -167,6 +268,19 @@ async function logSecurityScan(entry) {
       session.currentToken = intentToken;
       session.userEmail = entry.userId || 'system';
       console.log('[ArmorIQ] Session report started');
+      console.log('[ArmorIQ] Report payload - token:', intentToken.jwtToken ? intentToken.jwtToken.slice(0, 30) + '...' : intentToken.tokenId);
+      console.log('[ArmorIQ] Report payload - plan_id:', intentToken.planId);
+      console.log('[ArmorIQ] Report payload - action: log_security_scan');
+      console.log('[ArmorIQ] Report payload - mcp: preecode-armoriq-mcp');
+      console.log('[ArmorIQ] Report payload - input:', JSON.stringify({
+        resource: entry.resource,
+        status: entry.status,
+        score: entry.details?.score,
+        issueCount: entry.details?.issueCount,
+        severity: entry.details?.severity,
+      }));
+      console.log('[ArmorIQ] Report payload - status: success');
+      console.log('[ArmorIQ] Report payload - user_email:', entry.userId || 'system');
       await session.report(
         'log_security_scan',
         {
@@ -185,10 +299,16 @@ async function logSecurityScan(entry) {
         }
       );
       console.log('[ArmorIQ] Session report success');
+      console.log('[ArmorIQ] END session.report()');
+
+      console.log('[ArmorIQ] START completePlan() — HTTP POST to backendEndpoint/iap/plans/{id}/status');
+      console.log('[ArmorIQ] Complete plan URL:', `${client.backendEndpoint}/iap/plans/${intentToken.planId}/status`);
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+      console.log('[ArmorIQ] END completePlan()');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
+      if (reportError.stack) console.error('[ArmorIQ] Report stack:', reportError.stack.split('\n').slice(0, 5).join('\n'));
     }
 
     return {
@@ -204,6 +324,7 @@ async function logSecurityScan(entry) {
     };
   } catch (error) {
     console.error('[ArmorIQ] Failed to log security scan via SDK:', error.message);
+    if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 8).join('\n'));
 
     if (error instanceof InvalidTokenException) {
       console.error('[ArmorIQ] Invalid token — plan mismatch or tampered token');
@@ -286,9 +407,12 @@ async function evaluatePolicy(policyName, context = {}) {
   let intentToken;
   let invokeResult;
   try {
-    console.log('[ArmorIQ] Policy Check Started — evaluating policy:', policyName);
+    console.log('[ArmorIQ] ═══ Policy Evaluation via SDK ═══');
+    console.log('[ArmorIQ] Policy:', policyName);
+    console.log('[ArmorIQ] Language:', context.language);
 
     // Step 1: Capture the policy evaluation plan
+    console.log('[ArmorIQ] START capturePlan()');
     const evalPlan = {
       goal: `Evaluate policy "${policyName}" against ${context.language || 'unknown'} code`,
       steps: [
@@ -314,10 +438,12 @@ async function evaluatePolicy(policyName, context = {}) {
     console.log('[ArmorIQ] Policy plan captured:', planCapture.id || JSON.stringify(planCapture).slice(0, 100));
 
     // Step 2: Get intent token with policy constraints
+    console.log('[ArmorIQ] START getIntentToken()');
     intentToken = await client.getIntentToken(planCapture, { policyName: policyName || 'default-security-policy' }, 120); // 2 minute validity
     console.log('[ArmorIQ] Policy Result — Intent token obtained:', intentToken.tokenId || 'success');
 
     // Step 3: Invoke policy evaluation via ArmorIQ
+    console.log('[ArmorIQ] START invoke()');
     invokeResult = await client.invoke(
       'preecode-armoriq-mcp',
       'evaluate_policy',
@@ -331,10 +457,13 @@ async function evaluatePolicy(policyName, context = {}) {
       null,
       context.metadata?.userId || 'system'
     );
+    console.log('[ArmorIQ] END invoke()');
     console.log('[ArmorIQ] Audit Log Created — Policy evaluation result:', JSON.stringify(invokeResult).slice(0, 200));
 
     // Report audit entry via ArmorIQSession.report() for dashboard visibility
     try {
+      console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
+      console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
         mode: 'local',
         llm: 'armorclaw-ai',
@@ -343,6 +472,10 @@ async function evaluatePolicy(policyName, context = {}) {
       session.currentToken = intentToken;
       session.userEmail = context.metadata?.userId || 'system';
       console.log('[ArmorIQ] Session report started');
+      console.log('[ArmorIQ] Report payload - action: evaluate_policy');
+      console.log('[ArmorIQ] Report payload - mcp: preecode-armoriq-mcp');
+      console.log('[ArmorIQ] Report payload - policyName:', policyName);
+      console.log('[ArmorIQ] Report payload - passed:', invokeResult.passed);
       await session.report(
         'evaluate_policy',
         {
@@ -360,8 +493,13 @@ async function evaluatePolicy(policyName, context = {}) {
         }
       );
       console.log('[ArmorIQ] Session report success');
+      console.log('[ArmorIQ] END session.report()');
+
+      console.log('[ArmorIQ] START completePlan()');
+      console.log('[ArmorIQ] Complete plan URL:', `${client.backendEndpoint}/iap/plans/${intentToken.planId}/status`);
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+      console.log('[ArmorIQ] END completePlan()');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
     }
@@ -381,6 +519,7 @@ async function evaluatePolicy(policyName, context = {}) {
     };
   } catch (error) {
     console.error('[ArmorIQ] Policy evaluation failed via SDK:', error.message);
+    if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 5).join('\n'));
 
     if (error instanceof InvalidTokenException) {
       console.error('[ArmorIQ] Invalid token for policy evaluation');
@@ -442,9 +581,11 @@ async function createAuditEntry(entry) {
   let intentToken;
   let invokeResult;
   try {
-    console.log('[ArmorIQ] Creating audit entry via SDK:', entry.action);
+    console.log('[ArmorIQ] ═══ Create Audit Entry via SDK ═══');
+    console.log('[ArmorIQ] Action:', entry.action);
 
     // Step 1: Capture the audit entry plan
+    console.log('[ArmorIQ] START capturePlan()');
     const auditPlan = {
       goal: `Record audit entry: ${entry.action}`,
       steps: [
@@ -469,9 +610,11 @@ async function createAuditEntry(entry) {
     );
 
     // Step 2: Get intent token
+    console.log('[ArmorIQ] START getIntentToken()');
     intentToken = await client.getIntentToken(planCapture, undefined, 300);
 
     // Step 3: Invoke audit entry creation
+    console.log('[ArmorIQ] START invoke()');
     invokeResult = await client.invoke(
       'preecode-armoriq-mcp',
       'create_audit_entry',
@@ -485,10 +628,13 @@ async function createAuditEntry(entry) {
         timestamp: entry.timestamp || new Date().toISOString(),
       }
     );
+    console.log('[ArmorIQ] END invoke()');
     console.log('[ArmorIQ] Audit Log Created — Entry ID:', invokeResult.id || 'synced');
 
     // Report audit entry via ArmorIQSession.report() for dashboard visibility
     try {
+      console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
+      console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
         mode: 'local',
         llm: 'armorclaw-ai',
@@ -497,6 +643,9 @@ async function createAuditEntry(entry) {
       session.currentToken = intentToken;
       session.userEmail = entry.userId || 'system';
       console.log('[ArmorIQ] Session report started');
+      console.log('[ArmorIQ] Report payload - action: create_audit_entry');
+      console.log('[ArmorIQ] Report payload - mcp: preecode-armoriq-mcp');
+      console.log('[ArmorIQ] Report payload - entry action:', entry.action);
       await session.report(
         'create_audit_entry',
         {
@@ -516,8 +665,13 @@ async function createAuditEntry(entry) {
         }
       );
       console.log('[ArmorIQ] Session report success');
+      console.log('[ArmorIQ] END session.report()');
+
+      console.log('[ArmorIQ] START completePlan()');
+      console.log('[ArmorIQ] Complete plan URL:', `${client.backendEndpoint}/iap/plans/${intentToken.planId}/status`);
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+      console.log('[ArmorIQ] END completePlan()');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
     }
@@ -535,6 +689,7 @@ async function createAuditEntry(entry) {
     };
   } catch (error) {
     console.error('[ArmorIQ] Failed to create audit entry via SDK:', error.message);
+    if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 5).join('\n'));
 
     // Fallback, but preserve intent token if we got one
     const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
@@ -576,7 +731,8 @@ async function reportSecurityEvent(eventType, eventData = {}) {
   let intentToken;
   let invokeResult;
   try {
-    console.log('[ArmorIQ] Event Synced — reporting security event:', eventType);
+    console.log('[ArmorIQ] ═══ Report Security Event via SDK ═══');
+    console.log('[ArmorIQ] Event type:', eventType);
 
     const eventPlan = {
       goal: `Report security event: ${eventType}`,
@@ -608,10 +764,13 @@ async function reportSecurityEvent(eventType, eventData = {}) {
       eventData.userId || 'system'
     );
 
+    console.log('[ArmorIQ] END invoke()');
     console.log('[ArmorIQ] Event Synced — Result:', invokeResult.id || 'synced');
 
     // Report audit entry via ArmorIQSession.report() for dashboard visibility
     try {
+      console.log('[ArmorIQ] START session.report() — will POST to backendEndpoint/iap/audit');
+      console.log('[ArmorIQ] Report target URL:', `${client.backendEndpoint}/iap/audit`);
       const session = client.startSession({
         mode: 'local',
         llm: 'armorclaw-ai',
@@ -638,8 +797,13 @@ async function reportSecurityEvent(eventType, eventData = {}) {
         }
       );
       console.log('[ArmorIQ] Session report success');
+      console.log('[ArmorIQ] END session.report()');
+
+      console.log('[ArmorIQ] START completePlan()');
+      console.log('[ArmorIQ] Complete plan URL:', `${client.backendEndpoint}/iap/plans/${intentToken.planId}/status`);
       await client.completePlan(intentToken.planId)
         .catch(e => console.warn('[ArmorIQ] completePlan warning:', e.message));
+      console.log('[ArmorIQ] END completePlan()');
     } catch (reportError) {
       console.error('[ArmorIQ] Session report failed:', reportError.message);
     }
@@ -653,6 +817,7 @@ async function reportSecurityEvent(eventType, eventData = {}) {
     };
   } catch (error) {
     console.error('[ArmorIQ] Failed to sync security event:', error.message);
+    if (error.stack) console.error('[ArmorIQ] SDK error stack:', error.stack.split('\n').slice(0, 5).join('\n'));
     const armoriqTokenId = intentToken ? (intentToken.tokenId || intentToken.id) : null;
     return {
       id: `event-fallback-${Date.now()}`,
