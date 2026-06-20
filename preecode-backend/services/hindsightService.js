@@ -26,9 +26,7 @@ const getHindsightClient = () => {
 };
 
 async function saveMemory(memoryData) {
-  console.log("🔥 HINDSIGHT saveMemory CALLED", memoryData);
   if (!isHindsightConfigured()) {
-    console.warn("[HINDSIGHT] Memory saving skipped: API key not configured");
     return null;
   }
 
@@ -72,7 +70,6 @@ async function saveMemory(memoryData) {
 
 async function getUserMemories(userId) {
   if (!isHindsightConfigured()) {
-    console.warn("[HINDSIGHT] Memory retrieval skipped: API key not configured");
     return [];
   }
 
@@ -98,7 +95,6 @@ async function getUserMemories(userId) {
 
 async function searchUserMemories(userId, query) {
   if (!isHindsightConfigured()) {
-    console.warn("[HINDSIGHT] Memory search skipped: API key not configured");
     return [];
   }
 

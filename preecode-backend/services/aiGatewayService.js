@@ -131,12 +131,6 @@ function logStartupDiagnostics() {
   }
 }
 
-// ─── Key Fingerprint (for diagnostics — never prints full key) ────────────
-function getKeyFingerprint(key) {
-  if (!key || key.length < 12) return '(no key)';
-  return key.slice(0, 7) + '...' + key.slice(-5);
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -306,8 +300,7 @@ async function callAI(messages, options = {}) {
         }
 
         const latency = Date.now() - startTime;
-        const fingerprint = getKeyFingerprint(apiKey);
-        console.log(`[AI REQUEST] Feature=${feature} Model=${model} Key=${fingerprint} Timestamp=${new Date().toISOString()}`);
+        console.log(`[ai-gateway] ✅ Feature=${feature} Model=${model} Attempt=${attemptNumber} Latency=${latency}ms`);
 
         return { content, model, raw: parsedBody };
       } catch (error) {
@@ -333,8 +326,7 @@ async function callAI(messages, options = {}) {
   const latency = Date.now() - startTime;
   const errorSummary = errors.map(e => `[${e.model} attempt ${e.attempt}]: ${e.message}`).join(' | ');
 
-  const fingerprint = getKeyFingerprint(apiKey);
-  console.error(`[AI REQUEST FAILED] Feature=${feature} Key=${fingerprint} Failed=${errors.length} models Latency=${latency}ms`);
+  console.error(`[ai-gateway] ❌ Feature=${feature} Failed=${errors.length} models Latency=${latency}ms`);
 
   const err = new Error(
     `AI request failed across all models. Last error: ${lastError.message || 'Unknown'}. Full trace: ${errorSummary}`
