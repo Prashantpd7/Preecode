@@ -7,6 +7,7 @@ AI-powered coding practice and skill-building platform directly inside VS Code.
 Preecode helps developers practice consistently, review code with AI assistance, and improve problem-solving skills without leaving their editor. It combines coding workflows, guidance, and progress-oriented tooling in one extension.
 
 Website: https://preecode.vercel.app
+YouTube: https://youtu.be/ECKcCTc-A3k?si=Lb2zgAoPOQBGbw2_
 
 ---
 
