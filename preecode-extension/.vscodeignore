@@ -1,16 +1,28 @@
-.git/**
-.vscode/**
-.vscode-test/**
-src/**
+# Environment / secrets
 .env
-.DS_Store
+.env.*
+!.env.example
+
+# Source and development files
+src/
+.vscode/
+.vscode-test/
+.vscodeignore
+tsconfig.json
+eslint.config.mjs
+*.test.js
+*.test.ts
+
+# Documentation / repository files
+.git/
+.github/
 .gitignore
-.yarnrc
+CHANGELOG.md
 vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
-**/*.map
-**/*.ts
-**/.vscode-test.*
-preecode-backend/**
-preecode-frontend/**
+
+# Local VSIX files
+*.vsix
+
+# Logs / temporary files
+*.log
+tmp/
