@@ -20,21 +20,48 @@ if (googleClientId && googleClientSecret) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
+          const email = profile.emails?.[0]?.value?.toLowerCase();
+          const providerAvatar = profile.photos?.[0]?.value || '';
+
+          if (!email) {
+            return done(new Error('Google account did not provide an email'), null);
+          }
+
+          // Check if Google account already exists
           let user = await User.findOne({ providerId: profile.id });
-          const providerAvatar = profile.photos[0]?.value || '';
 
           if (user) {
             if (providerAvatar && user.avatar !== providerAvatar) {
               user.avatar = providerAvatar;
               await user.save();
             }
+
             return done(null, user);
           }
 
-          // Generate a unique username from Google display name
-          const baseUsername = profile.displayName.replace(/\s+/g, '_').toLowerCase();
+          // Check if email already exists
+          user = await User.findOne({ email });
+
+          if (user) {
+            user.provider = 'google';
+            user.providerId = profile.id;
+
+            if (providerAvatar && user.avatar !== providerAvatar) {
+              user.avatar = providerAvatar;
+            }
+
+            await user.save();
+
+            return done(null, user);
+          }
+
+          // Create new user
+          const baseUsername =
+            profile.displayName.replace(/\s+/g, '_').toLowerCase();
+
           let username = baseUsername;
           let counter = 1;
+
           while (await User.findOne({ username })) {
             username = `${baseUsername}_${counter}`;
             counter++;
@@ -43,7 +70,7 @@ if (googleClientId && googleClientSecret) {
           user = await User.create({
             name: profile.displayName,
             username,
-            email: profile.emails[0].value,
+            email,
             provider: 'google',
             providerId: profile.id,
             avatar: providerAvatar,
