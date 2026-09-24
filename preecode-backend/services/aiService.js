@@ -1,10 +1,11 @@
 /**
  * Preecode AI Service — routes all AI requests through the central AI Gateway.
  *
- * This file now delegates to aiGatewayService.js for all OpenRouter interactions.
+ * This file delegates to aiGatewayService.js for all AI provider interactions
+ * (z.ai primary, NVIDIA NIM fallback).
  * It remains as the public API for controllers, preserving backward-compatible exports.
  *
- * No models, API keys, or OpenRouter URLs are defined here.
+ * No models, API keys, or provider URLs are defined here.
  * See aiGatewayService.js for the single source of truth.
  */
 
@@ -14,11 +15,12 @@ const aiGateway = require('./aiGatewayService');
 
 function buildStructuredError(base) {
   const err = new Error(base.message);
-  err.name = 'OpenRouterError';
+  err.name = 'AIGatewayError';
   err.statusCode = base.statusCode || 502;
-  err.code = base.code || 'OPENROUTER_REQUEST_FAILED';
+  err.code = base.code || 'AI_GATEWAY_REQUEST_FAILED';
   err.details = {
     model: base.model,
+    provider: base.provider,
     attempt: base.attempt,
     providerStatus: base.providerStatus,
     retryable: Boolean(base.retryable),
@@ -29,54 +31,35 @@ function buildStructuredError(base) {
 }
 
 /**
- * Backward-compatible wrapper: delegates directly to aiGateway.callAI()
+ * Delegates directly to aiGateway.callAI()
  */
-async function call_openrouter(messages, options = {}) {
-  const result = await aiGateway.callAI(messages, { ...options, feature: 'call_openrouter' });
+async function callAI(messages, options = {}) {
+  const result = await aiGateway.callAI(messages, { ...options, feature: 'call_ai' });
   return result;
 }
 
+// Delegates directly to aiGateway.callAI()
+
 /**
- * Backward-compatible wrapper: calls the gateway and returns just the content string.
+ * Calls the gateway and returns just the content string.
  */
 async function generateResponse(messages, options = {}) {
   try {
-    const result = await aiGateway.callAI(messages, { ...options, feature: 'generate_response' });
+    const result = await callAI(messages, { ...options, feature: 'generate_response' });
     return result.content;
   } catch (error) {
-    if (error && error.name === 'OpenRouterError') {
+    if (error && error.name === 'AIGatewayError') {
       throw error;
     }
-    const wrapped = buildStructuredError({
+
+    throw buildStructuredError({
       message: `AI service error: ${error?.message || 'Unknown error'}`,
       statusCode: error?.statusCode || 502,
-      code: error?.code || 'OPENROUTER_UNEXPECTED_ERROR',
+      code: error?.code || 'AI_GATEWAY_UNEXPECTED_ERROR',
       responseBody: error?.message,
       cause: error,
       retryable: false,
     });
-    throw wrapped;
-  }
-}
-
-async function generateResponse(messages, options = {}) {
-  try {
-    const result = await call_openrouter(messages, options);
-    return result.content;
-  } catch (error) {
-    if (error && error.name === 'OpenRouterError') {
-      throw error;
-    }
-
-    const wrapped = buildStructuredError({
-      message: `AI service error: ${error?.message || 'Unknown error'}`,
-      statusCode: error?.statusCode || 502,
-      code: error?.code || 'OPENROUTER_UNEXPECTED_ERROR',
-      responseBody: error?.message,
-      cause: error,
-      retryable: false,
-    });
-    throw wrapped;
   }
 }
 
@@ -300,4 +283,13 @@ Provide a structured JSON response (no markdown):
   }
 }
 
-module.exports = { call_openrouter, generateResponse, chat, getHint, reviewCode, generateQuestion, verifyCodeOutput, reviewProject };
+module.exports = {
+  callAI,
+  generateResponse,
+  chat,
+  getHint,
+  reviewCode,
+  generateQuestion,
+  verifyCodeOutput,
+  reviewProject,
+};

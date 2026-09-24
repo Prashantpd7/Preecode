@@ -1,7 +1,7 @@
 /**
  * ArmorClaw Security Analysis Service
  * 
- * Provides static code security analysis using OpenRouter AI.
+ * Provides static code security analysis using the central AI gateway (z.ai / NVIDIA NIM).
  * Architecture designed for seamless ArmorClaw SDK integration:
  * 
  * To connect ArmorClaw SDK later:
@@ -70,9 +70,10 @@ async function analyzeCode(code, language, options = {}) {
     return createEmptyResult('No code provided for analysis.');
   }
 
-  // Fallback to local regex-based scanner if OPENROUTER_API_KEY is not configured
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.warn('[ARMORCLAW] OPENROUTER_API_KEY is missing. Falling back to local regex-based security scan.');
+  // Fallback to local regex-based scanner if no AI provider key is configured
+  const aiGateway = require('./aiGatewayService');
+  if (!aiGateway.getStatus().keyConfigured) {
+    console.warn('[ARMORCLAW] No AI provider key (ZAI_API_KEY / NVIDIA_API_KEY) is set. Falling back to local regex-based security scan.');
     const result = localRegexScan(code, language);
 
     // Create audit log for this security scan

@@ -1,133 +1,143 @@
 /**
- * AI Gateway Service — SINGLE source of truth for all OpenRouter AI access.
+ * AI Gateway Service — SINGLE source of truth for all AI provider access.
  *
  * Every AI feature in Preecode (chat, hints, reviews, questions, interviews,
  * resume analysis, security analysis, extension actions) MUST route through
- * this service. No other file may call OpenRouter or any AI provider directly.
+ * this service. No other file may call any AI provider directly.
+ *
+ * Providers (tried in order):
+ *   1. z.ai (Zhipu GLM) — primary. OpenAI-compatible.
+ *      Env: ZAI_API_KEY (required), ZAI_BASE_URL, ZAI_MODEL, ZAI_FALLBACK_MODEL
+ *   2. NVIDIA NIM — fallback. OpenAI-compatible.
+ *      Env: NVIDIA_API_KEY (required), NVIDIA_BASE_URL, NVIDIA_MODEL,
+ *           NVIDIA_FALLBACK_MODEL
  *
  * To switch models in the future:
- *   Change PRIMARY_MODEL / FALLBACK_MODEL_* env vars. No code changes needed.
- *
- * To switch providers in the future:
- *   Only this file needs modification. No frontend, extension, controller,
- *   or route changes are required.
+ *   Change the ZAI_* / NVIDIA_* env vars. No code changes needed.
  *
  * Architecture:
- *   Website / Extension → Backend API → aiGatewayService → OpenRouter → Model
+ *   Website / Extension → Backend API → aiGatewayService → z.ai → NVIDIA NIM
  */
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const DEFAULT_ZAI_BASE_URL = 'https://api.z.ai/api/paas/v4';
+const DEFAULT_ZAI_MODEL = 'glm-4.7-flash';
+const DEFAULT_ZAI_FALLBACK_MODEL = 'glm-4.5-flash';
 
-// ─── Model Configuration (from environment variables) ────────────────────────
-// Models are loaded from env vars so you never need to modify code to change them.
-// Set these in .env (local) or Render dashboard (production).
-//
-//   PRIMARY_MODEL=qwen/qwen3-235b-a22b:free
-//   FALLBACK_MODEL_1=deepseek/deepseek-chat-v3-0324:free
-//   FALLBACK_MODEL_2=meta-llama/llama-4-maverick:free
-//   FALLBACK_MODEL_3=mistralai/mistral-small-3.1-24b-instruct:free
-//   FALLBACK_MODEL_4=openrouter/free
-//   FALLBACK_MODEL_5=openrouter/auto
+const DEFAULT_NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+const DEFAULT_NVIDIA_MODEL = 'nvidia/nemotron-nano-3-30b-a3b';
+const DEFAULT_NVIDIA_FALLBACK_MODEL = 'deepseek-ai/deepseek-v4-flash-0731';
 
-function buildModelChain() {
-  const primary = String(process.env.PRIMARY_MODEL || '').trim();
-  const fallbacks = [];
+// ─── Provider Configuration ──────────────────────────────────────────────────
 
-  for (let i = 1; i <= 10; i++) {
-    const key = `FALLBACK_MODEL_${i}`;
-    const value = String(process.env[key] || '').trim();
-    if (value) fallbacks.push(value);
-  }
-
-  // Default chain used when no env vars are configured
-  if (!primary && fallbacks.length === 0) {
-    return [
-      'qwen/qwen3-235b-a22b:free',
-      'deepseek/deepseek-chat-v3-0324:free',
-      'meta-llama/llama-4-maverick:free',
-      'mistralai/mistral-small-3.1-24b-instruct:free',
-      'openrouter/free',
-      'openrouter/auto',
-    ];
-  }
-
-  const chain = [];
-  if (primary) chain.push(primary);
-  chain.push(...fallbacks);
-  return chain;
+function splitKeys(value) {
+  return String(value || '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0);
 }
 
-let _models = null;
-function getModels() {
-  if (!_models) {
-    _models = buildModelChain();
+function dedupe(list) {
+  const seen = new Set();
+  return list.filter((item) => {
+    if (!item || seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  });
+}
+
+function buildProviders() {
+  const providers = [];
+
+  const zaiKeys = splitKeys(process.env.ZAI_API_KEY);
+  if (zaiKeys.length > 0) {
+    providers.push({
+      id: 'zai',
+      label: 'z.ai (Zhipu GLM)',
+      baseUrl: String(process.env.ZAI_BASE_URL || DEFAULT_ZAI_BASE_URL).trim() || DEFAULT_ZAI_BASE_URL,
+      keys: zaiKeys,
+      keyIndex: 0,
+      models: dedupe([
+        String(process.env.ZAI_MODEL || DEFAULT_ZAI_MODEL).trim() || DEFAULT_ZAI_MODEL,
+        String(process.env.ZAI_FALLBACK_MODEL || DEFAULT_ZAI_FALLBACK_MODEL).trim() || DEFAULT_ZAI_FALLBACK_MODEL,
+      ]),
+    });
   }
-  return _models;
+
+  const nvidiaKeys = splitKeys(process.env.NVIDIA_API_KEY);
+  if (nvidiaKeys.length > 0) {
+    providers.push({
+      id: 'nvidia',
+      label: 'NVIDIA NIM',
+      baseUrl:
+        String(process.env.NVIDIA_BASE_URL || DEFAULT_NVIDIA_BASE_URL).trim() || DEFAULT_NVIDIA_BASE_URL,
+      keys: nvidiaKeys,
+      keyIndex: 0,
+      models: dedupe([
+        String(process.env.NVIDIA_MODEL || DEFAULT_NVIDIA_MODEL).trim() || DEFAULT_NVIDIA_MODEL,
+        String(process.env.NVIDIA_FALLBACK_MODEL || DEFAULT_NVIDIA_FALLBACK_MODEL).trim() ||
+          DEFAULT_NVIDIA_FALLBACK_MODEL,
+      ]),
+    });
+  }
+
+  return providers;
+}
+
+let _providers = null;
+function getProviders() {
+  if (!_providers) {
+    _providers = buildProviders();
+  }
+  return _providers;
+}
+
+function getProviderKey(provider) {
+  if (!provider.keys.length) return '';
+  return provider.keys[provider.keyIndex % provider.keys.length];
+}
+
+function rotateProviderKey(provider) {
+  if (provider.keys.length > 1) {
+    provider.keyIndex = (provider.keyIndex + 1) % provider.keys.length;
+  }
 }
 
 // ─── Operational Configuration ───────────────────────────────────────────────
 const MAX_RETRIES = 3;
 const RETRY_DELAYS_MS = [800, 2000, 4000];
-const REQUEST_TIMEOUT_MS = 45000; // 45s — free models can be slow
+const REQUEST_TIMEOUT_MS = 45000; // 45s — free-tier models can be slow
 const MIN_REQUEST_SPACING_MS = 200;
 
 let lastRequestAtMs = 0;
-let currentKeyIndex = 0;
 let startupLogged = false;
 
-// ─── API Key Management ──────────────────────────────────────────────────────
-function getApiKeys() {
-  const keysString = String(process.env.OPENROUTER_API_KEY || '').trim();
-  if (!keysString) return [];
-  return keysString.split(',').map(k => k.trim()).filter(k => k.length > 0);
-}
-
-function getApiKey() {
-  const keys = getApiKeys();
-  if (keys.length === 0) return '';
-  const key = keys[currentKeyIndex % keys.length];
-  return key;
-}
-
-function rotateToNextKey() {
-  const keys = getApiKeys();
-  if (keys.length > 1) {
-    currentKeyIndex = (currentKeyIndex + 1) % keys.length;
-  }
-}
-
 // ─── Startup Diagnostics ─────────────────────────────────────────────────────
-function buildModelChainSummary() {
-  const models = getModels();
-  if (models.length === 0) return '(no models configured)';
-  return models.map((m, i) => `${i === 0 ? 'PRIMARY' : `FALLBACK ${i}`}=${m}`).join('\n║  ');
-}
-
 function logStartupDiagnostics() {
   if (startupLogged) return;
   startupLogged = true;
 
-  const keys = getApiKeys();
-  const models = getModels();
-  const modelSummary = buildModelChainSummary();
+  const providers = getProviders();
 
   console.log('');
   console.log('╔═══════════════════════════════════════════════════════════╗');
   console.log('║         AI GATEWAY SERVICE — Startup Diagnostics          ║');
   console.log('╠═══════════════════════════════════════════════════════════╣');
-  console.log(`║  Provider         │ OpenRouter                               ║`);
-  console.log(`║  API Key Present  │ ${keys.length > 0 ? 'YES' : 'NO — AI features will fail'}              ║`);
-  console.log(`║  Model Chain      │ ${models.length} model(s) configured              ║`);
-  console.log(`║  ${modelSummary}`);
+  if (providers.length === 0) {
+    console.log('║  Providers        │ NONE — AI features will fail            ║');
+  }
+  providers.forEach((p, i) => {
+    const role = i === 0 ? 'PRIMARY ' : 'FALLBACK';
+    console.log(`║  ${role} │ ${p.label} (${p.models.join(', ')})`);
+    console.log(`║           │ ${p.baseUrl}  keys=${p.keys.length}`);
+  });
   console.log(`║  Max Retries      │ ${MAX_RETRIES}                              ║`);
   console.log(`║  Request Timeout  │ ${REQUEST_TIMEOUT_MS}ms                         ║`);
   console.log('╚═══════════════════════════════════════════════════════════╝');
   console.log('');
 
-  if (keys.length === 0) {
-    console.warn('[ai-gateway] ⚠️  OPENROUTER_API_KEY is not configured.');
-    console.warn('[ai-gateway] ⚠️  All AI features will return configuration errors until the key is set.');
-    console.warn('[ai-gateway] ⚠️  Set OPENROUTER_API_KEY in environment variables or .env file.');
+  if (providers.length === 0) {
+    console.warn('[ai-gateway] ⚠️  No AI provider keys configured.');
+    console.warn('[ai-gateway] ⚠️  Set ZAI_API_KEY (primary) and/or NVIDIA_API_KEY (fallback).');
   }
 }
 
@@ -153,22 +163,18 @@ function validateMessages(messages) {
     throw err;
   }
   for (const message of messages) {
-    if (!message || typeof message.role !== 'string' || !message.role.trim() ||
-        typeof message.content !== 'string' || !message.content.trim()) {
+    if (
+      !message ||
+      typeof message.role !== 'string' ||
+      !message.role.trim() ||
+      typeof message.content !== 'string' ||
+      !message.content.trim()
+    ) {
       const err = new Error('Invalid payload: each message must include role and content.');
       err.statusCode = 400;
       err.code = 'INVALID_PAYLOAD';
       throw err;
     }
-  }
-}
-
-function validateModel(model) {
-  if (typeof model !== 'string' || model.trim().length === 0) {
-    const err = new Error('Invalid payload: model must be a non-empty string.');
-    err.statusCode = 400;
-    err.code = 'INVALID_PAYLOAD';
-    throw err;
   }
 }
 
@@ -192,29 +198,31 @@ function parseJsonSafely(text) {
 }
 
 // ─── Core AI Call ────────────────────────────────────────────────────────────
-// This is the ONLY function that makes HTTP requests to OpenRouter.
+// This is the ONLY function that makes HTTP requests to AI providers.
 // All AI features must eventually call this function.
 
 /**
  * Makes an AI request through the gateway.
+ * Tries z.ai models first, then falls back to NVIDIA NIM models.
  *
  * @param {Array} messages - Array of { role, content } message objects
  * @param {Object} [options]
  * @param {number} [options.temperature=0.7]
  * @param {number} [options.maxTokens=512]
  * @param {string} [options.feature='unknown'] - Feature name for diagnostics
- * @returns {Promise<{content: string, model: string, raw: Object}>}
+ * @returns {Promise<{content: string, model: string, provider: string, raw: Object}>}
  */
 async function callAI(messages, options = {}) {
   logStartupDiagnostics();
 
   const startTime = Date.now();
   const feature = options.feature || 'unknown';
-  const models = getModels();
+  const providers = getProviders();
 
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    const err = new Error('AI is not configured. Set OPENROUTER_API_KEY in backend environment variables.');
+  if (providers.length === 0) {
+    const err = new Error(
+      'AI is not configured. Set ZAI_API_KEY (primary) and/or NVIDIA_API_KEY (fallback) in backend environment variables.'
+    );
     err.statusCode = 503;
     err.code = 'AI_GATEWAY_API_KEY_MISSING';
     throw err;
@@ -229,107 +237,129 @@ async function callAI(messages, options = {}) {
 
   const errors = [];
 
-  // Try each model in order (PRIMARY first, then FALLBACK_1, FALLBACK_2, ...)
-  for (const model of models) {
-    if (!model || typeof model !== 'string') continue;
+  // Try each provider in order (z.ai first, then NVIDIA), each model in order.
+  for (const provider of providers) {
+    const apiKey = getProviderKey(provider);
+    if (!apiKey) continue;
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
-      const attemptNumber = attempt + 1;
-      const payload = {
-        model,
-        messages,
-        temperature: config.temperature,
-        max_tokens: config.max_tokens,
-      };
+    const url = `${provider.baseUrl.replace(/\/+$/, '')}/chat/completions`;
 
-      try {
-        validateModel(payload.model);
-        validateMessages(payload.messages);
+    for (const model of provider.models) {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+        const attemptNumber = attempt + 1;
+        const payload = {
+          model,
+          messages,
+          temperature: config.temperature,
+          max_tokens: config.max_tokens,
+        };
 
-        await applyRateLimitDelay();
+        try {
+          await applyRateLimitDelay();
 
-        const response = await fetchWithTimeout(
-          OPENROUTER_URL,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': process.env.BACKEND_URL || 'http://localhost:5001',
-              'X-Title': 'Preecode',
+          const response = await fetchWithTimeout(
+            url,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${getProviderKey(provider)}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(payload),
             },
-            body: JSON.stringify(payload),
-          },
-          REQUEST_TIMEOUT_MS
-        );
+            REQUEST_TIMEOUT_MS
+          );
 
-        const rawBody = await response.text();
-        const parsedBody = parseJsonSafely(rawBody);
+          const rawBody = await response.text();
+          const parsedBody = parseJsonSafely(rawBody);
 
-        if (!response.ok) {
-          const providerMessage = parsedBody?.error?.message || `OpenRouter HTTP ${response.status}`;
-          const skipImmediately = response.status === 402 || response.status === 404;
-          const isRateLimit = response.status === 429 ||
-            providerMessage.includes('Rate limit exceeded') ||
-            providerMessage.includes('free-models-per-day');
-          const retryable = !skipImmediately && (response.status === 429 || response.status >= 500 || response.status === 408);
+          if (!response.ok) {
+            const providerMessage =
+              parsedBody?.error?.message || `${provider.label} HTTP ${response.status}`;
+            const skipImmediately = response.status === 402 || response.status === 404;
+            const isRateLimit =
+              response.status === 429 ||
+              providerMessage.includes('Rate limit exceeded') ||
+              providerMessage.includes('rate_limit');
+            const retryable =
+              !skipImmediately &&
+              (response.status === 429 || response.status >= 500 || response.status === 408);
 
-          if (isRateLimit && getApiKeys().length > 1) {
-            rotateToNextKey();
-            if (attempt < MAX_RETRIES) {
-              await sleep(500);
+            if (isRateLimit) {
+              rotateProviderKey(provider);
+              if (attempt < MAX_RETRIES) {
+                await sleep(500);
+                continue;
+              }
+            }
+
+            errors.push({
+              provider: provider.id,
+              model,
+              attempt: attemptNumber,
+              status: response.status,
+              message: providerMessage,
+            });
+
+            if (skipImmediately) break;
+            if (retryable && attempt < MAX_RETRIES) {
+              await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
               continue;
             }
+            break;
           }
 
-          errors.push({ model, attempt: attemptNumber, status: response.status, message: providerMessage });
+          const content = parsedBody?.choices?.[0]?.message?.content;
 
-          if (skipImmediately) break;
+          if (!content || typeof content !== 'string') {
+            errors.push({
+              provider: provider.id,
+              model,
+              attempt: attemptNumber,
+              status: response.status,
+              message: 'Empty content',
+            });
+            break;
+          }
+
+          const latency = Date.now() - startTime;
+          console.log(
+            `[ai-gateway] ✅ Feature=${feature} Provider=${provider.id} Model=${model} Attempt=${attemptNumber} Latency=${latency}ms`
+          );
+
+          return { content, model, provider: provider.id, raw: parsedBody };
+        } catch (error) {
+          const isTimeout = error && error.name === 'AbortError';
+          const retryable =
+            isTimeout || (error && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT'));
+
+          errors.push({
+            provider: provider.id,
+            model,
+            attempt: attemptNumber,
+            message: isTimeout ? 'Request timed out.' : error?.message || 'Network error',
+          });
+
           if (retryable && attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
+            await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[attempt - 1] || 1000);
             continue;
           }
           break;
         }
-
-        const content = parsedBody?.choices?.[0]?.message?.content;
-
-        if (!content || typeof content !== 'string') {
-          errors.push({ model, attempt: attemptNumber, status: response.status, message: 'Empty content' });
-          break;
-        }
-
-        const latency = Date.now() - startTime;
-        console.log(`[ai-gateway] ✅ Feature=${feature} Model=${model} Attempt=${attemptNumber} Latency=${latency}ms`);
-
-        return { content, model, raw: parsedBody };
-      } catch (error) {
-        const isTimeout = error && error.name === 'AbortError';
-        const retryable = isTimeout || (error && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT'));
-
-        errors.push({
-          model,
-          attempt: attemptNumber,
-          message: isTimeout ? 'Request timed out.' : error?.message || 'Network error',
-        });
-
-        if (retryable && attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
-          continue;
-        }
-        break;
       }
     }
   }
 
   const lastError = errors[errors.length - 1] || {};
   const latency = Date.now() - startTime;
-  const errorSummary = errors.map(e => `[${e.model} attempt ${e.attempt}]: ${e.message}`).join(' | ');
+  const errorSummary = errors
+    .map((e) => `[${e.provider}/${e.model} attempt ${e.attempt}]: ${e.message}`)
+    .join(' | ');
 
-  console.error(`[ai-gateway] ❌ Feature=${feature} Failed=${errors.length} models Latency=${latency}ms`);
+  console.error(`[ai-gateway] ❌ Feature=${feature} Failed=${errors.length} attempts Latency=${latency}ms`);
 
   const err = new Error(
-    `AI request failed across all models. Last error: ${lastError.message || 'Unknown'}. Full trace: ${errorSummary}`
+    `AI request failed across all providers. Last error: ${lastError.message || 'Unknown'}. Full trace: ${errorSummary}`
   );
   err.statusCode = 502;
   err.code = 'AI_GATEWAY_FALLBACK_EXHAUSTED';
@@ -343,26 +373,27 @@ async function callAI(messages, options = {}) {
  * Returns the current status of the AI gateway.
  */
 function getStatus() {
-  const models = getModels();
+  const providers = getProviders();
   return {
-    provider: 'OpenRouter',
-    endpoint: OPENROUTER_URL,
-    primaryModel: models[0] || 'none',
-    fallbackCount: models.length - 1,
-    modelCount: models.length,
-    models: models,
-    keyConfigured: getApiKeys().length > 0,
-    keyCount: getApiKeys().length,
+    providers: providers.map((p) => ({
+      id: p.id,
+      label: p.label,
+      endpoint: p.baseUrl,
+      models: p.models,
+      keyConfigured: p.keys.length > 0,
+      keyCount: p.keys.length,
+    })),
+    primaryProvider: providers[0]?.id || 'none',
+    primaryModel: providers[0]?.models[0] || 'none',
+    providerCount: providers.length,
+    keyConfigured: providers.length > 0,
     maxRetries: MAX_RETRIES,
     timeoutMs: REQUEST_TIMEOUT_MS,
-    status: getApiKeys().length > 0 ? 'ready' : 'misconfigured',
+    status: providers.length > 0 ? 'ready' : 'misconfigured',
   };
 }
 
 module.exports = {
   callAI,
   getStatus,
-  // Exposed for backward compatibility with existing aiService.js
-  OPENROUTER_URL,
-  get MODELS() { return getModels(); },
 };
