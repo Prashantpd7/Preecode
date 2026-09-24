@@ -63,7 +63,7 @@
       "preecode": [
         {
           "id": "preecode.controlCenter",
-          "name": "Control Center",
+          "name": "",
           "type": "webview",
           "icon": "resources/hubot-view.svg"
         }

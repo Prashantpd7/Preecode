@@ -222,7 +222,6 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
     </section>
 
     <section class="card section-card hidden" id="toolsFlow">
-      <button class="primary-btn full main-action" data-action="security">Security Analyze</button>
       <button class="primary-btn full main-action" data-mode-target="practice" data-action="practice">Start Practicing Question</button>
       <div class="action-grid" id="quickActionsSection">
         <button class="primary-btn" data-action="debug">Debug Code</button>
@@ -245,7 +244,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
 
     <section class="card section-card hidden" id="practiceFlow">
       <div class="section-head-row">
-        <button class="back-btn" data-nav-back="tools" aria-label="Go home">⌂</button>
+        <button class="back-btn" data-nav-back="tools" aria-label="Go home">←</button>
         <div class="section-label normal">Practice Questions</div>
         <span id="practiceTimerValue" class="timer">00:00</span>
       </div>
@@ -265,7 +264,7 @@ export class ControlCenterViewProvider implements vscode.WebviewViewProvider {
 
     <section class="card section-card hidden" id="solutionFlow">
       <div class="section-head-row">
-        <button class="back-btn" data-nav-back="tools" aria-label="Go home">⌂</button>
+        <button class="back-btn" data-nav-back="tools" aria-label="Go home">←</button>
         <div class="section-label normal">Practice Questions</div>
         <span id="solutionTimerValue" class="timer">00:00</span>
       </div>

@@ -12,6 +12,19 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			// Opens the Extension Development Host as a normal VS Code window.
+			// This bypasses the `extensionHost` debug type, which always starts the
+			// dev host's extension host paused at `--inspect-brk` and only works if
+			// the JS debugger can attach to it.
+			"label": "Preecode: Open Extension Development Host",
+			"type": "shell",
+			"command": "code",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"problemMatcher": []
 		}
 	]
 }

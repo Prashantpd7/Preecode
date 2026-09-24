@@ -1,7 +1,9 @@
-// A launch configuration that compiles the extension and then opens it inside a new window
-// Use IntelliSense to learn about possible attributes.
-// Hover to view descriptions of existing attributes.
-// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+// NOTE: the `extensionHost` debug type launches the dev host's extension host with
+// `--inspect-brk`, so it stays frozen until the JS debugger attaches. `noDebug` is set
+// below so that flag is not added and the host starts normally. If F5 still reports
+// "Extension host did not start in 10 seconds (debugBrk: true)", the flag is not being
+// honoured in this environment - use the "Preecode: Open Extension Development Host"
+// task instead, which starts the host with no debugger attach at all.
 {
 	"version": "0.2.0",
 	"configurations": [
@@ -9,6 +11,21 @@
 			"name": "Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
+			"noDebug": true,
+			"stopOnEntry": false,
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"preLaunchTask": "Preecode: Compile Extension"
+		},
+		{
+			"name": "Run Extension (attach debugger)",
+			"type": "extensionHost",
+			"request": "launch",
+			"stopOnEntry": false,
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],

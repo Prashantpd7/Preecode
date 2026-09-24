@@ -1343,6 +1343,23 @@ async function generateDebugLineExplanation(
   );
 }
 
+const RESTORE_SESSION_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T | undefined> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[Preecode] ${label} timed out after ${ms}ms; continuing without it.`);
+      resolve(undefined);
+    }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  });
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const authManager = new AuthManager(context);
   const onboardingService = new OnboardingService(context);
@@ -2669,12 +2686,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   console.log('[Preecode Auth DIAG] about to call restoreSession()');
-  void authManager.restoreSession()
+  void withTimeout(authManager.restoreSession(), RESTORE_SESSION_TIMEOUT_MS, 'session restore')
     .then(() => {
       console.log('[Preecode Auth DIAG] restoreSession() completed');
     })
     .catch((error: unknown) => {
-      console.error('[Preecode Auth DIAG] restoreSession() failed', error);
+      console.error('[Preecode Auth DIAG] background session restore failed:', error);
     });
 
   void onboardingService.init()

@@ -2,9 +2,28 @@
   "version": "0.2.0",
   "configurations": [
     {
+      // F5 default: noDebug stops js-debug adding --inspect-brk-extensions, so the
+      // dev host's extension host is not left waiting for a debugger to attach.
+      // If F5 still reports "Extension host did not start in 10 seconds
+      // (debugBrk: true)", use the "Preecode: Open Extension Development Host" task.
       "name": "Run Preecode Extension",
       "type": "extensionHost",
       "request": "launch",
+      "noDebug": true,
+      "stopOnEntry": false,
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/preecode-extension"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/preecode-extension/out/**/*.js"
+      ],
+      "preLaunchTask": "Preecode: Compile Extension"
+    },
+    {
+      "name": "Run Preecode Extension (attach debugger)",
+      "type": "extensionHost",
+      "request": "launch",
+      "stopOnEntry": false,
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/preecode-extension"
       ],

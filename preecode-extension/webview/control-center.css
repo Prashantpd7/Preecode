@@ -16,6 +16,11 @@
 html,
 body {
   margin: 0;
+  /* VS Code injects "body { margin: 0; padding: 0 20px; }" into every webview
+     via its default stylesheet (loaded in the @layer vscode-default layer, so
+     these unlayered rules win). Without this reset that 20px sat on top of
+     .root's own padding and read as large empty side margins. */
+  padding: 0;
   width: 100%;
   min-height: 100%;
   background: var(--bg);
@@ -29,7 +34,22 @@ body {
   flex-direction: column;
   gap: 8px;
   height: 100vh;
-  padding: 8px;
+  /* Slim frame, written per side so the top is tunable on its own.
+     padding-top === padding-bottom === the whole vertical gap this stylesheet
+     owns. Note what it does NOT own:
+       - VS Code's injected stylesheet only ever adds HORIZONTAL padding
+         (body { padding: 0 20px }, reset in the html/body rule above) - there is
+         no injected vertical padding to fight.
+       - VS Code draws its own view-container header row ABOVE this webview
+         (host DOM, ~28-35px, outside the sandboxed iframe), so the space above
+         the first card still reads larger than the frame below the chat input
+         row no matter what value goes here.
+     The extra inset the content has inside each card is the card's own padding,
+     not this. */
+  padding-top: 8px;    /* == padding-bottom: keep these two equal */
+  padding-right: 8px;
+  padding-bottom: 8px;
+  padding-left: 8px;
   min-height: 0;
 }
 
@@ -37,6 +57,9 @@ body {
   border: var(--border);
   border-radius: 8px;
   background: var(--surface);
+  /* Header + tool sections keep their natural height and stay pinned at the top;
+     the chat dock below absorbs all remaining vertical space. */
+  flex: 0 0 auto;
 }
 
 .header-card {
@@ -242,7 +265,9 @@ body {
 .back-btn {
   border: none;
   background: transparent;
-  color: var(--muted);
+  /* Full foreground colour (instead of the muted description colour) so the
+     small glyph has clear contrast against the dark panel. */
+  color: var(--text);
   width: auto;
   height: auto;
   display: inline-flex;
@@ -358,22 +383,22 @@ body {
 }
 
 .chat-dock {
-  min-height: max(var(--chat-min-height), 220px);
+  /* Grows to fill every pixel the fixed top sections leave behind, so there is
+     no empty space above or below it. */
+  flex: 1 1 auto;
+  min-height: var(--chat-min-height);
   border: var(--border);
   border-radius: 8px;
   background: var(--surface);
-  display: grid;
-  grid-template-rows: 6px auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  min-width: 0;
-  height: auto;
-  align-self: stretch;
-  flex: 1;
   min-width: 0;
 }
 
-.chat-dock.debug-open {
-  grid-template-rows: 6px minmax(0, 1fr);
+.chat-dock.debug-open .debug-panel {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chat-dock.debug-open .dock-head,
@@ -383,11 +408,13 @@ body {
 }
 
 .chat-grip {
+  flex: 0 0 6px;
   cursor: ns-resize;
   background: color-mix(in srgb, var(--vscode-editorWidget-border), var(--surface) 40%);
 }
 
 .dock-head {
+  flex: 0 0 auto;
   padding: 8px;
   font-size: 10px;
   text-transform: uppercase;
@@ -420,6 +447,9 @@ body {
 }
 
 .chat-feed {
+  /* The flexible region: expands upward to fill all freed vertical space and
+     scrolls once the messages outgrow it. */
+  flex: 1 1 auto;
   padding: 0 8px 8px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -430,12 +460,13 @@ body {
 }
 
 .debug-panel {
+  flex: 1 1 auto;
   padding: 2px 6px 6px;
   display: grid;
   gap: 3px;
   min-width: 0;
   overflow: hidden;
-  height: 100%;
+  min-height: 0;
   grid-template-rows: auto minmax(0, 1fr);
 }
 
@@ -661,6 +692,8 @@ body {
 }
 
 .ask-row {
+  /* Last child of the dock and never grows, so it stays pinned to the bottom. */
+  flex: 0 0 auto;
   padding: 8px;
   display: grid;
   gap: 6px;

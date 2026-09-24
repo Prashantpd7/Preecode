@@ -11,6 +11,18 @@
         "kind": "build",
         "isDefault": true
       }
+    },
+    {
+      // Opens the Extension Development Host as a normal VS Code window, without
+      // the paused `--inspect-brk` extension-host inspector that the `extensionHost`
+      // debug type forces (and that fails to attach to here).
+      "label": "Preecode: Open Extension Development Host",
+      "type": "shell",
+      "command": "code",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/preecode-extension"
+      ],
+      "problemMatcher": []
     }
   ]
 }
