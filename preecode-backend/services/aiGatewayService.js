@@ -24,8 +24,8 @@ const DEFAULT_ZAI_MODEL = 'glm-4.7-flash';
 const DEFAULT_ZAI_FALLBACK_MODEL = 'glm-4.5-flash';
 
 const DEFAULT_NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_NVIDIA_MODEL = 'nvidia/nemotron-nano-3-30b-a3b';
-const DEFAULT_NVIDIA_FALLBACK_MODEL = 'deepseek-ai/deepseek-v4-flash-0731';
+const DEFAULT_NVIDIA_MODEL = 'deepseek-ai/deepseek-v4.1-flash';
+const DEFAULT_NVIDIA_FALLBACK_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct';
 
 // ─── Provider Configuration ──────────────────────────────────────────────────
 
@@ -253,6 +253,12 @@ async function callAI(messages, options = {}) {
           temperature: config.temperature,
           max_tokens: config.max_tokens,
         };
+        if (provider.id === 'zai') {
+          // GLM flash models "think" by default and burn every token on
+          // reasoning_content, leaving message.content empty. Disable thinking
+          // so the answer lands in content (verified live 2026-09-25).
+          payload.thinking = { type: 'disabled' };
+        }
 
         try {
           await applyRateLimitDelay();
