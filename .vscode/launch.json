@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Preecode Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/preecode-extension"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/preecode-extension/out/**/*.js"
+      ],
+      "preLaunchTask": "Preecode: Compile Extension"
+    }
+  ]
+}

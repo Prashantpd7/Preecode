@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { preecodeStore } from '../state/store';
-import { API_BASE, doFetch, getFrontendUrl } from '../services/apiService';
+import { API_BASE, doFetchWithTimeout, getFrontendUrl } from '../services/apiService';
 import { deleteToken, getToken, saveToken } from '../services/authService';
 
 interface MeResponse {
@@ -256,11 +256,11 @@ export class AuthManager implements vscode.UriHandler {
 
   private async fetchCurrentUser(token: string): Promise<UserLookupResult> {
     try {
-      const response = await doFetch(`${API_BASE}/users/me`, {
+      const response = await doFetchWithTimeout(`${API_BASE}/users/me`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
-      });
+      }, 10000);
 
       if (response.status === 401) {
         return { kind: 'invalid' };

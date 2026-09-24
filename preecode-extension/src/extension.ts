@@ -1371,15 +1371,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   if (previousVersion !== CURRENT_VERSION) {
     console.log('[Preecode Auth DIAG] **** VERSION MISMATCH **** clearing auth state and resetting onboarding');
-    // Version changed or first activation - this handles uninstall/reinstall
-    await context.globalState.update(VERSION_KEY, CURRENT_VERSION);
-    console.log('[Preecode Auth DIAG] updated VERSION_KEY to ' + CURRENT_VERSION);
-    // Clear all authentication state for fresh start
-    await authManager.clearAuthState();
-    console.log('[Preecode Auth DIAG] clearAuthState completed');
-    // Reset onboarding for a fresh install
-    await onboardingService.resetTour();
-    console.log('[Preecode Auth DIAG] onboarding reset completed');
+    void (async () => {
+      try {
+        await context.globalState.update(VERSION_KEY, CURRENT_VERSION);
+        console.log('[Preecode Auth DIAG] updated VERSION_KEY to ' + CURRENT_VERSION);
+        await authManager.clearAuthState();
+        console.log('[Preecode Auth DIAG] clearAuthState completed');
+        await onboardingService.resetTour();
+        console.log('[Preecode Auth DIAG] onboarding reset completed');
+      } catch (error: unknown) {
+        console.error('[Preecode Auth DIAG] startup state reset failed', error);
+      }
+    })();
   } else {
     console.log('[Preecode Auth DIAG] **** VERSION MATCH **** skipping clearAuthState');
   }
@@ -1402,22 +1405,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     timerService,
     backendSyncService
   );
-
-  console.log('[Preecode Auth DIAG] about to call restoreSession()');
-  await authManager.restoreSession();
-  console.log('[Preecode Auth DIAG] restoreSession() completed');
-
-  // Initialize onboarding
-  await onboardingService.init();
-  const initialOnboardingState = onboardingService.getState();
-  preecodeStore.setState((state) => ({
-    ...state,
-    onboarding: {
-      isActive: initialOnboardingState.isActive,
-      currentStep: initialOnboardingState.currentStep,
-      isCompleted: initialOnboardingState.isCompleted
-    }
-  }));
 
   // Show "Click Preecode icon" message when tour starts
   const unsubscribeOnboardingStart = preecodeStore.subscribe((state) => {
@@ -1522,8 +1509,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }));
     await context.workspaceState.update(CHAT_HISTORY_KEY, []);
   };
-
-  await resetChat();
 
   timerService.bindWorkspaceLifecycle(context);
   runDetectionService.bind(context);
@@ -2682,6 +2667,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(ControlCenterViewProvider.viewId, controlCenter)
   );
+
+  console.log('[Preecode Auth DIAG] about to call restoreSession()');
+  void authManager.restoreSession()
+    .then(() => {
+      console.log('[Preecode Auth DIAG] restoreSession() completed');
+    })
+    .catch((error: unknown) => {
+      console.error('[Preecode Auth DIAG] restoreSession() failed', error);
+    });
+
+  void onboardingService.init()
+    .then(() => {
+      const onboardingState = onboardingService.getState();
+      preecodeStore.setState((state) => ({
+        ...state,
+        onboarding: {
+          isActive: onboardingState.isActive,
+          currentStep: onboardingState.currentStep,
+          isCompleted: onboardingState.isCompleted
+        }
+      }));
+    })
+    .catch((error: unknown) => {
+      console.error('[Preecode Onboarding] initialization failed', error);
+    });
+
+  void resetChat().catch((error: unknown) => {
+    console.error('[Preecode] chat state initialization failed', error);
+  });
 
   context.subscriptions.push(
     vscode.commands.registerCommand('preecode.login', async () => {
