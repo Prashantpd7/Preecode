@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AuthManager } from './auth/authManager';
-import { generateQuestionFromBackend, generateQuestionStreamFromBackend, sendAIChatMessage, sendAIChatMessageStream, sendPracticeData, sendSubmission } from './services/apiService';
+import { generateQuestionFromBackend, sendAIChatMessage, sendAIChatMessageStream, sendPracticeData, sendSubmission } from './services/apiService';
 import { analyzeCodeSecurity, formatSecurityResult } from './services/securityAnalyzeService';
 
 import { BackendSyncService } from './services/backendSyncService';
@@ -164,73 +164,12 @@ async function insertGeneratedQuestion(editor: vscode.TextEditor, rawQuestionTex
 }
 
 // ─── Streaming question generation ───────────────────────────────────────────
-// While the AI generates a question, tokens are typed into the editor
-// word-by-word inside a temporary comment block. When generation finishes,
-// the block is removed and insertGeneratedQuestion() writes the final text.
-
-interface StreamingQuestionBlock {
-  startLine: number;
-  lineCount: number;
-}
-
-function streamingCommentBlock(raw: string, language: string, difficulty: string): string {
-  const prefix = commentPrefixForLanguage(language);
-  const header = `${prefix} Question (${difficulty}) — generating...`;
-  const body = raw.replace(/\r/g, '').slice(0, 4000);
-  const commented = body
-    .split('\n')
-    .map((line) => `${prefix} ${line}`.trimEnd())
-    .join('\n');
-  return `${header}\n${commented}`;
-}
-
-async function insertStreamingQuestionPlaceholder(
-  editor: vscode.TextEditor,
-  difficulty: string
-): Promise<StreamingQuestionBlock> {
-  const current = editor.document.getText();
-  const glue = current.trim().length === 0 ? '' : '\n\n';
-  const block = streamingCommentBlock('', editor.document.languageId || 'plaintext', difficulty);
-  // builder.insert at document end: with glue the block starts one line below
-  // the old last line; without glue (empty file) it starts at line 0.
-  const startLine = glue === '\n\n' ? editor.document.lineCount + 1 : 0;
-  await editor.edit((builder) => {
-    builder.insert(new vscode.Position(editor.document.lineCount, 0), `${glue}${block}`);
-  });
-  return { startLine, lineCount: block.split('\n').length };
-}
-
-async function updateStreamingQuestionBlock(
-  editor: vscode.TextEditor,
-  stream: StreamingQuestionBlock,
-  raw: string,
-  difficulty: string
-): Promise<void> {
-  if (stream.lineCount <= 0) {
-    return;
-  }
-  const language = editor.document.languageId || 'plaintext';
-  const block = streamingCommentBlock(raw, language, difficulty);
-  const range = new vscode.Range(stream.startLine, 0, stream.startLine + stream.lineCount, 0);
-  await editor.edit((builder) => {
-    builder.replace(range, block);
-  });
-  stream.lineCount = block.split('\n').length;
-}
-
-async function removeStreamingQuestionBlock(
-  editor: vscode.TextEditor,
-  stream: StreamingQuestionBlock
-): Promise<void> {
-  if (stream.lineCount <= 0) {
-    return;
-  }
-  const range = new vscode.Range(stream.startLine, 0, stream.startLine + stream.lineCount, 0);
-  await editor.edit((builder) => {
-    builder.replace(range, '');
-  });
-  stream.lineCount = 0;
-}
+// NOTE (2026-09-30): the word-by-word typing effect for question generation
+// was reverted per user feedback — the temporary "generating..." comment block
+// felt messy. Question generation is back to the original flow: show the
+// "Generating question" notification, then insert the final text.
+// The backend streaming endpoint (/api/ai/generate-question/stream) and the
+// apiService helper (generateQuestionStreamFromBackend) are kept for future use.
 
 function markerLine(language: string, label: MarkerLabel, type: 'START' | 'END'): string {
   return `${commentPrefixForLanguage(language)}[${MARKER_TOKEN} ${label} ${type}]`;
@@ -1804,65 +1743,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       let generated = '';
-      // Stream tokens into the editor word-by-word while the AI generates.
-      const stream = await insertStreamingQuestionPlaceholder(active, difficulty);
-      let streamOk = false;
       try {
-        let streamedRaw = '';
-        // Serialize editor edits: each update must finish before the next
-        // range replacement is computed, otherwise ranges go stale.
-        let editChain: Promise<void> = Promise.resolve();
-        generated = await generateQuestionStreamFromBackend(context, {
-          language,
-          difficulty
-        }, (token) => {
-          streamedRaw += token;
-          const snapshot = streamedRaw;
-          editChain = editChain
-            .then(() => updateStreamingQuestionBlock(active, stream, snapshot, difficulty))
-            .catch(() => undefined);
+        generated = await withGenerationNotification('Generating question', async () => {
+          const raw = await generateQuestionFromBackend(context, {
+            language,
+            difficulty
+          });
+          return raw;
         });
-        await editChain;
-        streamOk = true;
       } catch (error) {
         const detail = error instanceof Error ? error.message : 'Could not generate question.';
-        if (!detail.includes('(404)')) {
-          await removeStreamingQuestionBlock(active, stream);
-          const retry = await vscode.window.showErrorMessage(
-            `Question generation failed: ${detail}`,
-            'Retry'
-          );
-          if (retry === 'Retry') {
-            await runQuickAction('generate', payload);
-          }
-          return;
+        const retry = await vscode.window.showErrorMessage(
+          `Question generation failed: ${detail}`,
+          'Retry'
+        );
+        if (retry === 'Retry') {
+          await runQuickAction('generate', payload);
         }
-        // Backend predates /ai/generate-question/stream — non-streaming fallback.
-      }
-
-      if (!streamOk) {
-        await removeStreamingQuestionBlock(active, stream);
-        try {
-          generated = await withGenerationNotification('Generating question', async () => {
-            const raw = await generateQuestionFromBackend(context, {
-              language,
-              difficulty
-            });
-            return raw;
-          });
-        } catch (error) {
-          const detail = error instanceof Error ? error.message : 'Could not generate question.';
-          const retry = await vscode.window.showErrorMessage(
-            `Question generation failed: ${detail}`,
-            'Retry'
-          );
-          if (retry === 'Retry') {
-            await runQuickAction('generate', payload);
-          }
-          return;
-        }
-      } else {
-        await removeStreamingQuestionBlock(active, stream);
+        return;
       }
 
       const generatedQuestionText = extractQuestionBlock(generated);

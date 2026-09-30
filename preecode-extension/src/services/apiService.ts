@@ -5,7 +5,7 @@ export const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
 // Non-streaming AI requests get 90s: free-tier models can be slow, and a slow
 // answer is not a dead server. Timeouts are reported as timeouts, not as
 // "server is starting up" (see mapAIError below).
-const QUESTION_REQUEST_TIMEOUT_MS = 90_000;
+const QUESTION_REQUEST_TIMEOUT_MS = 150_000; // 150s — long solutions get time to finish
 // Streaming requests: generous total budget; an inactivity watchdog (no token
 // for 60s) catches genuinely stuck streams instead of a short total timeout.
 const STREAM_TOTAL_TIMEOUT_MS = 180_000;
@@ -72,9 +72,22 @@ export async function doFetch(url: string, opts?: any): Promise<any> {
 
 export async function doFetchWithTimeout(url: string, opts: any, timeoutMs = QUESTION_REQUEST_TIMEOUT_MS): Promise<any> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timer: any;
+    // Race the fetch against the timeout so the deadline ALWAYS wins, even if
+    // the underlying fetch implementation ignores the abort signal.
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+            try { controller.abort(); } catch { /* ignore */ }
+            const err: any = new Error('Request timed out.');
+            err.name = 'AbortError';
+            reject(err);
+        }, timeoutMs);
+    });
     try {
-        return await doFetch(url, { ...(opts || {}), signal: controller.signal });
+        return await Promise.race([
+            doFetch(url, { ...(opts || {}), signal: controller.signal }),
+            timeoutPromise
+        ]);
     } catch (error: any) {
         if (error?.name === 'AbortError') {
             // A timeout means the request was slow — NOT that the server is down.
@@ -141,17 +154,41 @@ export async function doFetchStream(
     const totalMs = timeouts.totalMs ?? STREAM_TOTAL_TIMEOUT_MS;
     const inactivityMs = timeouts.inactivityMs ?? STREAM_INACTIVITY_TIMEOUT_MS;
     const controller = new AbortController();
-    const totalTimer = setTimeout(() => controller.abort(), totalMs);
-    let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
-    const resetInactivity = () => {
-        if (inactivityTimer) {
-            clearTimeout(inactivityTimer);
+    const deadline = Date.now() + totalMs;
+    let lastActivity = Date.now();
+    let totalTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const timedOutError = (): any => {
+        const err: any = new Error('Request timed out. The AI is taking longer than usual — please try again.');
+        err.name = 'AbortError';
+        return err;
+    };
+
+    // Race every read against its deadline so a stall ALWAYS ends the stream,
+    // even if the underlying reader ignores the abort signal.
+    const readWithDeadline = async (reader: any): Promise<{ done: boolean; value?: any }> => {
+        const now = Date.now();
+        const waitMs = Math.min(deadline - now, lastActivity + inactivityMs - now);
+        if (waitMs <= 0) {
+            try { controller.abort(); } catch { /* ignore */ }
+            throw timedOutError();
         }
-        inactivityTimer = setTimeout(() => controller.abort(), inactivityMs);
+        const readPromise: Promise<{ done: boolean; value?: any }> = reader.read();
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => {
+                try { controller.abort(); } catch { /* ignore */ }
+                reject(timedOutError());
+            }, waitMs);
+        });
+        try {
+            return await Promise.race([readPromise, timeoutPromise]);
+        } finally {
+            clearTimeout(timeoutId!);
+        }
     };
 
     try {
-        resetInactivity();
         const response: any = await doFetch(url, { ...(opts || {}), signal: controller.signal });
 
         if (response.status === 401) {
@@ -170,15 +207,20 @@ export async function doFetchStream(
             throw new Error('Streaming is not supported in this environment.');
         }
 
+        // Safety net: the whole stream can never outlive totalMs.
+        totalTimer = setTimeout(() => {
+            try { controller.abort(); } catch { /* ignore */ }
+        }, totalMs);
+
         let result: any = null;
         let buffer = '';
         const decoder = new TextDecoder();
         for (;;) {
-            const { done, value } = await reader.read();
+            const { done, value } = await readWithDeadline(reader);
             if (done) {
                 break;
             }
-            resetInactivity();
+            lastActivity = Date.now();
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
@@ -221,9 +263,8 @@ export async function doFetchStream(
         }
         throw error;
     } finally {
-        clearTimeout(totalTimer);
-        if (inactivityTimer) {
-            clearTimeout(inactivityTimer);
+        if (totalTimer) {
+            clearTimeout(totalTimer);
         }
     }
 }
