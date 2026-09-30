@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AuthManager } from './auth/authManager';
-import { generateQuestionFromBackend, sendAIChatMessage, sendPracticeData, sendSubmission } from './services/apiService';
+import { generateQuestionFromBackend, generateQuestionStreamFromBackend, sendAIChatMessage, sendAIChatMessageStream, sendPracticeData, sendSubmission } from './services/apiService';
 import { analyzeCodeSecurity, formatSecurityResult } from './services/securityAnalyzeService';
 
 import { BackendSyncService } from './services/backendSyncService';
@@ -161,6 +161,75 @@ async function insertGeneratedQuestion(editor: vscode.TextEditor, rawQuestionTex
   await editor.edit((builder) => {
     builder.insert(new vscode.Position(editor.document.lineCount, 0), `${glue}${block}`);
   });
+}
+
+// ─── Streaming question generation ───────────────────────────────────────────
+// While the AI generates a question, tokens are typed into the editor
+// word-by-word inside a temporary comment block. When generation finishes,
+// the block is removed and insertGeneratedQuestion() writes the final text.
+
+interface StreamingQuestionBlock {
+  startLine: number;
+  lineCount: number;
+}
+
+function streamingCommentBlock(raw: string, language: string, difficulty: string): string {
+  const prefix = commentPrefixForLanguage(language);
+  const header = `${prefix} Question (${difficulty}) — generating...`;
+  const body = raw.replace(/\r/g, '').slice(0, 4000);
+  const commented = body
+    .split('\n')
+    .map((line) => `${prefix} ${line}`.trimEnd())
+    .join('\n');
+  return `${header}\n${commented}`;
+}
+
+async function insertStreamingQuestionPlaceholder(
+  editor: vscode.TextEditor,
+  difficulty: string
+): Promise<StreamingQuestionBlock> {
+  const current = editor.document.getText();
+  const glue = current.trim().length === 0 ? '' : '\n\n';
+  const block = streamingCommentBlock('', editor.document.languageId || 'plaintext', difficulty);
+  // builder.insert at document end: with glue the block starts one line below
+  // the old last line; without glue (empty file) it starts at line 0.
+  const startLine = glue === '\n\n' ? editor.document.lineCount + 1 : 0;
+  await editor.edit((builder) => {
+    builder.insert(new vscode.Position(editor.document.lineCount, 0), `${glue}${block}`);
+  });
+  return { startLine, lineCount: block.split('\n').length };
+}
+
+async function updateStreamingQuestionBlock(
+  editor: vscode.TextEditor,
+  stream: StreamingQuestionBlock,
+  raw: string,
+  difficulty: string
+): Promise<void> {
+  if (stream.lineCount <= 0) {
+    return;
+  }
+  const language = editor.document.languageId || 'plaintext';
+  const block = streamingCommentBlock(raw, language, difficulty);
+  const range = new vscode.Range(stream.startLine, 0, stream.startLine + stream.lineCount, 0);
+  await editor.edit((builder) => {
+    builder.replace(range, block);
+  });
+  stream.lineCount = block.split('\n').length;
+}
+
+async function removeStreamingQuestionBlock(
+  editor: vscode.TextEditor,
+  stream: StreamingQuestionBlock
+): Promise<void> {
+  if (stream.lineCount <= 0) {
+    return;
+  }
+  const range = new vscode.Range(stream.startLine, 0, stream.startLine + stream.lineCount, 0);
+  await editor.edit((builder) => {
+    builder.replace(range, '');
+  });
+  stream.lineCount = 0;
 }
 
 function markerLine(language: string, label: MarkerLabel, type: 'START' | 'END'): string {
@@ -1735,24 +1804,65 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
 
       let generated = '';
+      // Stream tokens into the editor word-by-word while the AI generates.
+      const stream = await insertStreamingQuestionPlaceholder(active, difficulty);
+      let streamOk = false;
       try {
-        generated = await withGenerationNotification('Generating question', async () => {
-          const raw = await generateQuestionFromBackend(context, {
-            language,
-            difficulty
-          });
-          return raw;
+        let streamedRaw = '';
+        // Serialize editor edits: each update must finish before the next
+        // range replacement is computed, otherwise ranges go stale.
+        let editChain: Promise<void> = Promise.resolve();
+        generated = await generateQuestionStreamFromBackend(context, {
+          language,
+          difficulty
+        }, (token) => {
+          streamedRaw += token;
+          const snapshot = streamedRaw;
+          editChain = editChain
+            .then(() => updateStreamingQuestionBlock(active, stream, snapshot, difficulty))
+            .catch(() => undefined);
         });
+        await editChain;
+        streamOk = true;
       } catch (error) {
         const detail = error instanceof Error ? error.message : 'Could not generate question.';
-        const retry = await vscode.window.showErrorMessage(
-          `Question generation failed: ${detail}`,
-          'Retry'
-        );
-        if (retry === 'Retry') {
-          await runQuickAction('generate', payload);
+        if (!detail.includes('(404)')) {
+          await removeStreamingQuestionBlock(active, stream);
+          const retry = await vscode.window.showErrorMessage(
+            `Question generation failed: ${detail}`,
+            'Retry'
+          );
+          if (retry === 'Retry') {
+            await runQuickAction('generate', payload);
+          }
+          return;
         }
-        return;
+        // Backend predates /ai/generate-question/stream — non-streaming fallback.
+      }
+
+      if (!streamOk) {
+        await removeStreamingQuestionBlock(active, stream);
+        try {
+          generated = await withGenerationNotification('Generating question', async () => {
+            const raw = await generateQuestionFromBackend(context, {
+              language,
+              difficulty
+            });
+            return raw;
+          });
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : 'Could not generate question.';
+          const retry = await vscode.window.showErrorMessage(
+            `Question generation failed: ${detail}`,
+            'Retry'
+          );
+          if (retry === 'Retry') {
+            await runQuickAction('generate', payload);
+          }
+          return;
+        }
+      } else {
+        await removeStreamingQuestionBlock(active, stream);
       }
 
       const generatedQuestionText = extractQuestionBlock(generated);
@@ -2445,28 +2555,58 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       selectedText.trim() ? `Current selection:\n${selectedText}` : 'Current selection: none'
     ].join('\n');
 
-    let assistantText = '';
-    try {
-      assistantText = await sendAIChatMessage(context, text, `${editorContext}\n\nCode:\n${source}`, recentHistory);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'AI chat failed.';
-      assistantText = `I couldn't reach Preecode AI right now. ${message}`;
-    }
+    const updateStreamingAssistantMessage = (value: string): void => {
+      preecodeStore.setState((state) => {
+        const messages = state.chat.messages.slice();
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          if (messages[i].role === 'assistant') {
+            messages[i] = { ...messages[i], text: value };
+            break;
+          }
+        }
+        return { ...state, chat: { ...state.chat, messages } };
+      });
+    };
 
+    // Append an empty assistant message; streamed tokens fill it word-by-word.
     preecodeStore.setState((state) => ({
       ...state,
       chat: {
         ...state.chat,
-        isLoading: false,
         messages: [
           ...state.chat.messages,
-          {
-            role: 'assistant',
-            text: assistantText || 'I could not generate a response right now. Please try again.',
-            timestamp: Date.now()
-          }
+          { role: 'assistant', text: '', timestamp: Date.now() }
         ]
       }
+    }));
+
+    const fullContext = `${editorContext}\n\nCode:\n${source}`;
+    try {
+      let streamed = '';
+      const full = await sendAIChatMessageStream(context, text, fullContext, recentHistory, (token) => {
+        streamed += token;
+        updateStreamingAssistantMessage(streamed);
+      });
+      updateStreamingAssistantMessage(full || streamed || 'I could not generate a response right now. Please try again.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'AI chat failed.';
+      if (message.includes('(404)')) {
+        // Backend predates /ai/chat/stream — fall back to non-streaming.
+        try {
+          const fallback = await sendAIChatMessage(context, text, fullContext, recentHistory);
+          updateStreamingAssistantMessage(fallback || 'I could not generate a response right now. Please try again.');
+        } catch (fallbackError) {
+          const detail = fallbackError instanceof Error ? fallbackError.message : 'AI chat failed.';
+          updateStreamingAssistantMessage(`I couldn't reach Preecode AI right now. ${detail}`);
+        }
+      } else {
+        updateStreamingAssistantMessage(`I couldn't reach Preecode AI right now. ${message}`);
+      }
+    }
+
+    preecodeStore.setState((state) => ({
+      ...state,
+      chat: { ...state.chat, isLoading: false }
     }));
 
     const persistedHistory = preecodeStore

@@ -1,5 +1,132 @@
-const { chat, getHint, reviewCode, generateQuestion, reviewProject } = require('../services/aiService');
+const { chat, chatStream, getHint, reviewCode, generateQuestion, generateQuestionStream, reviewProject } = require('../services/aiService');
 const { saveMemory } = require('../services/hindsightService');
+
+/**
+ * Writes one Server-Sent Events data frame, guarding against a client
+ * that already disconnected.
+ */
+function sseSend(res, data) {
+  if (!res.writableEnded) {
+    res.write(`data: ${data}\n\n`);
+  }
+}
+
+// POST /api/ai/chat/stream — Server-Sent Events.
+// Streams tokens as the provider generates them:
+//   data: {"token": "..."} ... data: {"done": true, "result": {"response": "..."}} then data: [DONE]
+exports.chatWithAIStream = async (req, res, next) => {
+  try {
+    const { message, context, history } = req.body;
+    if (!message) {
+      return res.status(400).json({ message: 'message is required.' });
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders();
+
+    let full = '';
+    try {
+      const response = await chatStream(message, context, history, (token) => {
+        full += token;
+        sseSend(res, JSON.stringify({ token }));
+      });
+
+      // Save memory for chat interaction (fire and forget)
+      saveMemory({
+        user_id: String(req.user._id),
+        memory_type: 'chat_interaction',
+        content: `Chat: ${message.substring(0, 100)}...`,
+        metadata: {
+          message_preview: message.substring(0, 200),
+          has_context: !!context
+        }
+      }).catch(err => {
+        console.error("[CHAT_MEMORY] Failed to save chat memory:", err.message);
+      });
+
+      sseSend(res, JSON.stringify({ done: true, result: { response } }));
+    } catch (streamError) {
+      console.error('[STREAM_ERROR] /api/ai/chat/stream:', streamError.message);
+      sseSend(res, JSON.stringify({ error: streamError.message || 'AI stream failed.' }));
+    }
+    sseSend(res, '[DONE]');
+    res.end();
+  } catch (error) {
+    if (res.headersSent) {
+      try { res.end(); } catch { /* ignore */ }
+    } else {
+      next(error);
+    }
+  }
+};
+
+// POST /api/ai/generate-question/stream — Server-Sent Events.
+// Streams raw tokens as they generate, then a final parsed question object:
+//   data: {"token": "..."} ... data: {"done": true, "result": {question, title, hint, solution, company}} then data: [DONE]
+exports.generatePracticeQuestionStream = async (req, res, next) => {
+  try {
+    const { language, difficulty, topic } = req.body;
+    if (!language) {
+      return res.status(400).json({ message: 'language is required.' });
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders();
+
+    try {
+      const result = await generateQuestionStream(language, difficulty, topic, (token) => {
+        sseSend(res, JSON.stringify({ token }));
+      });
+
+      // Save memory for question generation (fire and forget)
+      saveMemory({
+        user_id: String(req.user._id),
+        memory_type: 'question_generated',
+        content: `Generated ${difficulty || 'medium'} coding question in ${language}${topic ? ` (${topic})` : ''}`,
+        metadata: {
+          language,
+          difficulty: difficulty || 'medium',
+          topic: topic || 'General',
+          question_title: result.title || ''
+        }
+      }).catch(err => {
+        console.error("[QUESTION_MEMORY] Failed to save question memory:", err.message);
+      });
+
+      sseSend(res, JSON.stringify({
+        done: true,
+        result: {
+          question: result.question || '',
+          title: result.title || '',
+          hint: result.hint || '',
+          solution: result.solution || '',
+          company: result.company || ''
+        }
+      }));
+    } catch (streamError) {
+      console.error('[STREAM_ERROR] /api/ai/generate-question/stream:', streamError.message);
+      sseSend(res, JSON.stringify({ error: streamError.message || 'Question stream failed.' }));
+    }
+    sseSend(res, '[DONE]');
+    res.end();
+  } catch (error) {
+    if (res.headersSent) {
+      try { res.end(); } catch { /* ignore */ }
+    } else {
+      next(error);
+    }
+  }
+};
 
 // POST /api/ai/generate-question
 exports.generatePracticeQuestion = async (req, res, next) => {

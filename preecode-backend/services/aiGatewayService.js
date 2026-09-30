@@ -373,6 +373,299 @@ async function callAI(messages, options = {}) {
   throw err;
 }
 
+// ─── Streaming AI Call ───────────────────────────────────────────────────────
+// Same provider/model/attempt loop as callAI(), but requests server-sent
+// events (stream: true) and invokes onToken for every content delta as it
+// arrives, so callers can render word-by-word output. Resolves with the full
+// accumulated content once the provider finishes.
+
+const STREAM_REQUEST_TIMEOUT_MS = 180000; // 180s — long generations keep flowing
+const STREAM_INACTIVITY_TIMEOUT_MS = 60000; // 60s — abort if the provider stalls mid-stream
+
+/**
+ * Reads an OpenAI-compatible SSE stream, invoking onToken for each content
+ * delta. Resolves with the full accumulated text.
+ */
+const TIMEOUT_SENTINEL = Symbol('stream-timeout');
+
+async function readSseStream(body, onToken, opts = {}) {
+  // NOTE: fetchWithTimeout() clears its timer once response headers arrive, so
+  // a stalled body could hang forever without these guards. Enforce them here:
+  //  - totalMs: overall deadline for the whole streamed body
+  //  - inactivityMs: abort if no chunk arrives for this long mid-stream
+  const totalMs = opts.totalMs ?? STREAM_REQUEST_TIMEOUT_MS;
+  const inactivityMs = opts.inactivityMs ?? STREAM_INACTIVITY_TIMEOUT_MS;
+  const deadline = Date.now() + totalMs;
+  let lastActivity = Date.now();
+
+  let buffer = '';
+  let full = '';
+  const decoder = new TextDecoder();
+
+  const handleLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return;
+    const data = trimmed.slice(5).trim();
+    if (!data || data === '[DONE]') return;
+    const parsed = parseJsonSafely(data);
+    const delta = parsed?.choices?.[0]?.delta?.content;
+    if (typeof delta === 'string' && delta.length > 0) {
+      full += delta;
+      try {
+        onToken(delta);
+      } catch {
+        // Never let a UI callback break the stream.
+      }
+    }
+  };
+
+  const processBuffer = () => {
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) handleLine(line);
+  };
+
+  const fail = (message) => {
+    const err = new Error(message);
+    err.name = 'AbortError'; // keeps retry classification consistent
+    return err;
+  };
+
+  const reader = body.getReader();
+  try {
+    for (;;) {
+      const now = Date.now();
+      if (now >= deadline) {
+        try { await reader.cancel(); } catch { /* ignore */ }
+        throw fail('Stream timed out.');
+      }
+      const waitMs = Math.min(deadline - now, lastActivity + inactivityMs - now);
+      if (waitMs <= 0) {
+        try { await reader.cancel(); } catch { /* ignore */ }
+        throw fail('Stream stalled: no data from AI provider.');
+      }
+
+      const readPromise = reader.read();
+      const timeoutPromise = sleep(waitMs).then(() => TIMEOUT_SENTINEL);
+      const result = await Promise.race([readPromise, timeoutPromise]);
+      if (result === TIMEOUT_SENTINEL) {
+        try { await reader.cancel(); } catch { /* ignore */ }
+        throw fail(Date.now() >= deadline ? 'Stream timed out.' : 'Stream stalled: no data from AI provider.');
+      }
+
+      const { done, value } = result;
+      if (done) break;
+      lastActivity = Date.now();
+      buffer += decoder.decode(value, { stream: true });
+      processBuffer();
+    }
+  } finally {
+    try { reader.releaseLock(); } catch { /* ignore */ }
+  }
+  buffer += decoder.decode();
+  for (const line of buffer.split('\n')) handleLine(line);
+  return full;
+}
+
+/**
+ * Streaming variant of callAI.
+ *
+ * @param {Array} messages - Array of { role, content } message objects
+ * @param {Object} [options] temperature, maxTokens, feature
+ * @param {(token: string) => void} onToken - called for every streamed token
+ * @returns {Promise<{content: string, model: string, provider: string}>}
+ */
+async function callAIStream(messages, options = {}, onToken) {
+  logStartupDiagnostics();
+
+  if (typeof onToken !== 'function') {
+    throw new Error('callAIStream requires an onToken callback.');
+  }
+
+  const startTime = Date.now();
+  const feature = options.feature || 'unknown';
+  const providers = getProviders();
+
+  if (providers.length === 0) {
+    const err = new Error(
+      'AI is not configured. Set ZAI_API_KEY (primary) and/or NVIDIA_API_KEY (fallback) in backend environment variables.'
+    );
+    err.statusCode = 503;
+    err.code = 'AI_GATEWAY_API_KEY_MISSING';
+    throw err;
+  }
+
+  validateMessages(messages);
+
+  const config = {
+    temperature: options.temperature ?? 0.7,
+    max_tokens: options.maxTokens ?? 512,
+  };
+
+  const errors = [];
+
+  // Counts tokens already forwarded to the client. If a provider fails AFTER
+  // partial output, retrying another provider would append a second response
+  // after the partial one — so we stop retrying and surface the error instead.
+  let tokensDelivered = 0;
+  const countingOnToken = (token) => {
+    tokensDelivered += 1;
+    onToken(token);
+  };
+
+  // Try each provider in order (z.ai first, then NVIDIA), each model in order.
+  for (const provider of providers) {
+    const apiKey = getProviderKey(provider);
+    if (!apiKey) continue;
+
+    const url = `${provider.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+
+    for (const model of provider.models) {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+        const attemptNumber = attempt + 1;
+        const payload = {
+          model,
+          messages,
+          temperature: config.temperature,
+          max_tokens: config.max_tokens,
+          stream: true,
+        };
+        if (provider.id === 'zai') {
+          // Same thinking fix as callAI: keep the answer in content, not reasoning_content.
+          payload.thinking = { type: 'disabled' };
+        }
+
+        try {
+          await applyRateLimitDelay();
+
+          const response = await fetchWithTimeout(
+            url,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${getProviderKey(provider)}`,
+                'Content-Type': 'application/json',
+                Accept: 'text/event-stream',
+              },
+              body: JSON.stringify(payload),
+            },
+            STREAM_REQUEST_TIMEOUT_MS
+          );
+
+          if (!response.ok) {
+            const rawBody = await response.text();
+            const parsedBody = parseJsonSafely(rawBody);
+            const providerMessage =
+              parsedBody?.error?.message || `${provider.label} HTTP ${response.status}`;
+            const skipImmediately = response.status === 402 || response.status === 404;
+            const isRateLimit =
+              response.status === 429 ||
+              providerMessage.includes('Rate limit exceeded') ||
+              providerMessage.includes('rate_limit');
+            const retryable =
+              !skipImmediately &&
+              (response.status === 429 || response.status >= 500 || response.status === 408);
+
+            if (isRateLimit) {
+              rotateProviderKey(provider);
+              if (attempt < MAX_RETRIES) {
+                await sleep(500);
+                continue;
+              }
+            }
+
+            errors.push({
+              provider: provider.id,
+              model,
+              attempt: attemptNumber,
+              status: response.status,
+              message: providerMessage,
+            });
+
+            if (skipImmediately) break;
+            if (retryable && attempt < MAX_RETRIES) {
+              await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1]);
+              continue;
+            }
+            break;
+          }
+
+          const content = await readSseStream(response.body, countingOnToken);
+
+          if (!content || typeof content !== 'string') {
+            errors.push({
+              provider: provider.id,
+              model,
+              attempt: attemptNumber,
+              status: response.status,
+              message: 'Empty stream content',
+            });
+            break;
+          }
+
+          const latency = Date.now() - startTime;
+          console.log(
+            `[ai-gateway] ✅ stream Feature=${feature} Provider=${provider.id} Model=${model} Attempt=${attemptNumber} Latency=${latency}ms Chars=${content.length}`
+          );
+
+          return { content, model, provider: provider.id };
+        } catch (error) {
+          const isTimeout = error && error.name === 'AbortError';
+          const retryable =
+            isTimeout || (error && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT'));
+
+          errors.push({
+            provider: provider.id,
+            model,
+            attempt: attemptNumber,
+            message: isTimeout ? 'Stream timed out.' : error?.message || 'Network error',
+          });
+
+          if (tokensDelivered > 0) {
+            // Partial output already reached the client — retrying another
+            // provider would append a second, inconsistent response. Stop here.
+            const partialErr = new Error(
+              'AI stream was interrupted after partial output. Please try again.'
+            );
+            partialErr.statusCode = 502;
+            partialErr.code = 'AI_STREAM_PARTIAL';
+            partialErr.details = {
+              provider: provider.id,
+              model,
+              attempt: attemptNumber,
+              tokensDelivered,
+              feature,
+            };
+            throw partialErr;
+          }
+
+          if (retryable && attempt < MAX_RETRIES) {
+            await sleep(RETRY_DELAYS_MS[attempt] || RETRY_DELAYS_MS[attempt - 1] || 1000);
+            continue;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  const lastError = errors[errors.length - 1] || {};
+  const latency = Date.now() - startTime;
+  const errorSummary = errors
+    .map((e) => `[${e.provider}/${e.model} attempt ${e.attempt}]: ${e.message}`)
+    .join(' | ');
+
+  console.error(`[ai-gateway] ❌ stream Feature=${feature} Failed=${errors.length} attempts Latency=${latency}ms`);
+
+  const err = new Error(
+    `AI stream request failed across all providers. Last error: ${lastError.message || 'Unknown'}. Full trace: ${errorSummary}`
+  );
+  err.statusCode = 502;
+  err.code = 'AI_GATEWAY_FALLBACK_EXHAUSTED';
+  err.details = { errors, feature, latency };
+  throw err;
+}
+
 // ─── Health / Status ─────────────────────────────────────────────────────────
 
 /**
@@ -395,11 +688,14 @@ function getStatus() {
     keyConfigured: providers.length > 0,
     maxRetries: MAX_RETRIES,
     timeoutMs: REQUEST_TIMEOUT_MS,
+    streamTimeoutMs: STREAM_REQUEST_TIMEOUT_MS,
+    streamingSupported: true,
     status: providers.length > 0 ? 'ready' : 'misconfigured',
   };
 }
 
 module.exports = {
   callAI,
+  callAIStream,
   getStatus,
 };

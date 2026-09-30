@@ -2,7 +2,14 @@ import * as vscode from 'vscode';
 import { getToken, deleteToken } from './authService';
 
 export const DEFAULT_BACKEND_URL = 'https://preecode-backend.onrender.com';
-const QUESTION_REQUEST_TIMEOUT_MS = 35_000;
+// Non-streaming AI requests get 90s: free-tier models can be slow, and a slow
+// answer is not a dead server. Timeouts are reported as timeouts, not as
+// "server is starting up" (see mapAIError below).
+const QUESTION_REQUEST_TIMEOUT_MS = 90_000;
+// Streaming requests: generous total budget; an inactivity watchdog (no token
+// for 60s) catches genuinely stuck streams instead of a short total timeout.
+const STREAM_TOTAL_TIMEOUT_MS = 180_000;
+const STREAM_INACTIVITY_TIMEOUT_MS = 60_000;
 
 function normalizeBaseUrl(url: string): string {
     return String(url || '').trim().replace(/\/$/, '');
@@ -70,11 +77,154 @@ export async function doFetchWithTimeout(url: string, opts: any, timeoutMs = QUE
         return await doFetch(url, { ...(opts || {}), signal: controller.signal });
     } catch (error: any) {
         if (error?.name === 'AbortError') {
-            throw new Error('Backend is waking up. Please try again.');
+            // A timeout means the request was slow — NOT that the server is down.
+            throw new Error('Request timed out. The AI is taking longer than usual — please try again.');
         }
         throw error;
     } finally {
         clearTimeout(timer);
+    }
+}
+
+/**
+ * True only when the failure looks like the server itself is unreachable
+ * (down, waking up, DNS failure) — as opposed to a slow AI response.
+ * Only in this case should the UI say the server is "starting up".
+ */
+function isServerUnreachable(error: any): boolean {
+    const msg = String(error?.message || '').toLowerCase();
+    const code = String((error as any)?.code || '').toLowerCase();
+    return (
+        msg.includes('fetch failed') ||
+        msg.includes('failed to fetch') ||
+        msg.includes('network request failed') ||
+        msg.includes('socket hang up') ||
+        msg.includes('econnrefused') ||
+        msg.includes('enotfound') ||
+        msg.includes('eai_again') ||
+        code.includes('econnrefused') ||
+        code.includes('enotfound')
+    );
+}
+
+/**
+ * Maps a raw request failure to an honest user-facing error:
+ * - server unreachable  -> "server is starting up" (retry shortly)
+ * - slow AI response    -> "taking longer than usual" (not a server problem)
+ * - anything else       -> the original message
+ */
+function mapAIError(error: any, fallback: string): Error {
+    const msg = String(error?.message || '');
+    if (isServerUnreachable(error)) {
+        return new Error('Preecode server is starting up. Please wait a moment and try again.');
+    }
+    if (msg.toLowerCase().includes('timed out') || msg.includes('AbortError')) {
+        return new Error('The AI is taking longer than usual. Please try again.');
+    }
+    return new Error(msg || fallback);
+}
+
+/**
+ * Reads a Server-Sent Events stream from the backend (see
+ * POST /api/ai/chat/stream and /api/ai/generate-question/stream).
+ *
+ * Protocol: `data: {"token": "..."}` per chunk, then
+ * `data: {"done": true, "result": {...}}`, then `data: [DONE]`.
+ * Resolves with the final `result` object (or null when the stream carries none).
+ */
+export async function doFetchStream(
+    url: string,
+    opts: any,
+    onToken: (token: string) => void,
+    timeouts: { totalMs?: number; inactivityMs?: number } = {}
+): Promise<any> {
+    const totalMs = timeouts.totalMs ?? STREAM_TOTAL_TIMEOUT_MS;
+    const inactivityMs = timeouts.inactivityMs ?? STREAM_INACTIVITY_TIMEOUT_MS;
+    const controller = new AbortController();
+    const totalTimer = setTimeout(() => controller.abort(), totalMs);
+    let inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+    const resetInactivity = () => {
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+        }
+        inactivityTimer = setTimeout(() => controller.abort(), inactivityMs);
+    };
+
+    try {
+        resetInactivity();
+        const response: any = await doFetch(url, { ...(opts || {}), signal: controller.signal });
+
+        if (response.status === 401) {
+            throw new Error('Session expired. Please login again.');
+        }
+        if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+        }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(String(errorData?.message || `AI request failed (${response.status}).`));
+        }
+
+        const reader = response.body?.getReader?.();
+        if (!reader) {
+            throw new Error('Streaming is not supported in this environment.');
+        }
+
+        let result: any = null;
+        let buffer = '';
+        const decoder = new TextDecoder();
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) {
+                break;
+            }
+            resetInactivity();
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data:')) {
+                    continue;
+                }
+                const data = trimmed.slice(5).trim();
+                if (!data || data === '[DONE]') {
+                    continue;
+                }
+                let parsed: any = null;
+                try {
+                    parsed = JSON.parse(data);
+                } catch {
+                    continue;
+                }
+                if (parsed && typeof parsed.error === 'string' && parsed.error) {
+                    throw new Error(parsed.error);
+                }
+                if (parsed && parsed.done) {
+                    result = parsed.result ?? null;
+                    continue;
+                }
+                const token = parsed?.token;
+                if (typeof token === 'string' && token.length > 0) {
+                    try {
+                        onToken(token);
+                    } catch {
+                        // Never let a UI callback break the stream.
+                    }
+                }
+            }
+        }
+        return result;
+    } catch (error: any) {
+        if (error?.name === 'AbortError') {
+            throw new Error('Request timed out. The AI is taking longer than usual — please try again.');
+        }
+        throw error;
+    } finally {
+        clearTimeout(totalTimer);
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+        }
     }
 }
 
@@ -309,11 +459,57 @@ export async function sendAIChatMessage(
         console.log('[Preecode] Backend response received: /api/ai/chat');
         return String(payload?.response || '').trim();
     } catch (error: any) {
-        const msg = String(error?.message || '');
-        if (msg.includes('waking up') || msg.includes('AbortError') || msg.includes('abort')) {
-            throw new Error('Preecode server is starting up. Please wait a moment and try again.');
+        throw mapAIError(error, 'Could not reach AI chat service.');
+    }
+}
+
+/**
+ * Streaming variant of sendAIChatMessage: tokens are delivered to onToken as
+ * the AI generates them (word-by-word rendering), and the promise resolves
+ * with the complete response text. Falls back gracefully — callers can catch
+ * a 404 and use sendAIChatMessage when the backend predates /ai/chat/stream.
+ */
+export async function sendAIChatMessageStream(
+    context: vscode.ExtensionContext,
+    message: string,
+    editorContext: string,
+    history: ChatHistoryItem[] = [],
+    onToken: (token: string) => void = () => {}
+): Promise<string> {
+    const token = await getToken(context);
+    if (!token) {
+        throw new Error('Please login to Preecode to use AI chat.');
+    }
+
+    const safeHistory = (Array.isArray(history) ? history : [])
+        .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.text === 'string')
+        .slice(-12)
+        .map((item) => ({ role: item.role, text: item.text.trim().slice(0, 2000) }));
+
+    try {
+        console.log('[Preecode] Calling backend API: /api/ai/chat/stream');
+        const result: any = await doFetchStream(`${API_BASE}/ai/chat/stream`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify({
+                message,
+                context: editorContext,
+                history: safeHistory
+            })
+        }, onToken);
+
+        const text = String(result?.response || '').trim();
+        console.log('[Preecode] Backend stream completed: /api/ai/chat/stream');
+        return text;
+    } catch (error: any) {
+        if (String(error?.message || '').includes('Session expired')) {
+            await deleteToken(context);
         }
-        throw new Error(msg || 'Could not reach AI chat service.');
+        throw mapAIError(error, 'Could not reach AI chat service.');
     }
 }
 
@@ -450,11 +646,48 @@ export async function generateQuestionFromBackend(
         const content = String(payload?.response || '').trim();
         return ensureQuestionBlock(content);
     } catch (error: any) {
+        throw mapAIError(error, 'Could not reach question generation service.');
+    }
+}
+
+/**
+ * Streaming variant of generateQuestionFromBackend: raw tokens are delivered
+ * to onToken as the AI generates them (typing effect in the editor), and the
+ * promise resolves with the final parsed question in [QUESTION] block format.
+ */
+export async function generateQuestionStreamFromBackend(
+    context: vscode.ExtensionContext,
+    request: GenerateQuestionRequest,
+    onToken: (token: string) => void = () => {}
+): Promise<string> {
+    const language = String(request.language || '').trim().toLowerCase() || 'plaintext';
+    const difficulty = normalizeDifficulty(request.difficulty);
+
+    const token = await getToken(context);
+    if (!token) {
+        throw new Error('Please login to Preecode to generate questions.');
+    }
+
+    try {
+        console.log('[Preecode] Calling backend API: /api/ai/generate-question/stream');
+        const result: any = await doFetchStream(`${API_BASE}/ai/generate-question/stream`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify({ language, difficulty })
+        }, onToken);
+
+        console.log('[Preecode] Backend stream completed: /api/ai/generate-question/stream');
+        return ensureQuestionBlock(String(result?.question || ''));
+    } catch (error: any) {
         const msg = String(error?.message || '');
-        if (msg.includes('waking up') || msg.includes('abort')) {
-            throw new Error('Preecode server is starting up. Please wait a moment and try again.');
+        if (msg.includes('Session expired') || msg.includes('login')) {
+            throw error;
         }
-        throw new Error(msg || 'Could not reach question generation service.');
+        throw mapAIError(error, 'Could not reach question generation service.');
     }
 }
 

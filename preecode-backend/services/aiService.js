@@ -63,7 +63,7 @@ async function generateResponse(messages, options = {}) {
   }
 }
 
-async function chat(message, context, history = []) {
+function buildChatMessages(message, context, history = []) {
   const safeHistory = Array.isArray(history)
     ? history
         .filter((e) => e && (e.role === 'user' || e.role === 'assistant') && typeof e.text === 'string')
@@ -79,14 +79,27 @@ async function chat(message, context, history = []) {
     'If context is missing, ask one short clarifying question instead of guessing.',
   ].join(' ');
 
-  const messages = [
+  return [
     { role: 'system', content: systemPrompt },
     ...(context ? [{ role: 'system', content: `Editor context:\n${context}` }] : []),
     ...safeHistory,
     { role: 'user', content: message },
   ];
+}
 
+async function chat(message, context, history = []) {
+  const messages = buildChatMessages(message, context, history);
   return generateResponse(messages, { temperature: 0.5 });
+}
+
+/**
+ * Streaming variant of chat(). Invokes onToken for every token as the
+ * provider generates it. Resolves with the full response text.
+ */
+async function chatStream(message, context, history = [], onToken) {
+  const messages = buildChatMessages(message, context, history);
+  const result = await aiGateway.callAIStream(messages, { temperature: 0.5, feature: 'chat_stream' }, onToken);
+  return result.content;
 }
 
 async function getHint(problemDescription, language) {
@@ -134,7 +147,7 @@ Final Verdict:
   return generateResponse([{ role: 'user', content: prompt }], { temperature: 0.4 });
 }
 
-async function generateQuestion(language, difficulty, topic) {
+function buildQuestionPrompt(language, difficulty, topic) {
   const safeLanguage = String(language || 'python').trim().toLowerCase() || 'python';
   const safeDifficulty = String(difficulty || 'medium').trim().toLowerCase();
   const safeTopic = String(topic || '').trim().toLowerCase();
@@ -170,9 +183,11 @@ Return ONLY valid JSON, no markdown, no extra text:
   "solution": "Complete runnable ${safeLanguage} code with function + one demo print call. No markdown fences."
 }`;
 
-  const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.75, maxTokens: 600 });
-  const cleaned = raw.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
+  return { prompt, safeCompany };
+}
 
+function parseQuestionJson(raw, safeCompany) {
+  const cleaned = raw.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
   try {
     const parsed = JSON.parse(cleaned);
     if (!parsed.question || !parsed.solution) throw new Error('Invalid shape');
@@ -181,6 +196,27 @@ Return ONLY valid JSON, no markdown, no extra text:
     // Fallback: return raw as question text
     return { company: safeCompany, title: 'Coding Challenge', question: cleaned, hint: '', solution: '' };
   }
+}
+
+async function generateQuestion(language, difficulty, topic) {
+  const { prompt, safeCompany } = buildQuestionPrompt(language, difficulty, topic);
+  const raw = await generateResponse([{ role: 'user', content: prompt }], { temperature: 0.75, maxTokens: 600 });
+  return parseQuestionJson(raw, safeCompany);
+}
+
+/**
+ * Streaming variant of generateQuestion(). Invokes onToken for every token
+ * as the provider generates it. Resolves with the parsed question object
+ * (same shape as generateQuestion()).
+ */
+async function generateQuestionStream(language, difficulty, topic, onToken) {
+  const { prompt, safeCompany } = buildQuestionPrompt(language, difficulty, topic);
+  const result = await aiGateway.callAIStream(
+    [{ role: 'user', content: prompt }],
+    { temperature: 0.75, maxTokens: 600, feature: 'generate_question_stream' },
+    onToken
+  );
+  return parseQuestionJson(result.content, safeCompany);
 }
 
 async function verifyCodeOutput(question, code, output, language) {
@@ -287,9 +323,11 @@ module.exports = {
   callAI,
   generateResponse,
   chat,
+  chatStream,
   getHint,
   reviewCode,
   generateQuestion,
+  generateQuestionStream,
   verifyCodeOutput,
   reviewProject,
 };
